@@ -8,7 +8,7 @@ import (
 	"github.com/dumacp/matrixorbital/gtt43a"
 )
 
-func NewDevice(port string, speed int) (interface{}, error) {
+func NewDevice(port string, speed int) (Device, error) {
 
 	opts := &gtt43a.PortOptions{}
 	opts.Baud = speed

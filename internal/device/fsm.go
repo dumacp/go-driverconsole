@@ -36,7 +36,7 @@ func leaveState(state string) string {
 
 func (a *Actor) Fsm() {
 
-	var disp interface{}
+	var disp Device
 	callbacksfsm := fsm.Callbacks{
 		"before_event": func(e *fsm.Event) {
 			if e.Err != nil {
@@ -61,10 +61,7 @@ func (a *Actor) Fsm() {
 				if err == nil {
 					break
 				}
-				dev, ok := disp.(Device)
-				if ok {
-					dev.Close()
-				}
+				disp.Close()
 				time.Sleep(3 * time.Second)
 			}
 			if err != nil {
@@ -77,10 +74,10 @@ func (a *Actor) Fsm() {
 			if disp == nil {
 				return
 			}
-			dev, ok := disp.(Device)
-			if ok {
-				dev.Close()
-			}
+			//dev, ok := disp.(Device)
+			//if ok {
+			disp.Close()
+			//}
 		},
 	}
 

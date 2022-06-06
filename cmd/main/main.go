@@ -32,11 +32,71 @@ func main() {
 	flag.Parse()
 
 	sys := actor.NewActorSystem()
-	root := sys.Root
+	// root := sys.Root
+
+	//	decider := func(reason interface{}) actor.Directive {
+	//		fmt.Println("handling failure for child")
+	//		return actor.StopDirective
+	//	}
+	//
+	//	strategy := actor.NewAllForOneStrategy(100, 30*time.Second, decider)
+
+	props := actor.PropsFromFunc(func(ctx actor.Context) {
+
+		switch ctx.Message().(type) {
+		case *actor.Started:
+
+			propsDevice := actor.PropsFromFunc(device.NewActor(port, baud, 3*time.Second).Receive)
+
+			propsDisplay := actor.PropsFromFunc(display.NewActor().Receive)
+
+			propsButtons := actor.PropsFromFunc(buttons.NewActor().Receive)
+
+			propsApp := actor.PropsFromFunc(app.NewActor().Receive)
+
+			pidDevice, err := ctx.SpawnNamed(propsDevice, "device")
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			pidDisplay, err := ctx.SpawnNamed(propsDisplay, "display")
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			pidButtons, err := ctx.SpawnNamed(propsButtons, "buttons")
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			pidApp, err := ctx.SpawnNamed(propsApp, "app")
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			ctx.RequestWithCustomSender(pidDevice, &device.Subscribe{}, pidButtons)
+			ctx.RequestWithCustomSender(pidDevice, &device.Subscribe{}, pidDisplay)
+			ctx.RequestWithCustomSender(pidButtons, &buttons.MsgSubscribe{}, pidApp)
+			ctx.RequestWithCustomSender(pidApp, &app.MsgSubscribe{}, pidDisplay)
+
+			routes := map[int]string{
+				10: "RUTA CARAJILLO",
+				20: "RUTA ORIENTAL",
+				30: "RUTA OCCIDENTAL",
+				40: "RUTA NORTE",
+				50: "RUTA SUR",
+			}
+
+			ctx.Send(pidApp, &app.MsgSetRoutes{Routes: routes})
+
+		case *actor.Stopped:
+			log.Print("finished driver console")
+		}
+		//}).WithSupervisor(strategy)
+	})
 
 	portlocal := 8099
 	for {
-		portlocal++
 
 		socket := fmt.Sprintf("127.0.0.1:%d", portlocal)
 		testConn, err := net.DialTimeout("tcp", socket, 1*time.Second)
@@ -46,107 +106,72 @@ func main() {
 		testConn.Close()
 		logs.LogWarn.Printf("socket busy -> \"%s\"", socket)
 		time.Sleep(1 * time.Second)
+		portlocal++
 	}
 
-	rconfig := remote.Configure("127.0.0.1", portlocal).WithServerOptions()
+	// kind := remote.NewKind("driverconsole", props)
+	rconfig := remote.Configure("127.0.0.1", portlocal)
+	//	remote.NewKind("driverconsole", props))
 	r := remote.NewRemote(sys, rconfig)
+	r.Register("driverconsole", props)
 	r.Start()
 
-	propsDevice := actor.PropsFromFunc(device.NewActor(port, baud, 3*time.Second).Receive)
+	log.Printf("kinds: %v", r.GetKnownKinds())
 
-	propsDisplay := actor.PropsFromFunc(display.NewActor().Receive)
-
-	propsButtons := actor.PropsFromFunc(buttons.NewActor().Receive)
-
-	propsApp := actor.PropsFromFunc(app.NewActor().Receive)
-
-	pidDevice, err := root.SpawnNamed(propsDevice, "device")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	pidDisplay, err := root.SpawnNamed(propsDisplay, "display")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	pidButtons, err := root.SpawnNamed(propsButtons, "buttons")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	pidApp, err := root.SpawnNamed(propsApp, "app")
-	if err != nil {
-		log.Fatalln(err)
-	}
-
-	root.RequestWithCustomSender(pidDevice, &device.Subscribe{}, pidButtons)
-	root.RequestWithCustomSender(pidDevice, &device.Subscribe{}, pidDisplay)
-	root.RequestWithCustomSender(pidButtons, &buttons.MsgSubscribe{}, pidApp)
-	root.RequestWithCustomSender(pidApp, &app.MsgSubscribe{}, pidDisplay)
-
-	routes := map[int]string{
-		10: "RUTA CARAJILLO",
-		20: "RUTA ORIENTAL",
-		30: "RUTA OCCIDENTAL",
-		40: "RUTA NORTE",
-		50: "RUTA SUR",
-	}
-
-	root.Send(pidApp, &app.MsgSetRoutes{Routes: routes})
+	// log.Printf("kind: %s", remote.NewKind("driverconsole", props).Kind)
 
 	finish := make(chan os.Signal, 1)
 	signal.Notify(finish, syscall.SIGINT)
 	signal.Notify(finish, syscall.SIGTERM)
 	signal.Notify(finish, os.Interrupt)
 
-	go func() {
+	// go func() {
 
-		tick1 := time.Tick(10 * time.Second)
-		tick2 := time.Tick(20 * time.Second)
-		tick3 := time.Tick(30 * time.Second)
+	// 	tick1 := time.Tick(10 * time.Second)
+	// 	tick2 := time.Tick(20 * time.Second)
+	// 	tick3 := time.Tick(30 * time.Second)
 
-		valuePercent := 0
-		valueDoor := [][2]int{{0, 1}, {0, 0}, {1, 0}, {1, 1}}
-		idxValueDoor := 0
+	// 	valuePercent := 0
+	// 	valueDoor := [][2]int{{0, 1}, {0, 0}, {1, 0}, {1, 1}}
+	// 	idxValueDoor := 0
 
-		for {
-			select {
-			case <-tick1:
-				root.Send(pidApp, &app.MsgAppPaso{Value: 1})
-			case <-tick2:
-				if valuePercent > 100 {
-					valuePercent = 0
-				} else {
-					valuePercent += 5
-				}
-				root.Send(pidApp, &app.MsgAppPercentRecorrido{Data: valuePercent})
-				if idxValueDoor >= len(valueDoor) {
-					idxValueDoor = 0
-				}
-				root.Send(pidApp, &app.MsgDoors{Value: valueDoor[idxValueDoor]})
+	// 	for {
+	// 		select {
+	// 		case <-tick1:
+	// 			root.Send(pidApp, &app.MsgAppPaso{Value: 1})
+	// 		case <-tick2:
+	// 			if valuePercent > 100 {
+	// 				valuePercent = 0
+	// 			} else {
+	// 				valuePercent += 5
+	// 			}
+	// 			root.Send(pidApp, &app.MsgAppPercentRecorrido{Data: valuePercent})
+	// 			if idxValueDoor >= len(valueDoor) {
+	// 				idxValueDoor = 0
+	// 			}
+	// 			root.Send(pidApp, &app.MsgDoors{Value: valueDoor[idxValueDoor]})
 
-				idxValueDoor++
-			case <-tick3:
-				// root.Send(pidApp, &app.MsgConfirmationText{
-				// 	Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
-				// })
-				// go func() {
-				// 	time.Sleep(3 * time.Second)
-				// 	root.Send(pidApp, &app.MsgMainScreen{})
-				// }()
-			}
-		}
+	// 			idxValueDoor++
+	// 		case <-tick3:
+	// 			// root.Send(pidApp, &app.MsgConfirmationText{
+	// 			// 	Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
+	// 			// })
+	// 			// go func() {
+	// 			// 	time.Sleep(3 * time.Second)
+	// 			// 	root.Send(pidApp, &app.MsgMainScreen{})
+	// 			// }()
+	// 		}
+	// 	}
 
-	}()
+	// }()
 
 	for range finish {
-		time.Sleep(300 * time.Millisecond)
-		root.Poison(pidApp)
-		root.Poison(pidButtons)
-		root.Poison(pidDevice)
-		time.Sleep(300 * time.Millisecond)
-		log.Print("Finish")
+		// time.Sleep(300 * time.Millisecond)
+		// root.Poison(pidApp)
+		// root.Poison(pidButtons)
+		// root.Poison(pidDevice)
+		// time.Sleep(300 * time.Millisecond)
+		log.Print("finish")
 		return
 	}
 }

@@ -32,6 +32,14 @@ func (a *actorDisplay) Receive(ctx actor.Context) {
 	a.ctx = ctx
 	fmt.Printf("message -> \"%s\", %T\n", ctx.Self().GetId(), ctx.Message())
 	switch msg := ctx.Message().(type) {
+	case *actor.Stopping:
+		if a.stopTimeDate != nil {
+			select {
+			case <-a.stopTimeDate:
+			default:
+				close(a.stopTimeDate)
+			}
+		}
 	case *actor.Started:
 		if a.stopTimeDate != nil {
 			select {

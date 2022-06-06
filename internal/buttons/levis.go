@@ -1,4 +1,5 @@
-//+build levis
+//go:build levis
+// +build levis
 
 package buttons
 
@@ -21,7 +22,7 @@ const (
 	addrNameRoute = 20
 )
 
-func ListenButtons(dev interface{}, ctx actor.Context, quit <-chan int) error {
+func ListenButtons(dev interface{}, ctx actor.Context, mem <-chan *MsgMemory, quit <-chan int) error {
 
 	devv, ok := dev.(levis.Device)
 	if !ok {

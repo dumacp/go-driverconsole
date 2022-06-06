@@ -51,10 +51,10 @@ func (a *Actor) Receive(ctx actor.Context) {
 	fmt.Printf("message -> \"%s\", %T,\n", ctx.Self().GetId(), ctx.Message())
 	switch msg := ctx.Message().(type) {
 	case *actor.Stopping:
-		select {
-		case <-a.quit:
-		default:
-			if a.quit != nil {
+		if a.quit != nil {
+			select {
+			case <-a.quit:
+			default:
 				close(a.quit)
 			}
 		}
@@ -73,10 +73,7 @@ func (a *Actor) Receive(ctx actor.Context) {
 	case *device.MsgDevice:
 		if a.quit != nil {
 			select {
-			case _, ok := <-a.quit:
-				if ok {
-					close(a.quit)
-				}
+			case <-a.quit:
 			default:
 				close(a.quit)
 			}
