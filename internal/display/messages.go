@@ -55,3 +55,6 @@ type EnterText struct{}
 type MsgRoutes struct {
 	Data map[int]string
 }
+type DisplayDeviceError struct {
+	Err string
+}

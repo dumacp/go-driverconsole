@@ -24,13 +24,11 @@ func Fsm() *fsm.FSM {
 	callbacksfsm := fsm.Callbacks{
 		"before_event": func(e *fsm.Event) {
 			if e.Err != nil {
-				// log.Println(e.Err)
 				e.Cancel(e.Err)
 			}
 		},
 		"leave_state": func(e *fsm.Event) {
 			if e.Err != nil {
-				// log.Println(e.Err)
 				e.Cancel(e.Err)
 			}
 		},
@@ -65,6 +63,5 @@ func Fsm() *fsm.FSM {
 		},
 		callbacksfsm,
 	)
-
 	return f
 }

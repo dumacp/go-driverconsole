@@ -1,4 +1,5 @@
-//+build gtt43 !levis
+//go:build gtt43
+// +build gtt43
 
 package display
 
@@ -513,4 +514,11 @@ func (m *touchDisplay) keyNum(text string) {
 			logs.LogWarn.Println(err)
 		}
 	}
+}
+
+func (m *touchDisplay) driver(string) error {
+	return nil
+}
+
+func (m *touchDisplay) counters(inputs1, inputs2 int64) {
 }

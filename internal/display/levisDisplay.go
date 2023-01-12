@@ -1,4 +1,5 @@
-//+build levis
+//go:build levis
+// +build levis
 
 package display
 
@@ -8,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/asynkron/protoactor-go/actor"
 	"github.com/dumacp/go-levis"
-	"github.com/dumacp/go-logs/pkg/logs"
 )
 
 var dayActual int = -1
@@ -19,22 +20,47 @@ var statePuerta2 int = 0
 var timeoutRead time.Duration = 1 * time.Second
 
 type display struct {
-	dev          levis.Device
-	screenActual int
-	scratchData  []byte
+	dev            levis.Device
+	screenActual   int
+	scratchData    []byte
+	notifications  []string
+	lastUpdateDate time.Time
+	inputs         int64
+	outputs        int64
 }
 
 const (
-	addrConfirmation    int = 200
-	addrEfectivoCounter int = 3
-	addrTotalCounter    int = 2
-	addrServiceTime     int = 10
-	addrNoRoute         int = 110
-	addrNameRoute       int = 20
-	addrPercent         int = 4
+	SCREEN_INPUT_DRIVER = 3
+	SCREEN_INPUT_ROUTE  = 2
+)
+
+const (
+	addrConfirmation    int = 600
+	addrError           int = 500
+	addrAlarms          int = 3000
+	addrEfectivoCounter int = 90
+	addrTagCounter      int = 88
+
+	addrInputs  int = 80
+	addrOutputs int = 84
 
 	addrFrontalDoor int = 10
 	addrBackDoor    int = 11
+
+	addrNoRoute    = 120
+	addrNameRoute  = 100
+	addrNoDriver   = 160
+	addrNameDriver = 140
+
+	addrConfirmationTextMainScreen      int = 400
+	addrConfirmationToggleMainScreen    int = 5
+	addrConfirmationTextMainScreenErr   int = 300
+	addrConfirmationToggleMainScreenErr int = 6
+
+	addrIconGPS int = 12
+	addrIconNET int = 11
+
+	addrTimeDate int = 60
 )
 
 func NewDisplay(m interface{}) (Display, error) {
@@ -55,8 +81,32 @@ func (m *display) screen() int {
 func (m *display) close() {
 }
 
+func (m *display) driver(routes string) error {
+
+	if err := m.dev.WriteRegister(addrNameDriver, make([]uint16, 8)); err != nil {
+		fmt.Printf("error writRegister: %s\n", err)
+	}
+	if len(routes) > 16 {
+		routes = routes[:16]
+	}
+
+	if err := m.dev.WriteRegister(addrNameDriver,
+		levis.EncodeFromChars([]byte(routes))); err != nil {
+		return err
+	}
+
+	return nil
+
+}
 func (m *display) route(routes string) error {
 
+	if err := m.dev.WriteRegister(addrNameRoute, make([]uint16, 8)); err != nil {
+		fmt.Printf("error writRegister: %s\n", err)
+	}
+
+	if len(routes) > 16 {
+		routes = routes[:16]
+	}
 	if err := m.dev.WriteRegister(addrNameRoute,
 		levis.EncodeFromChars([]byte(routes))); err != nil {
 		return err
@@ -66,7 +116,7 @@ func (m *display) route(routes string) error {
 
 }
 
-func (m *display) screenError(sError ...string) {
+func (m *display) screenError(sError ...string) error {
 
 	textBytes := make([]byte, 0)
 
@@ -76,21 +126,62 @@ func (m *display) screenError(sError ...string) {
 	}
 
 	text := levis.EncodeFromChars(textBytes[:len(textBytes)-1])
-	m.dev.WriteRegister(addrConfirmation, text)
-	m.switchScreen(1, false)
+	if err := m.dev.WriteRegister(addrConfirmation, text); err != nil {
+		return err
+	}
+	return m.switchScreen(1, false)
 }
 
-func (m *display) ingresos(usosEfectivo, usosTarjeta, usosParcial int) {
+func (m *display) ingresos(usosEfectivo, usosTarjeta, usoParcial int) error {
 
-	if err := m.dev.WriteRegister(addrTotalCounter,
-		[]uint16{uint16(usosEfectivo) + uint16(usosTarjeta)}); err != nil {
-		logs.LogWarn.Println(err)
-	}
 	if err := m.dev.WriteRegister(addrEfectivoCounter,
 		[]uint16{uint16(usosEfectivo)}); err != nil {
-		logs.LogWarn.Println(err)
+		return err
 	}
+	if err := m.dev.WriteRegister(addrTagCounter,
+		[]uint16{uint16(usosTarjeta)}); err != nil {
+		return err
+	}
+	return nil
+}
 
+func (m *display) counters(inputs1, outputs1, inputs2, outputs2 int64) error {
+
+	if m.inputs != inputs1+inputs2 {
+		m.inputs = inputs1 + inputs2
+		if err := m.dev.WriteRegister(addrInputs,
+			[]uint16{uint16((inputs1 + inputs2) & 0xFFFF), uint16((inputs1 + inputs2) & 0xFFFF0000)}); err != nil {
+			return err
+		}
+	}
+	if m.outputs != outputs1+outputs2 {
+		m.outputs = outputs1 + outputs2
+		if err := m.dev.WriteRegister(addrOutputs,
+			[]uint16{uint16((outputs1 + outputs2) & 0xFFFF), uint16((outputs1 + outputs2) & 0xFFFF0000)}); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m *display) eventCount(input, output int) error {
+
+	if m.inputs > 0 && input > 0 {
+		m.inputs += int64(input)
+		if err := m.dev.WriteRegister(addrInputs,
+			[]uint16{uint16((m.inputs) & 0xFFFF), uint16((m.inputs) & 0xFFFF0000)}); err != nil {
+			return err
+		}
+
+	}
+	if m.outputs > 0 && output > 0 {
+		m.outputs += int64(output)
+		if err := m.dev.WriteRegister(addrOutputs,
+			[]uint16{uint16((m.outputs) & 0xFFFF), uint16((m.outputs) & 0xFFFF0000)}); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (m *display) ingresosPartial(usosParcial int) {
@@ -98,14 +189,7 @@ func (m *display) ingresosPartial(usosParcial int) {
 }
 
 func (m *display) timeRecorrido(timeLapse int) {
-	hours := uint((time.Duration(timeLapse) * time.Minute).Hours())
-	minutes := uint((time.Duration(timeLapse) * time.Minute).Minutes()) % 60
-	text := fmt.Sprintf("%02d:%02d", hours, minutes)
-	fmt.Printf("debug time: %s\n", text)
-	if err := m.dev.WriteRegister(addrServiceTime,
-		levis.EncodeFromChars([]byte(text))); err != nil {
-		logs.LogWarn.Println(err)
-	}
+
 }
 
 func (m *display) selectionRuta() {
@@ -117,44 +201,56 @@ func (m *display) updateRuta(ruta, subruta string) {
 }
 
 func (m *display) alertBeep(repeat int) {
-}
-
-func (m *display) init() {
-
-}
-
-func (m *display) verifyReset() chan int {
-	ch := make(chan int)
-	/**/
 	go func() {
-		defer close(ch)
-
-		log.Println("verifyReset stop")
+		for range make([]int, repeat) {
+			if err := m.dev.SetIndicator(23, true); err != nil {
+				fmt.Println(err)
+			}
+			time.Sleep(1 * time.Second)
+			if err := m.dev.SetIndicator(23, false); err != nil {
+				fmt.Println(err)
+			}
+		}
 	}()
-	/**/
-	return ch
 }
 
-func (m *display) switchScreen(screen int, active bool) error {
-	/**/
-	if m.screenActual == screen {
-		return nil
-	}
-	/**/
-	m.dev.WriteRegister(0, []uint16{uint16(screen)})
-	m.screenActual = screen
-
+func (m *display) init() error {
 	return nil
 }
 
-func (m *display) mainScreen() {
-	m.dev.WriteRegister(0, []uint16{0})
+func (m *display) verifyReset(quit chan int, ctx actor.Context) {
+}
+
+func (m *display) switchScreen(screen int, active bool) error {
+	if err := m.dev.WriteRegister(0, []uint16{uint16(screen)}); err != nil {
+		return err
+	}
+	m.screenActual = screen
+	return nil
+}
+
+func (m *display) mainScreen() error {
+	if err := m.dev.WriteRegister(0, []uint16{0}); err != nil {
+		return err
+	}
+	m.screenActual = 0
+	return nil
 }
 
 func (m *display) disableSelectButton() {
 }
 
-func (m *display) updateDate(period int) {
+func (m *display) updateDate(period int) error {
+	tNow := time.Now()
+	if m.lastUpdateDate.Minute() == tNow.Minute() && m.lastUpdateDate.Hour() == tNow.Hour() {
+		return nil
+	}
+	m.lastUpdateDate = tNow
+	text := levis.EncodeFromChars([]byte(tNow.Format("2006/01/02 15:04")))
+	if err := m.dev.WriteRegister(addrTimeDate, text); err != nil {
+		return err
+	}
+	return nil
 
 }
 
@@ -208,6 +304,151 @@ func (m *display) doors(value [2]int) error {
 
 func (m *display) keyNum(text string) {}
 
-func (m *display) textConfirmation(sError ...string) {}
+func (m *display) textConfirmationMainScreen(timeout time.Duration, sError ...string) error {
+	return m.messageInMainScreen(addrConfirmationToggleMainScreen, addrConfirmationTextMainScreen, 400, timeout, sError...)
+}
 
-func (m *display) textError(sError ...string) {}
+func (m *display) warningInMainScreen(timeout time.Duration, sError ...string) error {
+	return m.messageInMainScreen(addrConfirmationToggleMainScreenErr, addrConfirmationTextMainScreenErr, 300, timeout, sError...)
+}
+
+func (m *display) messageInMainScreen(addrToogle, addrText, freq int, timeout time.Duration, sError ...string) error {
+
+	m.alertBeep(1)
+
+	if err := m.dev.WriteRegister(addrText, make([]uint16, 64)); err != nil {
+		return fmt.Errorf("error writRegister: %w", err)
+	}
+	textBytes := make([]byte, 0)
+
+	for _, v := range sError {
+		if len(v) > 26 {
+			for _, vv := range SplitHeader(v, 26) {
+				textBytes = append(textBytes, []byte(vv)...)
+				textBytes = append(textBytes, '\n')
+			}
+		} else {
+			textBytes = append(textBytes, []byte(v)...)
+		}
+		textBytes = append(textBytes, '\n')
+	}
+
+	text := levis.EncodeFromChars(textBytes[:len(textBytes)-1])
+	if err := m.dev.WriteRegister(addrText, text); err != nil {
+		return err
+	}
+	if err := m.dev.SetIndicator(addrToogle, true); err != nil {
+		return err
+	}
+	go func() {
+		time.Sleep(2 * time.Second)
+		if err := m.dev.SetIndicator(addrToogle, false); err != nil {
+			fmt.Println(err)
+		}
+	}()
+	return nil
+}
+
+func (m *display) textConfirmation(sError ...string) error {
+
+	m.alertBeep(1)
+
+	if err := m.dev.WriteRegister(addrConfirmation, make([]uint16, 120)); err != nil {
+		return fmt.Errorf("error writRegister: %w", err)
+	}
+	textBytes := make([]byte, 0)
+
+	for _, v := range sError {
+		if len(v) > 26 {
+			for _, vv := range SplitHeader(v, 26) {
+				textBytes = append(textBytes, []byte(vv)...)
+				textBytes = append(textBytes, '\n')
+			}
+		} else {
+			textBytes = append(textBytes, []byte(v)...)
+		}
+		textBytes = append(textBytes, '\n')
+	}
+
+	text := levis.EncodeFromChars(textBytes[:len(textBytes)-1])
+	if err := m.dev.WriteRegister(addrConfirmation, text); err != nil {
+		return err
+	}
+	return m.switchScreen(5, false)
+}
+
+func (m *display) textError(sError ...string) error {
+
+	if err := m.dev.WriteRegister(addrError, make([]uint16, 120)); err != nil {
+		return fmt.Errorf("error writRegister: %w", err)
+	}
+	textBytes := make([]byte, 0)
+
+	for _, v := range sError {
+		if len(v) > 26 {
+			for _, vv := range SplitHeader(v, 26) {
+				textBytes = append(textBytes, []byte(vv)...)
+				textBytes = append(textBytes, '\n')
+			}
+		} else {
+			textBytes = append(textBytes, []byte(v)...)
+		}
+		textBytes = append(textBytes, '\n')
+	}
+
+	text := levis.EncodeFromChars(textBytes[:len(textBytes)-1])
+	if err := m.dev.WriteRegister(addrError, text); err != nil {
+		return fmt.Errorf("error writRegister: %w", err)
+	}
+	return m.switchScreen(6, false)
+}
+
+func (m *display) gpsstate(state int) error {
+	return m.dev.SetIndicator(addrIconGPS, state == 0)
+}
+func (m *display) netstate(state int) error {
+	return m.dev.SetIndicator(addrIconNET, state == 0)
+}
+
+func (m *display) addnotification(msg string) error {
+	MAX_LEN := 10
+	if len(m.notifications) <= 0 {
+		m.notifications = make([]string, 0)
+		m.notifications = append(m.notifications, msg)
+
+	} else if len(m.notifications) > MAX_LEN {
+		for i, v := range m.notifications[1:] {
+			m.notifications[i] = v
+		}
+		m.notifications[MAX_LEN] = msg
+	} else {
+		m.notifications = append(m.notifications, msg)
+	}
+	fmt.Printf("notifs: %v\n", m.notifications)
+	return nil
+}
+func (m *display) shownotifications() error {
+	for i := range make([]int, 10) {
+		fmt.Printf("%d\n", i)
+		if err := m.dev.WriteRegister(addrAlarms+(i*100), make([]uint16, 32)); err != nil {
+			return fmt.Errorf("error writRegister: %w", err)
+		}
+	}
+	arrayText := make([]string, 0)
+	for _, v := range m.notifications {
+		arrayText = append(arrayText, fmt.Sprintf(" ==> %s", v))
+	}
+	for i, data := range arrayText {
+		text := levis.EncodeFromChars([]byte(data))
+		if err := m.dev.WriteRegister(addrAlarms+(i*100), text); err != nil {
+			return fmt.Errorf("error writRegister (%s): %w", data, err)
+		}
+	}
+	return m.switchScreen(3, true)
+}
+func (m *display) setBrightness(percent int) error {
+	return nil
+}
+
+func (m *display) inputValue(initialText string, screen int) {
+}

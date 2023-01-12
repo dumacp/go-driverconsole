@@ -1,6 +1,11 @@
 package app
 
-import "github.com/dumacp/matrixorbital/gtt43a"
+import (
+	"time"
+
+	"github.com/dumacp/go-driverconsole/internal/itinerary"
+	"github.com/dumacp/matrixorbital/gtt43a"
+)
 
 type DisplayDevice struct {
 	Device gtt43a.Display
@@ -44,12 +49,15 @@ type MsgCounters struct {
 type MsgRoute struct {
 	Route string
 }
+type MsgSetRoute struct {
+	Route string
+}
 type MsgDriver struct {
 	Driver string
 }
 
 type MsgSetRoutes struct {
-	Routes map[int]string
+	Routes map[int32]string
 }
 
 type MsgDoors struct {
@@ -59,9 +67,35 @@ type MsgDoors struct {
 type MsgConfirmationText struct {
 	Text []byte
 }
-type MsgConfirmationButton struct{}
-
+type MsgConfirmationTextMainScreen struct {
+	Text    []byte
+	Timeout time.Duration
+}
 type MsgWarningText struct {
 	Text []byte
 }
-type MsgWarningButton struct{}
+type MsgWarningTextInMainScreen struct {
+	Text    []byte
+	Timeout time.Duration
+}
+type MsgGpsDown struct{}
+type MsgGpsUP struct{}
+type MsgNetDown struct{}
+type MsgNetUP struct{}
+
+type MsgShowAlarms struct{}
+type MsgAddAlarm struct {
+	Data string
+}
+
+type MsgBrightnessPlus struct{}
+type MsgBrightnessMinus struct{}
+
+type MsgGetItinieary struct {
+	ID             string
+	OrganizationID string
+	PaymentID      int
+}
+type MsgItinirary struct {
+	Data itinerary.Itinerary
+}

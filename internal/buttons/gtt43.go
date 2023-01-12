@@ -1,4 +1,5 @@
-//+build gtt43 !levis
+//go:build gtt43
+// +build gtt43
 
 package buttons
 
@@ -8,7 +9,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/AsynkronIT/protoactor-go/actor"
+	"github.com/asynkron/protoactor-go/actor"
 	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/dumacp/matrixorbital/gtt43a"
 )
@@ -88,7 +89,7 @@ const (
 func DisableStep(dev interface{}) error {
 	devv, ok := dev.(gtt43a.Display)
 	if !ok {
-		return fmt.Errorf("dev is not LEVIS device")
+		return fmt.Errorf("dev is not GTT device")
 	}
 	if err := devv.SetPropertyValueU8(addrEnterPaso, gtt43a.HasFocus)(0); err != nil {
 		return err

@@ -1,4 +1,5 @@
-//+build gtt43 !levis
+//go:build gtt43
+// +build gtt43
 
 package device
 

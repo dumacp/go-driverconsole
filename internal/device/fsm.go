@@ -51,21 +51,26 @@ func (a *Actor) Fsm() {
 			}
 		},
 		"enter_state": func(e *fsm.Event) {
-			logs.LogBuild.Printf("FSM APP, state src: %s, state dst: %s", e.Src, e.Dst)
+			logs.LogBuild.Printf("FSM DEVICE, state src: %s, state dst: %s", e.Src, e.Dst)
 		},
 		beforeEvent(eStarted): func(e *fsm.Event) {
 			var err error
 
-			for range []int{0, 1, 2} {
+			for _, v := range []int{0, 3, 3, 10, 30, 60} {
+				if v > 0 {
+					time.Sleep(time.Duration(v) * time.Second)
+				}
 				disp, err = NewDevice(a.portSerial, a.speedBaud)
 				if err == nil {
 					break
 				}
-				disp.Close()
-				time.Sleep(3 * time.Second)
+				fmt.Printf("open device error (%s): %s\n", a.portSerial, err)
+				if disp != nil {
+					disp.Close()
+				}
 			}
 			if err != nil {
-				e.Cancel(err)
+				e.Cancel(fmt.Errorf("(%s) %w", a.portSerial, err))
 				return
 			}
 			a.ctx.Send(a.ctx.Self(), &MsgDevice{Device: disp})
@@ -76,7 +81,10 @@ func (a *Actor) Fsm() {
 			}
 			//dev, ok := disp.(Device)
 			//if ok {
-			disp.Close()
+			if err := disp.Close(); err != nil {
+				fmt.Printf("error close device = %s\n", err)
+			}
+			fmt.Println("close device")
 			//}
 		},
 	}
@@ -86,7 +94,7 @@ func (a *Actor) Fsm() {
 		fsm.Events{
 			{
 				Name: eStarted,
-				Src:  []string{sStart, sClose},
+				Src:  []string{sStart, sClose, sStop, sWait},
 				Dst:  sOpen,
 			},
 			{
@@ -96,6 +104,11 @@ func (a *Actor) Fsm() {
 			},
 			{
 				Name: eError,
+				Src:  []string{sStart, sOpen, sWait},
+				Dst:  sClose,
+			},
+			{
+				Name: eClosed,
 				Src:  []string{sStart, sOpen, sWait},
 				Dst:  sClose,
 			},

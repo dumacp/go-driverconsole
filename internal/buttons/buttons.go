@@ -12,7 +12,8 @@ type ButtonDevice interface {
 type ButtonValue int
 
 const (
-	TextNumLabel = "textNumLabel"
+	TextNumRoute  = "textNumRoute"
+	TextNumDriver = "textNumDriver"
 )
 
 const (

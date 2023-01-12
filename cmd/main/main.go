@@ -10,47 +10,56 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/AsynkronIT/protoactor-go/actor"
-	"github.com/AsynkronIT/protoactor-go/remote"
+	"github.com/asynkron/protoactor-go/actor"
+	"github.com/asynkron/protoactor-go/remote"
 	"github.com/dumacp/go-driverconsole/internal/app"
 	"github.com/dumacp/go-driverconsole/internal/buttons"
+	"github.com/dumacp/go-driverconsole/internal/counterpass"
 	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/display"
+	"github.com/dumacp/go-driverconsole/internal/pubsub"
 	"github.com/dumacp/go-logs/pkg/logs"
 )
 
 var port string
 var baud int
+var standalone bool
+var showVersion bool
+
+const version = "1.0.1"
 
 func init() {
 	flag.StringVar(&port, "port", "/dev/ttyUSB0", "path to port serial in OS")
 	flag.IntVar(&baud, "baud", 19200, "serial port speed in baudios")
+	flag.BoolVar(&standalone, "standalone", false, "standalone running (without appfare supervision)")
+	flag.BoolVar(&showVersion, "version", false, "show version")
 }
 
 func main() {
 
 	flag.Parse()
+	if showVersion {
+		fmt.Printf("version: %s\n", version)
+		os.Exit(2)
+	}
 
 	sys := actor.NewActorSystem()
-	// root := sys.Root
 
-	//	decider := func(reason interface{}) actor.Directive {
-	//		fmt.Println("handling failure for child")
-	//		return actor.StopDirective
-	//	}
-	//
-	//	strategy := actor.NewAllForOneStrategy(100, 30*time.Second, decider)
-
+	var pidApp *actor.PID
 	props := actor.PropsFromFunc(func(ctx actor.Context) {
 
 		switch ctx.Message().(type) {
 		case *actor.Started:
+
+			pubsub.Init(ctx.ActorSystem().Root)
 
 			propsDevice := actor.PropsFromFunc(device.NewActor(port, baud, 3*time.Second).Receive)
 
 			propsDisplay := actor.PropsFromFunc(display.NewActor().Receive)
 
 			propsButtons := actor.PropsFromFunc(buttons.NewActor().Receive)
+
+			propsCounter := actor.PropsFromFunc(counterpass.NewActor().Receive)
 
 			propsApp := actor.PropsFromFunc(app.NewActor().Receive)
 
@@ -69,28 +78,46 @@ func main() {
 				log.Fatalln(err)
 			}
 
-			pidApp, err := ctx.SpawnNamed(propsApp, "app")
+			pidCounter, err := ctx.SpawnNamed(propsCounter, "counter")
+			if err != nil {
+				log.Fatalln(err)
+			}
+
+			pidApp, err = ctx.SpawnNamed(propsApp, "app")
 			if err != nil {
 				log.Fatalln(err)
 			}
 
 			ctx.RequestWithCustomSender(pidDevice, &device.Subscribe{}, pidButtons)
 			ctx.RequestWithCustomSender(pidDevice, &device.Subscribe{}, pidDisplay)
+			ctx.RequestWithCustomSender(pidCounter, &counterpass.MsgSubscribe{}, pidApp)
 			ctx.RequestWithCustomSender(pidButtons, &buttons.MsgSubscribe{}, pidApp)
 			ctx.RequestWithCustomSender(pidApp, &app.MsgSubscribe{}, pidDisplay)
 
-			routes := map[int]string{
-				10: "RUTA CARAJILLO",
-				20: "RUTA ORIENTAL",
-				30: "RUTA OCCIDENTAL",
-				40: "RUTA NORTE",
-				50: "RUTA SUR",
+			// routes := map[int32]string{
+			// 	10: "RUTA CARAJILLO",
+			// 	20: "RUTA ORIENTAL",
+			// 	30: "RUTA OCCIDENTAL",
+			// 	40: "RUTA NORTE",
+			// 	50: "RUTA SUR",
+			// }
+
+			// ctx.Send(pidApp, &app.MsgSetRoutes{Routes: routes})
+		case *actor.Stopping:
+			log.Print("stopping driver console")
+		case *actor.Stopped:
+			log.Print("stopped driver console")
+		case *actor.Terminated:
+			log.Print("terminated driver console")
+		case *actor.Restarting:
+			log.Print("restarting driver console")
+		case *actor.Restart:
+			log.Print("restart driver console")
+		default:
+			if pidApp != nil {
+				ctx.RequestWithCustomSender(pidApp, ctx.Message(), ctx.Sender())
 			}
 
-			ctx.Send(pidApp, &app.MsgSetRoutes{Routes: routes})
-
-		case *actor.Stopped:
-			log.Print("finished driver console")
 		}
 		//}).WithSupervisor(strategy)
 	})
@@ -113,65 +140,30 @@ func main() {
 	rconfig := remote.Configure("127.0.0.1", portlocal)
 	//	remote.NewKind("driverconsole", props))
 	r := remote.NewRemote(sys, rconfig)
-	r.Register("driverconsole", props)
-	r.Start()
 
-	log.Printf("kinds: %v", r.GetKnownKinds())
+	var pidMain *actor.PID
 
-	// log.Printf("kind: %s", remote.NewKind("driverconsole", props).Kind)
+	if !standalone {
+		r.Register("driverconsole", props)
+		r.Start()
+		log.Printf("kinds: %v", r.GetKnownKinds())
+	} else {
+		var err error
+		pidMain, err = sys.Root.SpawnNamed(props, " driverconsole")
+		if err != nil {
+			log.Fatalln(err)
+		}
+		r.Start()
+	}
 
 	finish := make(chan os.Signal, 1)
 	signal.Notify(finish, syscall.SIGINT)
 	signal.Notify(finish, syscall.SIGTERM)
 	signal.Notify(finish, os.Interrupt)
 
-	// go func() {
-
-	// 	tick1 := time.Tick(10 * time.Second)
-	// 	tick2 := time.Tick(20 * time.Second)
-	// 	tick3 := time.Tick(30 * time.Second)
-
-	// 	valuePercent := 0
-	// 	valueDoor := [][2]int{{0, 1}, {0, 0}, {1, 0}, {1, 1}}
-	// 	idxValueDoor := 0
-
-	// 	for {
-	// 		select {
-	// 		case <-tick1:
-	// 			root.Send(pidApp, &app.MsgAppPaso{Value: 1})
-	// 		case <-tick2:
-	// 			if valuePercent > 100 {
-	// 				valuePercent = 0
-	// 			} else {
-	// 				valuePercent += 5
-	// 			}
-	// 			root.Send(pidApp, &app.MsgAppPercentRecorrido{Data: valuePercent})
-	// 			if idxValueDoor >= len(valueDoor) {
-	// 				idxValueDoor = 0
-	// 			}
-	// 			root.Send(pidApp, &app.MsgDoors{Value: valueDoor[idxValueDoor]})
-
-	// 			idxValueDoor++
-	// 		case <-tick3:
-	// 			// root.Send(pidApp, &app.MsgConfirmationText{
-	// 			// 	Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
-	// 			// })
-	// 			// go func() {
-	// 			// 	time.Sleep(3 * time.Second)
-	// 			// 	root.Send(pidApp, &app.MsgMainScreen{})
-	// 			// }()
-	// 		}
-	// 	}
-
-	// }()
-
-	for range finish {
-		// time.Sleep(300 * time.Millisecond)
-		// root.Poison(pidApp)
-		// root.Poison(pidButtons)
-		// root.Poison(pidDevice)
-		// time.Sleep(300 * time.Millisecond)
-		log.Print("finish")
-		return
+	<-finish
+	if standalone && pidMain != nil {
+		sys.Root.Poison(pidMain)
 	}
+	log.Print("finish")
 }
