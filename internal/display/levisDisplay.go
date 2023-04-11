@@ -74,11 +74,12 @@ func NewDisplay(m interface{}) (Display, error) {
 	return display, nil
 }
 
-func (m *display) screen() int {
-	return m.screenActual
+func (m *display) Screen() (int, error) {
+	return m.screenActual, nil
 }
 
-func (m *display) close() {
+func (m *display) Close() error {
+	return nil
 }
 
 func (m *display) driver(routes string) error {

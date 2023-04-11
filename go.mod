@@ -21,7 +21,7 @@ replace github.com/dumacp/go-driverbutton => ../go-driverbutton
 //github.com/AsynkronIT/protoactor-go v0.0.0-20220121183416-233df622d732
 require (
 	github.com/dumacp/go-levis v0.0.0-00010101000000-000000000000
-	github.com/dumacp/go-logs v0.0.0-20220527154118-cf272998dc98
+	github.com/dumacp/go-logs v0.0.1
 	github.com/dumacp/matrixorbital v0.0.0-20211112030057-e5299bc41d1f
 	github.com/dumacp/pubsub v0.0.0-20200115200904-f16f29d84ee0
 	github.com/eclipse/paho.mqtt.golang v1.4.2
