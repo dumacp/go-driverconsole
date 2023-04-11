@@ -411,8 +411,8 @@ ingrese un número válido`),
 		a.routes = msg.Routes
 	case *messages.MsgAppMapRoute:
 		a.routes = msg.GetRoutes()
-		if a.route <= 0 && a.evts != nil {
-			a.evts.Publish(&messages.MsgGetParams{})
+		if a.route <= 0 && ctx.Sender() != nil {
+			ctx.Request(ctx.Sender(), &messages.MsgGetParams{})
 		}
 	case *MsgConfirmationText:
 		if a.evts != nil {

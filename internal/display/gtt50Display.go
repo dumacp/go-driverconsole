@@ -16,14 +16,14 @@ import (
 )
 
 type touchDisplay struct {
-	dev              gtt43a.Display
-	screenActual     int
-	inputsCash       int
-	inputsApp        int
-	counterInput1    int64
-	counterInput2    int64
-	counterOutput1   int64
-	counterOutput2   int64
+	dev          gtt43a.Display
+	screenActual int
+	inputsCash   int
+	inputsApp    int
+	counterInput int64
+	// counterInput2    int64
+	counterOutput int64
+	// counterOutput2   int64
 	inputsParcial    int
 	percentRecorrido int
 	timeLapse        time.Time
@@ -71,20 +71,20 @@ const (
 	addrIconGPS int = 34
 	addrIconNET int = 88
 
-	addrVehicleAgend  int = 78
-	addrDisplayAlarms int = 75
+	// addrVehicleAgend  int = 78
+	// addrDisplayAlarms int = 75
 
-	addrCenterSpeed     int = 116
-	addrLeftSpeed       int = 108
-	addrRightSpeed      int = 127
-	addrCenterSpeedText int = 120
-	addrLeftSpeedText   int = 117
-	addrRightSpeedText  int = 121
+	// addrCenterSpeed     int = 116
+	// addrLeftSpeed       int = 108
+	// addrRightSpeed      int = 127
+	// addrCenterSpeedText int = 120
+	// addrLeftSpeedText   int = 117
+	// addrRightSpeedText  int = 121
 
-	addrItineraryVehicle int = 114
+	// addrItineraryVehicle int = 114
 
-	addrCurrentVehicle int = 142
-	addrNextStop       int = 140
+	// addrCurrentVehicle int = 142
+	// addrNextStop       int = 140
 
 	addrTextAlarms int = 87
 )
@@ -260,7 +260,7 @@ func (m *touchDisplay) messageInMainScreen(addrButton, addrText, freq int, timeo
 	m.dev.SetPropertyValueU8(addrButton, gtt43a.ButtonState)(2)
 	text("")
 	m.ingresos(m.inputsCash, m.inputsApp, 0)
-	m.counters(m.counterInput1, m.counterInput2, m.counterOutput1, m.counterOutput2)
+	m.counters(m.counterInput, 0, m.counterOutput, 0)
 	return nil
 }
 
@@ -448,7 +448,7 @@ func (m *touchDisplay) mainScreen() error {
 	m.ingresos(m.inputsCash, m.inputsApp, 0)
 	m.route(m.routeName)
 	m.driver(m.driverID)
-	m.counters(m.counterInput1, m.counterInput2, m.counterOutput1, m.counterOutput2)
+	m.counters(m.counterInput, 0, m.counterOutput, 0)
 	m.gpsstate(m.gpsState)
 	m.netstate(m.netState)
 	m.updateDate(0)
@@ -577,10 +577,8 @@ func (m *touchDisplay) driver(driver string) error {
 
 func (m *touchDisplay) counters(inputs1, outputs1, inputs2, outputs2 int64) error {
 	/**/
-	m.counterInput1 = inputs1
-	m.counterInput1 = inputs2
-	m.counterInput1 = outputs1
-	m.counterInput1 = outputs2
+	m.counterInput = inputs1 + inputs2
+	m.counterInput = outputs1 + outputs2
 
 	if m.screenActual != 1 {
 		return nil
@@ -667,4 +665,24 @@ func (m *touchDisplay) shownotifications() error {
 func (m *touchDisplay) setBrightness(percent int) error {
 	data := percent * 255 / 100
 	return m.dev.SetBacklightLegcay(data)
+}
+
+func (m *touchDisplay) eventCount(input, output int) error {
+
+	m.counterInput += int64(input)
+	m.counterOutput += int64(output)
+
+	if m.screenActual != 1 {
+		return nil
+	}
+	textCounterInputs := m.dev.SetPropertyText(int(addrCounterInputs), gtt43a.LabelText)
+	if err := textCounterInputs(fmt.Sprintf("%d", m.counterInput)); err != nil {
+		return err
+	}
+
+	textCounterOutputs := m.dev.SetPropertyText(int(addrCounterOutputs), gtt43a.LabelText)
+	if err := textCounterOutputs(fmt.Sprintf("%d", m.counterOutput)); err != nil {
+		return err
+	}
+	return nil
 }
