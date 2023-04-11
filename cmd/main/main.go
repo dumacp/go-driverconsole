@@ -26,7 +26,7 @@ var baud int
 var standalone bool
 var showVersion bool
 
-const version = "1.0.1"
+const version = "1.0.2"
 
 func init() {
 	flag.StringVar(&port, "port", "/dev/ttyUSB0", "path to port serial in OS")
