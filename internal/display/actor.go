@@ -191,8 +191,8 @@ func (a *actorDisplay) Runstate(ctx actor.Context) {
 			break
 		}
 		a.dev = display
-		a.dev.init()
-		a.dev.mainScreen()
+		a.dev.Init()
+		a.dev.SwitchScreen(0)
 
 		if a.quit != nil {
 			select {
@@ -206,13 +206,14 @@ func (a *actorDisplay) Runstate(ctx actor.Context) {
 		}
 		a.quit = make(chan int)
 
-		a.dev.verifyReset(a.quit, ctx)
+		// TODO: deploy
+		a.dev.Verify()
 	case *Reset:
 		a.brightness = 50
-		a.dev.mainScreen()
+		a.dev.SwitchScreen(0)
 	case *ResetCounter:
 		a.countUsosParcial = 0
-		a.dev.ingresosPartial(0)
+		a.dev.Reset()
 	case *app.MsgAppPercentRecorrido:
 		if err := a.dev.recorridoPercent(msg.Data); err != nil {
 			logs.LogWarn.Println(err)

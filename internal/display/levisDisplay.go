@@ -4,6 +4,7 @@
 package display
 
 import (
+	"encoding/binary"
 	"fmt"
 	"log"
 	"strings"
@@ -19,6 +20,24 @@ var statePuerta1 int = 0
 var statePuerta2 int = 0
 var timeoutRead time.Duration = 1 * time.Second
 
+type TypeRegister int
+
+const (
+	LED = iota
+	INPUT_TEXT
+	INPUT_NUM
+	ARRAY_PICT
+)
+
+type Register struct {
+	Type   TypeRegister
+	Addr   int
+	Len    int
+	Size   int
+	Gap    int
+	Toogle int
+}
+
 type display struct {
 	dev            levis.Device
 	screenActual   int
@@ -27,6 +46,7 @@ type display struct {
 	lastUpdateDate time.Time
 	inputs         int64
 	outputs        int64
+	label2addr     func(label Label) Register
 }
 
 const (
@@ -63,6 +83,14 @@ const (
 	addrTimeDate int = 60
 )
 
+func label2addr(label Label) (addr int, length int, gap int) {
+	switch label {
+	case DRIVER_TEXT:
+		return addrNameDriver, 1, 0
+	}
+	return 0, 0, 0
+}
+
 func NewDisplay(m interface{}) (Display, error) {
 
 	dev, ok := m.(levis.Device)
@@ -82,40 +110,154 @@ func (m *display) Close() error {
 	return nil
 }
 
-func (m *display) driver(routes string) error {
+func (m *display) Reset() error {
+	return nil
+}
 
-	if err := m.dev.WriteRegister(addrNameDriver, make([]uint16, 8)); err != nil {
-		fmt.Printf("error writRegister: %s\n", err)
-	}
-	if len(routes) > 16 {
-		routes = routes[:16]
-	}
-
-	if err := m.dev.WriteRegister(addrNameDriver,
-		levis.EncodeFromChars([]byte(routes))); err != nil {
+func (m *display) SwitchScreen(num int) error {
+	if err := m.dev.WriteRegister(0, []uint16{uint16(num)}); err != nil {
 		return err
 	}
-
+	m.screenActual = num
 	return nil
-
 }
-func (m *display) route(routes string) error {
 
-	if err := m.dev.WriteRegister(addrNameRoute, make([]uint16, 8)); err != nil {
-		fmt.Printf("error writRegister: %s\n", err)
+func (m *display) writeText(addr, length, size, gap int, text ...string) error {
+	textBytes := make([]byte, 0)
+	if length <= 1 {
+		for i, v := range text {
+			textBytes = append(textBytes, []byte(v)...)
+			if i < len(text) {
+				textBytes = append(textBytes, '\n')
+			}
+		}
+		if size < len(textBytes) {
+			return fmt.Errorf("len text in greather that register")
+		}
+		if err := m.dev.WriteRegister(addr, make([]uint16, size/2)); err != nil {
+			return fmt.Errorf("error writeRegister: %s\n", err)
+		}
+		data := levis.EncodeFromChars(textBytes[:])
+		if err := m.dev.WriteRegister(addrConfirmation, data); err != nil {
+			return err
+		}
+	} else {
+		for i, v := range text {
+			if i > length {
+				break
+			}
+			if size < len(v) {
+				return fmt.Errorf("len text in greather that register")
+			}
+			if err := m.dev.WriteRegister(addr+(i*gap), make([]uint16, size/2)); err != nil {
+				return fmt.Errorf("error writeRegister: %s\n", err)
+			}
+		}
+		for i, v := range text {
+			if i > length {
+				break
+			}
+			if err := m.dev.WriteRegister(addr+(i*gap),
+				levis.EncodeFromChars([]byte(v))); err != nil {
+				return fmt.Errorf("error writeRegister: %s\n", err)
+			}
+		}
 	}
+	return nil
+}
 
-	if len(routes) > 16 {
-		routes = routes[:16]
+func (m *display) WriteText(label Label, text ...string) error {
+	reg := m.label2addr(label)
+	if reg.Type != INPUT_TEXT {
+		return fmt.Errorf("invalid data input")
 	}
-	if err := m.dev.WriteRegister(addrNameRoute,
-		levis.EncodeFromChars([]byte(routes))); err != nil {
+	return m.writeText(reg.Addr, reg.Len, reg.Size, reg.Gap, text...)
+}
+
+func (m *display) WriteNumber(label Label, num int64) error {
+	reg := m.label2addr(label)
+	if reg.Type != INPUT_NUM {
+		return fmt.Errorf("invalid data input")
+	}
+	numBytes := make([]byte, reg.Size)
+	switch reg.Size {
+	case 2:
+		binary.BigEndian.PutUint32(numBytes, uint32(num))
+	case 4:
+		binary.BigEndian.PutUint64(numBytes, uint64(num))
+	default:
+		return fmt.Errorf("invalis size (%d) to number input (%d)", reg.Size, num)
+	}
+	if err := m.dev.WriteRegister(reg.Addr, levis.EncodeFromBytes(numBytes)); err != nil {
+		return fmt.Errorf("error writeRegister: %s\n", err)
+	}
+	return nil
+}
+
+func (m *display) Popup(label Label, text ...string) error {
+	reg := m.label2addr(label)
+	if err := m.writeText(reg.Addr, reg.Len, reg.Size, reg.Gap, text...); err != nil {
 		return err
 	}
-
+	if err := m.dev.SetIndicator(reg.Toogle, true); err != nil {
+		return err
+	}
 	return nil
-
 }
+
+func (m *display) PopupClose(label Label) error {
+	reg := m.label2addr(label)
+	if err := m.dev.SetIndicator(reg.Toogle, false); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (m *display) Beep(repeat int, timeout time.Duration) error {
+	go func() {
+		for range make([]int, repeat) {
+			if err := m.dev.SetIndicator(23, true); err != nil {
+				fmt.Println(err)
+			}
+			time.Sleep(timeout)
+			if err := m.dev.SetIndicator(23, false); err != nil {
+				fmt.Println(err)
+			}
+		}
+	}()
+	return nil
+}
+
+func (m *display) Verify() error {
+	return nil
+}
+
+func (m *display) Led(label Label, state int) error {
+	reg := m.label2addr(label)
+	if reg.Type == LED {
+		if err := m.dev.SetIndicator(reg.Addr, state == 0); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	return m.dev.WriteRegister(reg.Addr, []uint16{uint16(state)})
+}
+
+func (m *display) KeyNum(prompt string) (int, error) {
+	return 0, nil
+}
+
+func (m *display) Keyboard(prompt string) (string, error) {
+	return "", nil
+}
+
+func (m *display) Brightness(percent int) error {
+	return nil
+}
+
+///////////////////////////////////////
+//////////////////////////////////////////////////////////////
 
 func (m *display) screenError(sError ...string) error {
 
@@ -215,7 +357,7 @@ func (m *display) alertBeep(repeat int) {
 	}()
 }
 
-func (m *display) init() error {
+func (m *display) Init() error {
 	return nil
 }
 
@@ -302,8 +444,6 @@ func (m *display) doors(value [2]int) error {
 
 	return nil
 }
-
-func (m *display) keyNum(text string) {}
 
 func (m *display) textConfirmationMainScreen(timeout time.Duration, sError ...string) error {
 	return m.messageInMainScreen(addrConfirmationToggleMainScreen, addrConfirmationTextMainScreen, 400, timeout, sError...)
