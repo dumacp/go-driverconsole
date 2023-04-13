@@ -12,6 +12,7 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/buttons"
 	"github.com/dumacp/go-driverconsole/internal/counterpass"
 	"github.com/dumacp/go-driverconsole/internal/database"
+	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-fareCollection/pkg/messages"
 	"github.com/dumacp/go-logs/pkg/logs"
 )
@@ -34,13 +35,16 @@ type actorApp struct {
 	driver           int
 	route            int
 	routeString      string
+	evt2evtApp       func(btn *buttons.InputEvent) *Event
+	uix              ui.UI
 	db               *actor.PID
 }
 
-func NewActor() actor.Actor {
+func NewActor(button2buttonApp func(btn *buttons.InputEvent) *Event) actor.Actor {
 	a := &actorApp{}
 	a.evts = eventstream.NewEventStream()
 	a.routes = make(map[int32]string)
+	a.evt2evtApp = button2buttonApp
 	return a
 }
 
@@ -294,7 +298,42 @@ Exitosa`),
 			v,
 		})
 	case *buttons.InputEvent:
-
+		evt := a.evt2evtApp(msg)
+		if err := func() error {
+			switch evt.Label {
+			case PROGRAMATION_DRIVER:
+				if err := a.uix.ShowProgDriver(); err != nil {
+					return fmt.Errorf("event ShowProgDriver error: %s", err)
+				}
+			case PROGRAMATION_VEH:
+				if err := a.uix.ShowProgVeh(); err != nil {
+					return fmt.Errorf("event ShowProgVeh error: %s", err)
+				}
+			case SHOW_NOTIF:
+				if err := a.uix.ShowNotifications(); err != nil {
+					return fmt.Errorf("event ShowNotifications error: %s", err)
+				}
+			case STATS:
+				if err := a.uix.ShowStats(); err != nil {
+					return fmt.Errorf("event ShowStats error: %s", err)
+				}
+			case ROUTE:
+				data, ok := evt.Value.([]byte)
+				if !ok {
+					break
+				}
+				a.uix.Route(string(data))
+			case DRIVER:
+				data, ok := evt.Value.([]byte)
+				if !ok {
+					break
+				}
+				a.uix.Driver(string(data))
+			}
+			return nil
+		}(); err != nil {
+			logs.LogWarn.Println(err)
+		}
 	case *buttons.MsgEnterRuta:
 		// fmt.Printf("message -> \"%v\"\n", msg)
 		if msg.Route >= 0 {

@@ -2,6 +2,8 @@ package display
 
 import (
 	"time"
+
+	"github.com/asynkron/protoactor-go/actor"
 )
 
 type Display interface {
@@ -20,4 +22,11 @@ type Display interface {
 	KeyNum(prompt string) (int, error)
 	Keyboard(prompt string) (string, error)
 	Brightness(percent int) error
+}
+
+func New(ctx actor.Context, dev *actor.PID) Display {
+
+	
+
+	return nil
 }

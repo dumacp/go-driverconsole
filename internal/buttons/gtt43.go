@@ -97,7 +97,7 @@ func DisableStep(dev interface{}) error {
 	return nil
 }
 
-func ListenButtons(dev interface{}, ctx actor.Context, mem <-chan *MsgMemory, quit <-chan int) error {
+func ListenButtons(contxt context.Context, ctx actor.Context) error {
 
 	devv, ok := dev.(gtt43a.Display)
 	if !ok {

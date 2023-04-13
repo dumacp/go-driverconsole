@@ -19,9 +19,9 @@ func New(display display.Display) UI {
 type UI interface {
 	Init() error
 	MainScreen() error
-	TextWarning(sError ...string) error
-	TextConfirmation(sError ...string) error
-	TextConfirmationPopup(timeout time.Duration, sError ...string) error
+	TextWarning(text ...string) error
+	TextConfirmation(text ...string) error
+	TextConfirmationPopup(timeout time.Duration, text ...string) error
 	TextWarningPopup(timeout time.Duration, sText ...string) error
 	Inputs(in int) error
 	Outputs(out int) error
@@ -38,6 +38,10 @@ type UI interface {
 	Gps(state bool) error
 	Network(state bool) error
 	AddNotifications(add string) error
+	ShowNotifications() error
+	ShowProgDriver() error
+	ShowProgVeh() error
+	ShowStats() error
 	Brightness(percent int) error
 }
 
@@ -49,12 +53,12 @@ func (u *ui) MainScreen() error {
 	return u.disp.SwitchScreen(0)
 }
 
-func (u *ui) TextWarning(sError ...string) error {
-	return u.disp.WriteText(display.WARNING_TEXT, sError...)
+func (u *ui) TextWarning(text ...string) error {
+	return u.disp.WriteText(display.WARNING_TEXT, text...)
 }
 
-func (u *ui) TextConfirmation(sError ...string) error {
-	return u.disp.WriteText(display.CONFIRMATION_TEXT, sError...)
+func (u *ui) TextConfirmation(text ...string) error {
+	return u.disp.WriteText(display.CONFIRMATION_TEXT, text...)
 }
 
 func (u *ui) TextConfirmationPopup(timeout time.Duration, sText ...string) error {
@@ -78,15 +82,15 @@ func (u *ui) DeviationInputs(dev int) error {
 }
 
 func (u *ui) Route(route ...string) error {
-	panic("not implemented") // TODO: Implement
+	return u.disp.WriteText(display.ROUTE_TEXT, route...)
 }
 
 func (u *ui) Driver(data string) error {
-	panic("not implemented") // TODO: Implement
+	return u.disp.WriteText(display.DRIVER_TEXT, data)
 }
 
 func (u *ui) Beep(repeat int, timeout time.Duration) error {
-	panic("not implemented") // TODO: Implement
+	return nil
 }
 
 func (u *ui) Date(date time.Time) error {

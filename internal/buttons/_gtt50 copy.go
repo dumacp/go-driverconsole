@@ -111,6 +111,36 @@ func ListenButtons(contxt context.Context, ctx actor.Context, dev interface{}) e
 			select {
 			case <-contxt.Done():
 				return
+			case <-enableStep.C:
+				// fmt.Println("/////////////////  enableStep  ////////////////////")
+				diff := time.Since(lastStep)
+				if diff < 3*time.Second && activeStep {
+					enableStep.Reset(diff)
+					break
+				}
+				if activeStep {
+					fmt.Println("reset addrSelectPaso")
+					activeStep = false
+					// if err := devv.SetPropertyValueU8(addrSelectPaso, gtt43a.ButtonState)(2); err != nil {
+					// 	logs.LogWarn.Println(err)
+					// }
+					if err := devv.SetPropertyValueU8(addrSelectPaso, gtt43a.ButtonState)(0); err != nil {
+						logs.LogWarn.Println(err)
+					}
+					// if err := devv.SetPropertyValueU8(addrSelectPaso, gtt43a.HasFocus)(0); err != nil {
+					// 	logs.LogWarn.Println(err)
+					// }
+				}
+			case v := <-mem:
+
+				log.Printf("memory: %+v", v)
+				switch v.Key {
+				case TextNumRoute:
+					rutaCode = fmt.Sprintf("%s", v.Value)
+				case TextNumDriver:
+					driverCode = fmt.Sprintf("%s", v.Value)
+				}
+
 			case v, ok := <-ch:
 				if !ok {
 					ctx.Send(self, &MsgDeviceError{})

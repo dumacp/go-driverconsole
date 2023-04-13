@@ -11,6 +11,7 @@ import (
 )
 
 type Actor struct {
+	// TODO: ctx???
 	ctx        actor.Context
 	portSerial string
 	speedBaud  int
