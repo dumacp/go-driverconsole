@@ -18,7 +18,7 @@ type Actor struct {
 	cancel    func()
 }
 
-func NewActor(buttonsDevice ButtonDevice) actor.Actor {
+func NewActor() actor.Actor {
 	a := &Actor{}
 	a.evts = eventstream.NewEventStream()
 	a.mem = make(chan *MsgMemory)
@@ -59,11 +59,15 @@ func (a *Actor) Receive(ctx actor.Context) {
 	case *device.MsgDevice:
 		contxt, cancel := context.WithCancel(context.TODO())
 		a.cancel = cancel
-		if err := a.device.ListenButtons(); err != nil {
+
+		if a.device == nil {
+			break
+		}
+		a.device.Init(msg.Device)
+		if err := a.device.ListenButtons(contxt); err != nil {
 			logs.LogError.Printf("listenButtons error = %s", err)
 			break
 		}
-		a.device = msg.Device
 		a.pidDevice = ctx.Sender()
 	case *InputEvent:
 		newmsg := *msg

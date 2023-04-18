@@ -12,19 +12,16 @@ import (
 
 type Actor struct {
 	// TODO: ctx???
-	ctx        actor.Context
-	portSerial string
-	speedBaud  int
-	fmachinae  *fsm.FSM
-	evts       *eventstream.EventStream
+	ctx       actor.Context
+	fmachinae *fsm.FSM
+	evts      *eventstream.EventStream
+	dev       Device
 }
 
-func NewActor(port string, speed int, readTimeout time.Duration) actor.Actor {
+func NewActor(dev Device) actor.Actor {
 
-	a := &Actor{
-		portSerial: port,
-		speedBaud:  speed,
-	}
+	a := &Actor{}
+	a.dev = dev
 	a.evts = &eventstream.EventStream{}
 	a.Fsm()
 	return a

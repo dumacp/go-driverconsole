@@ -91,12 +91,7 @@ func label2addr(label Label) (addr int, length int, gap int) {
 	return 0, 0, 0
 }
 
-func NewDisplay(m interface{}) (Display, error) {
-
-	dev, ok := m.(levis.Device)
-	if !ok {
-		return nil, fmt.Errorf("device is not LEVIS device")
-	}
+func NewLevisDisplay(dev levis.Device) (Display, error) {
 	display := &display{}
 	display.dev = dev
 	return display, nil

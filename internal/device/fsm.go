@@ -36,7 +36,6 @@ func leaveState(state string) string {
 
 func (a *Actor) Fsm() {
 
-	var disp Device
 	callbacksfsm := fsm.Callbacks{
 		"before_event": func(e *fsm.Event) {
 			if e.Err != nil {
@@ -56,32 +55,31 @@ func (a *Actor) Fsm() {
 		beforeEvent(eStarted): func(e *fsm.Event) {
 			var err error
 
+			var devi interface{}
 			for _, v := range []int{0, 3, 3, 10, 30, 60} {
 				if v > 0 {
 					time.Sleep(time.Duration(v) * time.Second)
 				}
-				disp, err = NewDevice(a.portSerial, a.speedBaud)
+				devi, err = a.dev.Init()
 				if err == nil {
 					break
 				}
-				fmt.Printf("open device error (%s): %s\n", a.portSerial, err)
-				if disp != nil {
-					disp.Close()
-				}
+				fmt.Printf("open device error: %s\n", err)
+				a.dev.Close()
 			}
 			if err != nil {
-				e.Cancel(fmt.Errorf("(%s) %w", a.portSerial, err))
+				e.Cancel(fmt.Errorf("%w", err))
 				return
 			}
-			a.ctx.Send(a.ctx.Self(), &MsgDevice{Device: disp})
+			a.ctx.Send(a.ctx.Self(), &MsgDevice{Device: devi})
 		},
 		enterState(sClose): func(e *fsm.Event) {
-			if disp == nil {
+			if a.dev == nil {
 				return
 			}
 			//dev, ok := disp.(Device)
 			//if ok {
-			if err := disp.Close(); err != nil {
+			if err := a.dev.Close(); err != nil {
 				fmt.Printf("error close device = %s\n", err)
 			}
 			fmt.Println("close device")

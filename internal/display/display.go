@@ -1,9 +1,10 @@
 package display
 
 import (
+	"fmt"
 	"time"
 
-	"github.com/asynkron/protoactor-go/actor"
+	"github.com/dumacp/go-levis"
 )
 
 type Display interface {
@@ -24,9 +25,12 @@ type Display interface {
 	Brightness(percent int) error
 }
 
-func New(ctx actor.Context, dev *actor.PID) Display {
+func New(devi interface{}) (Display, error) {
 
-	
+	switch dev := devi.(type) {
+	case levis.Device:
+		return NewLevisDisplay(dev)
+	}
 
-	return nil
+	return nil, fmt.Errorf("Display device not foud")
 }

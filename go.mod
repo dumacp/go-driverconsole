@@ -2,25 +2,8 @@ module github.com/dumacp/go-driverconsole
 
 go 1.19
 
-replace github.com/dumacp/go-levis => ../go-levis
-
-replace github.com/dumacp/matrixorbital => ../matrixorbital
-
-replace github.com/dumacp/go-logs => ../go-logs
-
-replace github.com/dumacp/go-fareCollection => ../go-fareCollection
-
-replace github.com/dumacp/go-ignition => ../go-ignition
-
-replace github.com/dumacp/go-sesam => ../go-sesam
-
-replace github.com/dumacp/go-driverbutton => ../go-driverbutton
-
-//replace github.com/dumacp/go-levis/pkg/levis => ./pkg/levis
-
 //github.com/AsynkronIT/protoactor-go v0.0.0-20220121183416-233df622d732
 require (
-	github.com/dumacp/go-levis v0.0.0-00010101000000-000000000000
 	github.com/dumacp/go-logs v0.0.1
 	github.com/dumacp/matrixorbital v0.0.0-20211112030057-e5299bc41d1f
 	github.com/dumacp/pubsub v0.0.0-20200115200904-f16f29d84ee0
@@ -34,6 +17,7 @@ require (
 	github.com/asynkron/protoactor-go v0.0.0-20221002142108-880b460fcd1f
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/dumacp/go-fareCollection v0.0.0-00010101000000-000000000000
+	github.com/dumacp/go-levis v0.0.0-20230412230714-3b18e16a14eb
 	github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
 	golang.org/x/oauth2 v0.0.0-20220524215830-622c5d57e401
@@ -81,3 +65,7 @@ require (
 	google.golang.org/protobuf v1.28.0 // indirect
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 )
+
+replace github.com/dumacp/go-fareCollection => ../go-fareCollection
+
+replace github.com/dumacp/go-levis => ../go-levis

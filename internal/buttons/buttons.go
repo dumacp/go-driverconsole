@@ -1,13 +1,18 @@
 package buttons
 
+import "context"
+
 type InputEvent struct {
 	TypeEvent TypeEvent
 	KeyCode   KeyCode
 	Value     interface{}
+	Error     error
 }
 
 type ButtonDevice interface {
-	ListenButtons() chan *InputEvent
+	Init(dev interface{}) error
+	Close() error
+	ListenButtons(ctx context.Context) chan *InputEvent
 }
 
 type KeyCode int

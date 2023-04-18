@@ -13,7 +13,7 @@ type ui struct {
 func New(display display.Display) UI {
 	u := &ui{}
 	u.disp = display
-	return u
+	return nil
 }
 
 type UI interface {

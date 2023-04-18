@@ -63,6 +63,11 @@ type DisplayDeviceError struct {
 
 ///////////////////////
 
+// AckMsg is a message to indicate response
+type AckMsg struct {
+	Error error
+}
+
 // InitMsg is a message to initialize the Display.
 type InitMsg struct{}
 
