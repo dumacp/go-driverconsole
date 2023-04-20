@@ -12,7 +12,7 @@ type InputEvent struct {
 type ButtonDevice interface {
 	Init(dev interface{}) error
 	Close() error
-	ListenButtons(ctx context.Context) chan *InputEvent
+	ListenButtons(ctx context.Context) (chan *InputEvent, error)
 }
 
 type KeyCode int

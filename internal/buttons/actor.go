@@ -64,10 +64,21 @@ func (a *Actor) Receive(ctx actor.Context) {
 			break
 		}
 		a.device.Init(msg.Device)
-		if err := a.device.ListenButtons(contxt); err != nil {
+		ch, err := a.device.ListenButtons(contxt)
+		if err != nil {
 			logs.LogError.Printf("listenButtons error = %s", err)
 			break
 		}
+
+		go func(ctx actor.Context) {
+			rootctx := ctx.ActorSystem().Root
+			self := ctx.Self()
+
+			for v := range ch {
+				rootctx.Request(self, v)
+			}
+		}(ctx)
+
 		a.pidDevice = ctx.Sender()
 	case *InputEvent:
 		newmsg := *msg
