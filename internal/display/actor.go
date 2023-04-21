@@ -15,7 +15,7 @@ type DisplayActor struct {
 	pidDevice *actor.PID
 }
 
-func NewDisplayActor(dev device.Device) *DisplayActor {
+func NewDisplayActor(dev device.Device) actor.Actor {
 
 	d := &DisplayActor{}
 	d.dev = dev

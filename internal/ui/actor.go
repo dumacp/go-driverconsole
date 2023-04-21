@@ -10,9 +10,17 @@ import (
 )
 
 type ActorUI struct {
-	ui         UI
-	pidDisplay *actor.PID
-	screen     int
+	ui           UI
+	propsDisplay *actor.Props
+	pidDisplay   *actor.PID
+	screen       int
+}
+
+func NewActor(disp *actor.Props) actor.Actor {
+
+	a := &ActorUI{}
+	a.propsDisplay = disp
+	return a
 }
 
 func (a *ActorUI) Receive(ctx actor.Context) {
@@ -91,7 +99,9 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		})
 
 	case *ScreenMsg:
-		res, err := ctx.RequestFuture(a.pidDisplay, &display.ScreenMsg{}, 1*time.Second).Result()
+		res, err := ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
+			Num: msg.Num,
+		}, 1*time.Second).Result()
 		if err != nil {
 			logs.LogWarn.Printf("Get ScreenMsg error: %s", err)
 		}
@@ -100,72 +110,39 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 
 	case *GetScreenMsg:
-		screen, err := a.ui.GetScreen()
+		res, err := ctx.RequestFuture(a.pidDisplay, &display.ScreenMsg{}, 1*time.Second).Result()
 		if err != nil {
-			ctx.Respond(err)
-		} else {
-			ctx.Respond(screen)
+			logs.LogWarn.Printf("Get ScreenMsg error: %s", err)
+		}
+		if v, ok := res.(*display.ScreenResponseMsg); ok {
+			a.screen = v.Screen
 		}
 	case *KeyNumMsg:
-		num, err := a.ui.KeyNum(msg.Prompt)
-		if err != nil {
-			ctx.Respond(err)
-		} else {
-			ctx.Respond(num)
-		}
+		ctx.Request(a.pidDisplay, &display.KeyNumMsg{
+			Prompt: msg.Prompt,
+		})
 	case *KeyboardMsg:
-		text, err := a.ui.Keyboard(msg.Prompt)
-		if err != nil {
-			ctx.Respond(err)
-		} else {
-			ctx.Respond(text)
-		}
+		ctx.Request(a.pidDisplay, &display.KeyboardMsg{
+			Prompt: msg.Prompt,
+		})
 	case *DoorsMsg:
-		err := a.ui.Doors(msg.State...)
-		if err != nil {
-			ctx.Respond(err)
-		}
+
 	case *GpsMsg:
-		err := a.ui.Gps(msg.State)
-		if err != nil {
-			ctx.Respond(err)
-		}
+
 	case *NetworkMsg:
-		err := a.ui.Network(msg.State)
-		if err != nil {
-			ctx.Respond(err)
-		}
+
 	case *AddNotificationsMsg:
-		err := a.ui.AddNotifications(msg.Add)
-		if err != nil {
-			ctx.Respond(err)
-		}
+
 	case *ShowNotificationsMsg:
-		err := a.ui.ShowNotifications()
-		if err != nil {
-			ctx.Respond(err)
-		}
+
 	case *ShowProgDriverMsg:
-		err := a.ui.ShowProgDriver()
-		if err != nil {
-			ctx.Respond(err)
-		}
+
 	case *ShowProgVehMsg:
-		err := a.ui.ShowProgVeh()
-		if err != nil {
-			ctx.Respond(err)
-		}
 
 	case *ShowStatsMsg:
-		err := a.ui.ShowStats()
-		if err != nil {
-			ctx.Respond(err)
-		}
+
 	case *BrightnessMsg:
-		err := a.ui.Brightness(msg.Percent)
-		if err != nil {
-			ctx.Respond(err)
-		}
+
 	default:
 		ctx.Respond(fmt.Errorf("unhandled message type: %T", msg))
 	}

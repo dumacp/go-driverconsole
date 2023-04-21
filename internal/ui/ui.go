@@ -1,18 +1,24 @@
 package ui
 
 import (
+	"context"
+	"fmt"
 	"time"
 
+	"github.com/asynkron/protoactor-go/actor"
+	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/display"
 )
 
 type ui struct {
-	disp display.Display
+	disp    display.Display
+	rootctx *actor.RootContext
+	pid     *actor.PID
 }
 
-func New(display display.Display) UI {
+func New(ctx *actor.RootContext) UI {
 	u := &ui{}
-	u.disp = display
+	u.rootctx = ctx
 	return nil
 }
 
@@ -32,8 +38,8 @@ type UI interface {
 	Date(date time.Time) error
 	Screen(num int, force bool) error
 	GetScreen() (int, error)
-	KeyNum(prompt string) (int, error)
-	Keyboard(prompt string) (string, error)
+	KeyNum(ctx context.Context, prompt string) (chan int, error)
+	Keyboard(ctx context.Context, prompt string) (chan string, error)
 	Doors(state ...bool) error
 	Gps(state bool) error
 	Network(state bool) error
@@ -43,50 +49,165 @@ type UI interface {
 	ShowProgVeh() error
 	ShowStats() error
 	Brightness(percent int) error
+	InputHandler(device interface{}) error
 }
 
-func (u *ui) Init() error {
-	return u.disp.Init()
+func (u *ui) Init(dev interface{}) error {
+
+	if v, ok := dev.(device.Device); ok {
+		disp := display.NewDisplayActor(v)
+		props := actor.PropsFromFunc(NewActor(actor.PropsFromFunc(disp.Receive)).Receive)
+		pid, err := u.rootctx.SpawnNamed(props, "ui-actor")
+		if err != nil {
+			return fmt.Errorf("init UI actor error: %s", err)
+		}
+		u.pid = pid
+		return nil
+	}
+
+	return fmt.Errorf("unkown device interface")
 }
 
 func (u *ui) MainScreen() error {
-	return u.disp.SwitchScreen(0)
+	res, err := u.rootctx.RequestFuture(u.pid, &MainScreenMsg{}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("mainScreen with response form display")
 }
 
 func (u *ui) TextWarning(text ...string) error {
-	return u.disp.WriteText(display.WARNING_TEXT, text...)
+	res, err := u.rootctx.RequestFuture(u.pid, &TextWarningMsg{Text: text}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("textWarning with response form display")
 }
 
 func (u *ui) TextConfirmation(text ...string) error {
-	return u.disp.WriteText(display.CONFIRMATION_TEXT, text...)
+	res, err := u.rootctx.RequestFuture(u.pid, &TextConfirmationMsg{Text: text}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("textConfirmation with response form display")
 }
 
 func (u *ui) TextConfirmationPopup(timeout time.Duration, sText ...string) error {
-	return u.disp.Popup(display.POPUP_TEXT, sText...)
+	res, err := u.rootctx.RequestFuture(u.pid, &TextConfirmationPopupMsg{
+		Text:    sText,
+		Timeout: timeout,
+	}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("textConfirmationPopup with response form display")
 }
 
 func (u *ui) TextWarningPopup(timeout time.Duration, sText ...string) error {
-	return u.disp.Popup(display.POPUP_WARN_TEXT, sText...)
+	res, err := u.rootctx.RequestFuture(u.pid, &TextWarningPopupMsg{
+		Timeout: timeout,
+		Text:    sText,
+	}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("textWarningPopup with response form display")
 }
 
 func (u *ui) Inputs(in int) error {
-	return u.disp.WriteNumber(display.INPUT_NUM, int64(in))
+	res, err := u.rootctx.RequestFuture(u.pid, &InputsMsg{
+		In: in,
+	}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("inputs with response form display")
 }
 
 func (u *ui) Outputs(out int) error {
-	return u.disp.WriteNumber(display.INPUT_NUM, int64(out))
+	res, err := u.rootctx.RequestFuture(u.pid, &OutputsMsg{
+		Out: out,
+	}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("outputs with response form display")
 }
 
 func (u *ui) DeviationInputs(dev int) error {
-	return u.disp.WriteNumber(display.INPUT_NUM, int64(dev))
+	res, err := u.rootctx.RequestFuture(u.pid, &DeviationInputsMsg{
+		Dev: dev,
+	}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("deviationInputs with response form display")
 }
 
 func (u *ui) Route(route ...string) error {
-	return u.disp.WriteText(display.ROUTE_TEXT, route...)
+	res, err := u.rootctx.RequestFuture(u.pid, &RouteMsg{Route: route}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("route with response form display")
 }
 
 func (u *ui) Driver(data string) error {
-	return u.disp.WriteText(display.DRIVER_TEXT, data)
+	res, err := u.rootctx.RequestFuture(u.pid, &DriverMsg{Data: data}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("driver with response form display")
 }
 
 func (u *ui) Beep(repeat int, timeout time.Duration) error {
