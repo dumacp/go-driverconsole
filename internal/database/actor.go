@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"time"
@@ -21,6 +22,7 @@ type dbActor struct {
 	ctx     actor.Context
 	rootctx *actor.RootContext
 	pid     *actor.PID
+	contxt  context.Context
 }
 
 type DB interface {
@@ -71,17 +73,17 @@ func (a *dbActor) CloseState(ctx actor.Context) {
 	logs.LogBuild.Printf("Message arrive in datab (CloseState): %s, %T, %s", ctx.Message(), ctx.Message(), ctx.Sender())
 	switch ctx.Message().(type) {
 	case *actor.Started:
-		a.fm.Event(eOpenCmd)
+		a.fm.Event(a.contxt, eOpenCmd)
 	case *MsgErrorDB:
-		a.fm.Event(eError)
+		a.fm.Event(a.contxt, eError)
 	case *MsgOpenDB:
-		a.fm.Event(eOpenCmd)
+		a.fm.Event(a.contxt, eOpenCmd)
 		if ctx.Sender() != nil {
 			ctx.Respond(&MsgOpenDB{})
 		}
 	case *MsgOpenedDB:
 		a.behavior.Become(a.WaitState)
-		a.fm.Event(eOpened)
+		a.fm.Event(a.contxt, eOpened)
 	}
 }
 
@@ -98,13 +100,13 @@ func (a *dbActor) WaitState(ctx actor.Context) {
 		}
 	case *actor.Stopping:
 		a.db.Close()
-		a.fm.Event(eClosed)
+		a.fm.Event(a.contxt, eClosed)
 	case *MsgOpenDB:
 		if ctx.Sender() != nil {
 			ctx.Respond(&MsgOpenDB{})
 		}
 	case *MsgErrorDB:
-		a.fm.Event(eError)
+		a.fm.Event(a.contxt, eError)
 	case *MsgInsertData:
 
 		if err := func() error {
@@ -140,9 +142,9 @@ func (a *dbActor) WaitState(ctx actor.Context) {
 			}
 			switch {
 			case errors.Is(err, bbolt.ErrDatabaseNotOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			case errors.Is(err, bbolt.ErrDatabaseOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			}
 		}
 
@@ -181,13 +183,13 @@ func (a *dbActor) WaitState(ctx actor.Context) {
 			}
 			switch {
 			case errors.Is(err, bbolt.ErrDatabaseNotOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			case errors.Is(err, bbolt.ErrDatabaseOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			case errors.Is(err, bbolt.ErrDatabaseReadOnly):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			case errors.Is(err, bbolt.ErrTxNotWritable):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			}
 		}
 
@@ -213,9 +215,9 @@ func (a *dbActor) WaitState(ctx actor.Context) {
 			logs.LogError.Println(err)
 			switch {
 			case errors.Is(err, bbolt.ErrDatabaseNotOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			case errors.Is(err, bbolt.ErrDatabaseOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			}
 		}
 
@@ -238,15 +240,15 @@ func (a *dbActor) WaitState(ctx actor.Context) {
 			}
 			switch {
 			case errors.Is(err, bbolt.ErrDatabaseNotOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			case errors.Is(err, bbolt.ErrDatabaseOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			}
 		}
 	case *MsgQueryData:
 		if err := func() error {
 			prefix := []byte(msg.PrefixID)
-			data := make(chan *QueryType, 0)
+			data := make(chan *QueryType)
 			stop := make(chan int)
 			pidSender := ctx.Sender()
 
@@ -287,9 +289,9 @@ func (a *dbActor) WaitState(ctx actor.Context) {
 			}
 			switch {
 			case errors.Is(err, bbolt.ErrDatabaseNotOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			case errors.Is(err, bbolt.ErrDatabaseOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			}
 		}
 	case *MsgList:
@@ -309,9 +311,9 @@ func (a *dbActor) WaitState(ctx actor.Context) {
 			}
 			switch {
 			case errors.Is(err, bbolt.ErrDatabaseNotOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			case errors.Is(err, bbolt.ErrDatabaseOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			}
 		}
 	case *MsgListKeys:
@@ -332,13 +334,13 @@ func (a *dbActor) WaitState(ctx actor.Context) {
 			}
 			switch {
 			case errors.Is(err, bbolt.ErrDatabaseNotOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			case errors.Is(err, bbolt.ErrDatabaseOpen):
-				a.fm.Event(eError)
+				a.fm.Event(a.contxt, eError)
 			}
 		}
 	case *MsgCloseDB:
 		a.db.Close()
-		a.fm.Event(eClosed)
+		a.fm.Event(a.contxt, eClosed)
 	}
 }

@@ -1,6 +1,7 @@
 package device
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -16,6 +17,7 @@ type Actor struct {
 	fmachinae *fsm.FSM
 	evts      *eventstream.EventStream
 	dev       Device
+	contxt    context.Context
 }
 
 func NewActor(dev Device) actor.Actor {
@@ -60,21 +62,21 @@ func (a *Actor) Receive(ctx actor.Context) {
 	case *actor.Started:
 		ctx.Send(ctx.Self(), &StartDevice{})
 	case *actor.Stopping:
-		a.fmachinae.Event(eError)
+		a.fmachinae.Event(a.contxt, eError)
 	case *StartDevice:
-		if err := a.fmachinae.Event(eStarted); err != nil {
+		if err := a.fmachinae.Event(a.contxt, eStarted); err != nil {
 			logs.LogError.Printf("open device error: %s", err)
 			time.Sleep(3 * time.Second)
 			ctx.Send(ctx.Self(), &StartDevice{})
 		}
 		fmt.Printf("open device successfully\n")
 	case *MsgDevice:
-		a.fmachinae.Event(eOpenned)
+		a.fmachinae.Event(a.contxt, eOpenned)
 		a.evts.Publish(msg)
 
 	case *StopDevice:
-		a.fmachinae.Event(eClosed)
-		a.fmachinae.Event(eStop)
+		a.fmachinae.Event(a.contxt, eClosed)
+		a.fmachinae.Event(a.contxt, eStop)
 	case *Subscribe:
 		if ctx.Sender() == nil {
 			break

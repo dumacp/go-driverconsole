@@ -1,6 +1,8 @@
 package app
 
 import (
+	"context"
+
 	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/looplab/fsm"
 )
@@ -22,17 +24,17 @@ const (
 func Fsm() *fsm.FSM {
 
 	callbacksfsm := fsm.Callbacks{
-		"before_event": func(e *fsm.Event) {
+		"before_event": func(_ context.Context, e *fsm.Event) {
 			if e.Err != nil {
 				e.Cancel(e.Err)
 			}
 		},
-		"leave_state": func(e *fsm.Event) {
+		"leave_state": func(_ context.Context, e *fsm.Event) {
 			if e.Err != nil {
 				e.Cancel(e.Err)
 			}
 		},
-		"enter_state": func(e *fsm.Event) {
+		"enter_state": func(_ context.Context, e *fsm.Event) {
 			logs.LogBuild.Printf("FSM APP, state src: %s, state dst: %s", e.Src, e.Dst)
 		},
 	}

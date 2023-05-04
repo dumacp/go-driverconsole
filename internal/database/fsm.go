@@ -1,6 +1,7 @@
 package database
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -48,20 +49,20 @@ func (a *dbActor) initFSM() *fsm.FSM {
 			{Name: eError, Src: []string{sOpen, sWaitEvent}, Dst: sRestart},
 		},
 		fsm.Callbacks{
-			"enter_state": func(e *fsm.Event) {
+			"enter_state": func(_ context.Context, e *fsm.Event) {
 				logs.LogBuild.Printf("FSM DB state Src: %v, state Dst: %v", e.Src, e.Dst)
 			},
-			"leave_state": func(e *fsm.Event) {
+			"leave_state": func(_ context.Context, e *fsm.Event) {
 				if e.Err != nil {
 					e.Cancel(e.Err)
 				}
 			},
-			"before_event": func(e *fsm.Event) {
+			"before_event": func(_ context.Context, e *fsm.Event) {
 				if e.Err != nil {
 					e.Cancel(e.Err)
 				}
 			},
-			enterState(sOpen): func(e *fsm.Event) {
+			enterState(sOpen): func(_ context.Context, e *fsm.Event) {
 				if a.db != nil {
 					a.db.Close()
 				}
@@ -75,14 +76,14 @@ func (a *dbActor) initFSM() *fsm.FSM {
 				a.db = db
 				a.ctx.Send(a.ctx.Self(), &MsgOpenedDB{})
 			},
-			enterState(sClose): func(e *fsm.Event) {
+			enterState(sClose): func(_ context.Context, e *fsm.Event) {
 				if a.db != nil {
 					a.db.Close()
 					a.db = nil
 				}
 				a.behavior.Become(a.CloseState)
 			},
-			enterState(sRestart): func(e *fsm.Event) {
+			enterState(sRestart): func(_ context.Context, e *fsm.Event) {
 				time.Sleep(30 * time.Second)
 				a.behavior.Become(a.CloseState)
 				a.ctx.Send(a.ctx.Self(), &MsgOpenDB{})

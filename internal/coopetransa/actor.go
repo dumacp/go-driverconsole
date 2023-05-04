@@ -15,6 +15,7 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-fareCollection/pkg/messages"
 	"github.com/dumacp/go-logs/pkg/logs"
+	"github.com/dumacp/go-schservices/api/services"
 )
 
 const (
@@ -307,5 +308,16 @@ func (a *actorApp) Receive(ctx actor.Context) {
 		if err := a.uix.TextWarning(string(msg.Text)); err != nil {
 			logs.LogWarn.Printf("textConfirmation error: %s", err)
 		}
+	case services.ScheduleService:
+		svc := msg
+		switch svc.State {
+		case services.State_READY_TO_START:
+			if err := a.uix.(string(msg.Text)); err != nil {
+				logs.LogWarn.Printf("textConfirmation error: %s", err)
+			}
+		case services.State_ABORTED, services.State_CANCELLED:
+
+		}
+
 	}
 }

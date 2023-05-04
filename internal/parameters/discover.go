@@ -1,4 +1,4 @@
-package params
+package parameters
 
 import (
 	"encoding/json"
@@ -29,17 +29,12 @@ func (a *DiscoveryActor) Receive(ctx actor.Context) {
 		ctx.Self().GetId(), ctx.Message(), ctx.Message(), ctx.Sender())
 	switch msg := ctx.Message().(type) {
 	case *actor.Started:
-
 		if err := pubsub.Subscribe(params.TOPIC_REPLY, ctx.Self(), Parse); err != nil {
 			logs.LogError.Printf("subscribe pubsub to %s error: %s", params.TOPIC_REPLY, err)
 			break
 		}
-
 		logs.LogInfo.Printf("started \"%s\", %v", ctx.Self().GetId(), ctx.Self())
 	case *actor.Stopping:
-		if a.cancel != nil {
-			a.cancel()
-		}
 	case *actor.Terminated:
 	case *gwiotmsg.Discovery:
 		disc := &gwiotmsg.Discovery{

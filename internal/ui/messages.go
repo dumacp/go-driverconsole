@@ -74,15 +74,27 @@ type ScreenMsg struct {
 
 // GetScreenMsg is a message for getting the current screen number.
 type GetScreenMsg struct{}
+type ScreenResponseMsg struct {
+	Num   int
+	Error error
+}
 
 // KeyNumMsg is a message for getting a number from a keypad.
 type KeyNumMsg struct {
 	Prompt string
 }
+type KeyNumResponseMsg struct {
+	Num   int
+	Error error
+}
 
 // KeyboardMsg is a message for getting a string from a keyboard.
 type KeyboardMsg struct {
 	Prompt string
+}
+type KeyboarResponsedMsg struct {
+	Text  string
+	Error error
 }
 
 // DoorsMsg is a message for displaying the doors' state.
@@ -109,15 +121,30 @@ type AddNotificationsMsg struct {
 type ShowNotificationsMsg struct{}
 
 // ShowProgDriverMsg is a message for showing the driver's progress.
-type ShowProgDriverMsg struct{}
+type ShowProgDriverMsg struct {
+	Text []string
+}
 
 // ShowProgVehMsg is a message for showing the vehicle's progress.
-type ShowProgVehMsg struct{}
+type ShowProgVehMsg struct {
+	Text []string
+}
 
 // ShowStatsMsg is a message for showing the statistics.
-type ShowStatsMsg struct{}
+type ShowStatsMsg struct {
+	Text []string
+}
 
 // BrightnessMsg is a message for setting the brightness.
 type BrightnessMsg struct {
 	Percent int
+}
+
+type ServiceCurrentStateMsg struct {
+	State  int
+	Prompt string
+}
+
+type AckMsg struct {
+	Error error
 }

@@ -49,6 +49,7 @@ type UI interface {
 	ShowProgVeh() error
 	ShowStats() error
 	Brightness(percent int) error
+	ServiceCurrentState(state int, prompt string) error
 	InputHandler(device interface{}) error
 }
 
@@ -252,4 +253,20 @@ func (u *ui) AddNotifications(add string) error {
 
 func (u *ui) Brightness(percent int) error {
 	panic("not implemented") // TODO: Implement
+}
+
+func (u *ui) ServiceCurrentState(state int, prompt string) error {
+	res, err := u.rootctx.RequestFuture(u.pid, &ServiceCurrentStateMsg{
+		State:  state,
+		Prompt: prompt,
+	}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("deviationInputs with response form display")
 }

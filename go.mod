@@ -10,7 +10,7 @@ require (
 	github.com/eclipse/paho.mqtt.golang v1.4.2
 	github.com/google/uuid v1.3.0
 	github.com/looplab/fsm v1.0.1
-	go.etcd.io/bbolt v1.3.6
+	go.etcd.io/bbolt v1.3.7
 )
 
 require (
@@ -20,6 +20,7 @@ require (
 	github.com/dumacp/go-gwiot v0.0.0-00010101000000-000000000000
 	github.com/dumacp/go-levis v0.0.0-20230414205412-110e9cea515c
 	github.com/dumacp/go-params v0.0.0-00010101000000-000000000000
+	github.com/dumacp/go-schservices v0.0.1
 	github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
 	golang.org/x/oauth2 v0.3.0
@@ -74,3 +75,5 @@ replace github.com/dumacp/go-levis => ../go-levis
 replace github.com/dumacp/go-params => ../go-params
 
 replace github.com/dumacp/go-gwiot => ../go-gwiot
+
+replace github.com/dumacp/go-schservices => ../go-schservices
