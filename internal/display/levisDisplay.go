@@ -215,6 +215,13 @@ func (m *display) Brightness(percent int) error {
 	return nil
 }
 
+func (m *display) DeviceWriteRegister(addr int, data []byte) error {
+	return nil
+}
+func (m *display) DeviceReadRegister(addr int, data []byte) error {
+	return nil
+}
+
 ///////////////////////////////////////
 //////////////////////////////////////////////////////////////
 

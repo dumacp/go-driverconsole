@@ -23,6 +23,8 @@ type Display interface {
 	KeyNum(prompt string) (int, error)
 	Keyboard(prompt string) (string, error)
 	Brightness(percent int) error
+	DeviceWriteRegister(addr int, data []byte) error
+	DeviceReadRegister(addr int, data []byte) error
 }
 
 func New(devi interface{}) (Display, error) {
