@@ -41,7 +41,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *TextWarningMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
-			Label: display.WARNING_TEXT,
+			Label: WARNING_TEXT,
 			Text:  msg.Text,
 		}, time.Second*1))
 		if ctx.Sender() != nil {
@@ -49,7 +49,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *TextConfirmationMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
-			Label: display.CONFIRMATION_TEXT,
+			Label: CONFIRMATION_TEXT,
 			Text:  msg.Text,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
@@ -57,7 +57,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *TextConfirmationPopupMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.PopupMsg{
-			Label: display.POPUP_TEXT,
+			Label: POPUP_TEXT,
 			Text:  msg.Text,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
@@ -65,7 +65,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *TextWarningPopupMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.PopupMsg{
-			Label: display.POPUP_WARN_TEXT,
+			Label: POPUP_WARN_TEXT,
 			Text:  msg.Text,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
@@ -73,7 +73,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *InputsMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteNumberMsg{
-			Label: display.INPUT_NUM,
+			Label: INPUTS_TEXT,
 			Num:   int64(msg.In),
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
@@ -81,13 +81,13 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *OutputsMsg:
 		ctx.Request(a.pidDisplay, &display.WriteNumberMsg{
-			Label: display.OUTPUTS_TEXT,
+			Label: OUTPUTS_TEXT,
 			Num:   int64(msg.Out),
 		})
 
 	case *DeviationInputsMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteNumberMsg{
-			Label: display.DEVIATION_TEXT,
+			Label: DEVIATION_TEXT,
 			Num:   int64(msg.Dev),
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
@@ -95,7 +95,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *RouteMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
-			Label: display.ROUTE_TEXT,
+			Label: ROUTE_TEXT,
 			Text:  msg.Route,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
@@ -103,7 +103,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *DriverMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
-			Label: display.ROUTE_TEXT,
+			Label: ROUTE_TEXT,
 			Text:  []string{msg.Data},
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
@@ -119,7 +119,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *DateMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
-			Label: display.DATE_TEXT,
+			Label: DATE_TEXT,
 			Text:  []string{msg.Date.Format("2006/01/02 15:04:05")},
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
@@ -219,7 +219,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 		result = AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
 			Text:  msg.Text,
-			Label: display.PROGRAMATION_DRIVER_TEXT,
+			Label: PROGRAMATION_DRIVER_TEXT,
 		}, time.Second*1))
 		if ctx.Sender() != nil {
 			ctx.Respond(AckMsg{Error: result})
@@ -233,7 +233,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 		result = AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
 			Text:  msg.Text,
-			Label: display.PROGRAMATION_VEH_TEXT,
+			Label: PROGRAMATION_VEH_TEXT,
 		}, time.Second*1))
 		if ctx.Sender() != nil {
 			ctx.Respond(AckMsg{Error: result})
@@ -244,7 +244,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 	case *BrightnessMsg:
 	case *ServiceCurrentStateMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
-			Label: display.SERVICE_CURRENT_STATE,
+			Label: SERVICE_CURRENT_STATE,
 			Text:  []string{msg.Prompt},
 		}, 1*time.Second))
 		if ctx.Sender() != nil {

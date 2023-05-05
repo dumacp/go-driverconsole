@@ -312,7 +312,7 @@ func (a *actorApp) Receive(ctx actor.Context) {
 		svc := msg
 		switch svc.State {
 		case services.State_READY_TO_START:
-			if err := a.uix.(string(msg.Text)); err != nil {
+			if err := a.uix.ServiceCurrentState(int(msg.GetState()), ""); err != nil {
 				logs.LogWarn.Printf("textConfirmation error: %s", err)
 			}
 		case services.State_ABORTED, services.State_CANCELLED:

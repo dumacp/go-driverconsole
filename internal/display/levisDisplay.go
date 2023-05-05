@@ -6,11 +6,8 @@ package display
 import (
 	"encoding/binary"
 	"fmt"
-	"log"
-	"strings"
 	"time"
 
-	"github.com/asynkron/protoactor-go/actor"
 	"github.com/dumacp/go-levis"
 )
 
@@ -54,47 +51,14 @@ const (
 	SCREEN_INPUT_ROUTE  = 2
 )
 
-const (
-	addrConfirmation    int = 600
-	addrError           int = 500
-	addrAlarms          int = 3000
-	addrEfectivoCounter int = 90
-	addrTagCounter      int = 88
-
-	addrInputs  int = 80
-	addrOutputs int = 84
-
-	addrFrontalDoor int = 10
-	addrBackDoor    int = 11
-
-	addrNoRoute    = 120
-	addrNameRoute  = 100
-	addrNoDriver   = 160
-	addrNameDriver = 140
-
-	addrConfirmationTextMainScreen      int = 400
-	addrConfirmationToggleMainScreen    int = 5
-	addrConfirmationTextMainScreenErr   int = 300
-	addrConfirmationToggleMainScreenErr int = 6
-
-	addrIconGPS int = 12
-	addrIconNET int = 11
-
-	addrTimeDate int = 60
-)
-
-func label2addr(label Label) (addr int, length int, gap int) {
-	switch label {
-	case DRIVER_TEXT:
-		return addrNameDriver, 1, 0
-	}
-	return 0, 0, 0
-}
-
 func NewLevisDisplay(dev levis.Device) (Display, error) {
 	display := &display{}
 	display.dev = dev
 	return display, nil
+}
+
+func (m *display) Init() error {
+	return nil
 }
 
 func (m *display) Screen() (int, error) {
@@ -133,7 +97,7 @@ func (m *display) writeText(addr, length, size, gap int, text ...string) error {
 			return fmt.Errorf("error writeRegister: %s\n", err)
 		}
 		data := levis.EncodeFromChars(textBytes[:])
-		if err := m.dev.WriteRegister(addrConfirmation, data); err != nil {
+		if err := m.dev.WriteRegister(addr, data); err != nil {
 			return err
 		}
 	} else {
@@ -253,6 +217,8 @@ func (m *display) Brightness(percent int) error {
 
 ///////////////////////////////////////
 //////////////////////////////////////////////////////////////
+
+/**
 
 func (m *display) screenError(sError ...string) error {
 
@@ -588,3 +554,4 @@ func (m *display) setBrightness(percent int) error {
 
 func (m *display) inputValue(initialText string, screen int) {
 }
+**/
