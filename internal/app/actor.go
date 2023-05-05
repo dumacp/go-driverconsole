@@ -422,6 +422,10 @@ ingrese un número válido`),
 		if a.evts != nil {
 			a.evts.Publish(msg)
 		}
+	case *MsgWarningTextInMainScreen:
+		if a.evts != nil {
+			a.evts.Publish(msg)
+		}
 	case *MsgWarningText:
 		if a.evts != nil {
 			a.evts.Publish(msg)

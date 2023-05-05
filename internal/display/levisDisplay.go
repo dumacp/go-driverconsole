@@ -341,7 +341,7 @@ func (m *display) messageInMainScreen(addrToogle, addrText, freq int, timeout ti
 		return err
 	}
 	go func() {
-		time.Sleep(2 * time.Second)
+		time.Sleep(4 * time.Second)
 		if err := m.dev.SetIndicator(addrToogle, false); err != nil {
 			fmt.Println(err)
 		}

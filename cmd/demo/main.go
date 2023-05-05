@@ -201,15 +201,15 @@ func main() {
 
 	go func() {
 
-		tick1 := time.Tick(30 * time.Second)
-		tick2 := time.Tick(5 * time.Second)
+		tick1 := time.Tick(6 * time.Second)
+		tick2 := time.Tick(10 * time.Second)
 		tick3 := time.Tick(10 * time.Second)
 
 		countAlarm := 0
 		for {
 			select {
 			case <-tick1:
-				// root.Send(pidApp, &messages.MsgAppPaso{Value: 1})
+				root.Send(pidApp, &messages.MsgAppPaso{Value: 1})
 			case <-tick2:
 				root.Send(pidApp, &messages.MsgAddAlarm{Alarm: fmt.Sprintf("%s: notif (( %d ))", time.Now().Format("2006-01-02 15:04"), countAlarm)})
 				countAlarm++
@@ -217,9 +217,9 @@ func main() {
 				// root.Send(pidApp, &app.MsgScreen{ID: 8, Switch: true})
 				// time.Sleep(3 * time.Second)
 
-				// root.Send(pidApp, &app.MsgConfirmationText{
-				// 	Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
-				// })
+				root.Send(pidApp, &app.MsgWarningTextInMainScreen{
+					Text: []byte(fmt.Sprintf("texto de prueba TIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
+				})
 				// go func() {
 				// 	time.Sleep(3 * time.Second)
 				// 	root.Send(pidApp, &app.MsgMainScreen{})
