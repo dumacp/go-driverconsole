@@ -54,11 +54,23 @@ func main() {
 		switch ctx.Message().(type) {
 		case *actor.Started:
 
-			propsDevice := actor.PropsFromFunc(device.NewActor(port, baud, 3*time.Second).Receive)
+			dev, err := device.NewPiDevice(port, baud)
+			if err != nil {
+				time.Sleep(3 * time.Second)
+				logs.LogError.Panicf("device error: %s", err)
+			}
 
-			propsDisplay := actor.PropsFromFunc(display.NewActor().Receive)
+			propsDevice := actor.PropsFromFunc(device.NewActor(dev).Receive)
 
-			propsButtons := actor.PropsFromFunc(buttons.NewActor().Receive)
+			propsDisplay := actor.PropsFromFunc(display.NewDisplayActor().Receive)
+
+			confButtons := buttons.NewConfPiButtons(0, 20, []int{
+				buttons.AddrAddBright, buttons.AddrEnterDriver, buttons.AddrEnterPaso, buttons.AddrEnterRuta,
+				buttons.AddrScreenAlarms, buttons.AddrSelectPaso, buttons.AddrSubBright, buttons.AddrScreenMore,
+				buttons.AddrScreenProgDriver, buttons.AddrScreenProgVeh},
+			)
+
+			propsButtons := actor.PropsFromFunc(buttons.NewActor(confButtons).Receive)
 
 			propsCounter := actor.PropsFromFunc(counterpass.NewActor().Receive)
 
