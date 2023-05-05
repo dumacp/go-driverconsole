@@ -23,15 +23,14 @@ type Display interface {
 	KeyNum(prompt string) (int, error)
 	Keyboard(prompt string) (string, error)
 	Brightness(percent int) error
-	DeviceWriteRegister(addr int, data []byte) error
-	DeviceReadRegister(addr int, data []byte) error
+	DeviceRaw() (interface{}, error)
 }
 
 func New(devi interface{}) (Display, error) {
 
 	switch dev := devi.(type) {
 	case levis.Device:
-		return NewLevisDisplay(dev)
+		return NewPiDisplay(dev)
 	}
 
 	return nil, fmt.Errorf("Display device not foud")

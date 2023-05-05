@@ -2,7 +2,6 @@ package display
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/dumacp/go-driverconsole/internal/device"
@@ -15,10 +14,11 @@ type DisplayActor struct {
 	pidDevice *actor.PID
 }
 
-func NewDisplayActor(dev device.Device) actor.Actor {
+func NewDisplayActor() actor.Actor {
 
 	d := &DisplayActor{}
-	d.dev = dev
+	// d.dev = dev
+	// d.actorButton = inputDevice
 	return d
 }
 
@@ -32,15 +32,15 @@ func (d *DisplayActor) Receive(ctx actor.Context) {
 	}(), ctx.Self().GetId(), ctx.Message())
 	switch msg := ctx.Message().(type) {
 	case *actor.Started:
-		if d.dev != nil {
-			var err error
-			propsDevice := actor.PropsFromFunc(device.NewActor(d.dev).Receive)
-			d.pidDevice, err = ctx.SpawnNamed(propsDevice, "device-actor")
-			if err != nil {
-				time.Sleep(3 * time.Second)
-				logs.LogError.Panicf("create device-actor error: %s", err)
-			}
-		}
+		// if d.dev != nil {
+		// 	var err error
+		// 	propsDevice := actor.PropsFromFunc(device.NewActor(d.dev).Receive)
+		// 	d.pidDevice, err = ctx.SpawnNamed(propsDevice, "device-actor")
+		// 	if err != nil {
+		// 		time.Sleep(3 * time.Second)
+		// 		logs.LogError.Panicf("create device-actor error: %s", err)
+		// 	}
+		// }
 	case *device.MsgDevice:
 		dev, err := New(msg.Device)
 		if err != nil {

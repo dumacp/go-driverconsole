@@ -11,17 +11,19 @@ import (
 )
 
 type Actor struct {
-	evts      *eventstream.EventStream
-	device    ButtonDevice
-	mem       chan *MsgMemory
+	evts   *eventstream.EventStream
+	dev    device.Device
+	device ButtonDevice
+	// mem       chan *MsgMemory
 	pidDevice *actor.PID
 	cancel    func()
 }
 
-func NewActor() actor.Actor {
+func NewActor(dev ButtonDevice) actor.Actor {
 	a := &Actor{}
 	a.evts = eventstream.NewEventStream()
-	a.mem = make(chan *MsgMemory)
+	a.device = dev
+	// a.mem = make(chan *MsgMemory)
 	return a
 }
 

@@ -23,7 +23,7 @@ func (d *dev) Close() error {
 	return d.Close()
 }
 
-func NewDevice(port string, speed int) (Device, error) {
+func NewPiDevice(port string, speed int) (Device, error) {
 	dev := &dev{
 		port:  port,
 		speed: speed,

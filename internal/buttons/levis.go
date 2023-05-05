@@ -19,7 +19,7 @@ type pi3070g struct {
 	dev         levis.Device
 }
 
-func NewPiButtons(startAddrToListen, endAddrToListen int, buttonsAddress []int) interface{} {
+func NewConfPiButtons(startAddrToListen, endAddrToListen int, buttonsAddress []int) ButtonDevice {
 	pi := &pi3070g{
 		listenStart: startAddrToListen,
 		listenEnd:   endAddrToListen,
@@ -56,21 +56,20 @@ func (p *pi3070g) Close() error {
 }
 
 const (
-	addrSelectPaso  = 0
-	addrEnterPaso   = 1
-	addrEnterRuta   = 2
-	addrEnterDriver = 3
+	AddrSelectPaso  = 0
+	AddrEnterPaso   = 1
+	AddrEnterRuta   = 2
+	AddrEnterDriver = 3
 
-	addrScreenAlarms = 7
-
-	addrNoRoute    = 120
-	addrNameRoute  = 100
-	addrNoDriver   = 160
-	addrNameDriver = 140
-
-	addrAddBright = 21
-	addrSubBright = 22
+	AddrScreenAlarms = 7
+	AddrAddBright    = 21
+	AddrSubBright    = 22
 )
+
+// addrNoRoute    = 120
+// addrNameRoute  = 100
+// addrNoDriver   = 160
+// addrNameDriver = 140
 
 func (p *pi3070g) ListenButtons(contxt context.Context) (<-chan *InputEvent, error) {
 
@@ -82,28 +81,28 @@ func (p *pi3070g) ListenButtons(contxt context.Context) (<-chan *InputEvent, err
 
 	go func() {
 		defer close(chEvt)
-		lastStep := time.Now()
-		enableStep := time.NewTimer(5 * time.Second)
-		activeStep := false
+		// lastStep := time.Now()
+		// enableStep := time.NewTimer(5 * time.Second)
+		// activeStep := false
 
 		for {
 			select {
 			case <-contxt.Done():
 				logs.LogWarn.Println("ListenButtons context is closed")
 				return
-			case <-enableStep.C:
-				diff := time.Since(lastStep)
-				if diff < 3*time.Second && activeStep {
-					enableStep.Reset(diff)
-					break
-				}
-				if activeStep {
-					fmt.Println("reset addrSelectPaso")
-					activeStep = false
-					if err := p.dev.SetIndicator(addrSelectPaso, false); err != nil {
-						fmt.Println(err)
-					}
-				}
+			// case <-enableStep.C:
+			// 	diff := time.Since(lastStep)
+			// 	if diff < 3*time.Second && activeStep {
+			// 		enableStep.Reset(diff)
+			// 		break
+			// 	}
+			// 	if activeStep {
+			// 		fmt.Println("reset addrSelectPaso")
+			// 		activeStep = false
+			// 		if err := p.dev.SetIndicator(addr, false); err != nil {
+			// 			fmt.Println(err)
+			// 		}
+			// 	}
 			case button, ok := <-ch:
 				if !ok {
 					evt := &InputEvent{

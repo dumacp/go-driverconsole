@@ -51,7 +51,7 @@ const (
 	SCREEN_INPUT_ROUTE  = 2
 )
 
-func NewLevisDisplay(dev levis.Device) (Display, error) {
+func NewPiDisplay(dev levis.Device) (Display, error) {
 	display := &display{}
 	display.dev = dev
 	return display, nil
@@ -215,11 +215,11 @@ func (m *display) Brightness(percent int) error {
 	return nil
 }
 
-func (m *display) DeviceWriteRegister(addr int, data []byte) error {
-	return nil
-}
-func (m *display) DeviceReadRegister(addr int, data []byte) error {
-	return nil
+func (m *display) DeviceRaw() (interface{}, error) {
+	if m.dev == nil {
+		return nil, fmt.Errorf("device nil")
+	}
+	return m.dev, nil
 }
 
 ///////////////////////////////////////
