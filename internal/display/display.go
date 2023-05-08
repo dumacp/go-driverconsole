@@ -1,14 +1,11 @@
 package display
 
 import (
-	"fmt"
 	"time"
-
-	"github.com/dumacp/go-levis"
 )
 
 type Display interface {
-	Init() error
+	Init(dev interface{}) error
 	Close() error
 	SwitchScreen(num int) error
 	WriteText(label Label, text ...string) error
@@ -26,12 +23,12 @@ type Display interface {
 	DeviceRaw() (interface{}, error)
 }
 
-func New(devi interface{}) (Display, error) {
+// func New(devi interface{}) (Display, error) {
 
-	switch dev := devi.(type) {
-	case levis.Device:
-		return NewPiDisplay(dev)
-	}
+// 	switch dev := devi.(type) {
+// 	case levis.Device:
+// 		return NewPiDisplay(dev)
+// 	}
 
-	return nil, fmt.Errorf("Display device not foud")
-}
+// 	return nil, fmt.Errorf("Display device not foud")
+// }

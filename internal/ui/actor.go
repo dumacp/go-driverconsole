@@ -11,20 +11,52 @@ import (
 
 type ActorUI struct {
 	ui           UI
-	propsDisplay *actor.Props
+	actorDisplay actor.Actor
+	actorDevice  actor.Actor
 	pidDisplay   *actor.PID
+	pidDevice    *actor.PID
+	pidInputs    *actor.PID
 	screen       int
 }
 
-func NewActor(disp *actor.Props) actor.Actor {
+func NewActor(dev, disp actor.Actor) actor.Actor {
 
 	a := &ActorUI{}
-	a.propsDisplay = disp
+	a.actorDisplay = disp
 	return a
 }
 
 func (a *ActorUI) Receive(ctx actor.Context) {
+	fmt.Printf("message: %q --> %q, %T\n", func() string {
+		if ctx.Sender() == nil {
+			return ""
+		} else {
+			return ctx.Sender().GetId()
+		}
+	}(), ctx.Self().GetId(), ctx.Message())
 	switch msg := ctx.Message().(type) {
+	case *actor.Started:
+		propsDev := actor.PropsFromFunc(a.actorDevice.Receive)
+		pidDev, err := ctx.SpawnNamed(propsDev, "display-actor")
+		if err != nil {
+			time.Sleep(3 * time.Second)
+			logs.LogError.Panicf("%q error:", ctx.Self().GetId(), err)
+		}
+		propsDisplay := actor.PropsFromFunc(a.actorDisplay.Receive)
+		pidDisplay, err := ctx.SpawnNamed(propsDisplay, "device-actor")
+		if err != nil {
+			time.Sleep(3 * time.Second)
+			logs.LogError.Panicf("%q error:", ctx.Self().GetId(), err)
+		}
+		a.pidDevice = pidDev
+		a.pidDisplay = pidDisplay
+	case *display.DeviceMsg:
+		if a.pidDisplay != nil {
+			ctx.Request(a.pidDisplay, msg)
+		}
+		if a.pidInputs != nil {
+			ctx.Request(a.pidInputs, msg)
+		}
 	case *InitUIMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
 			Num: 0,
@@ -250,6 +282,14 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		if ctx.Sender() != nil {
 			ctx.Respond(AckMsg{Error: result})
 		}
+	case *AddInputsHandlerMsg:
+		propsDev := actor.PropsFromFunc(msg.handler.Receive)
+		pidDev, err := ctx.SpawnNamed(propsDev, "inputs-actor")
+		if err != nil {
+			time.Sleep(3 * time.Second)
+			logs.LogError.Printf("%q error:", ctx.Self().GetId(), err)
+		}
+		a.pidInputs = pidDev
 
 	default:
 		ctx.Respond(fmt.Errorf("unhandled message type: %T", msg))

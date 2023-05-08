@@ -12,11 +12,15 @@ type DisplayActor struct {
 	display   Display
 	dev       device.Device
 	pidDevice *actor.PID
+	behavior  actor.Behavior
 }
 
-func NewDisplayActor() actor.Actor {
+func NewDisplayActor(disp Display) actor.Actor {
 
 	d := &DisplayActor{}
+	d.display = disp
+	d.behavior = actor.NewBehavior()
+	d.behavior.Become(d.InitState)
 	// d.dev = dev
 	// d.actorButton = inputDevice
 	return d
@@ -30,6 +34,33 @@ func (d *DisplayActor) Receive(ctx actor.Context) {
 			return ctx.Sender().GetId()
 		}
 	}(), ctx.Self().GetId(), ctx.Message())
+	switch ctx.Message().(type) {
+	case *actor.Started:
+	}
+	d.behavior.Receive(ctx)
+
+}
+
+func (d *DisplayActor) InitState(ctx actor.Context) {
+
+	switch msg := ctx.Message().(type) {
+	case *actor.Started:
+	case *device.MsgDevice:
+		err := d.display.Init(msg.Device)
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
+		d.behavior.Become(d.RunState)
+	case *InitMsg:
+	default:
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: fmt.Errorf("actor in InitState")})
+		}
+	}
+}
+
+func (d *DisplayActor) RunState(ctx actor.Context) {
+
 	switch msg := ctx.Message().(type) {
 	case *actor.Started:
 		// if d.dev != nil {
@@ -42,62 +73,84 @@ func (d *DisplayActor) Receive(ctx actor.Context) {
 		// 	}
 		// }
 	case *device.MsgDevice:
-		dev, err := New(msg.Device)
-		if err != nil {
-			logs.LogWarn.Println(err)
-			break
+		err := d.display.Init(msg.Device)
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
 		}
-		d.display = dev
 	case *InitMsg:
-		err := d.display.Init()
-		ctx.Respond(&AckMsg{Error: err})
+
 	case *CloseMsg:
 		err := d.display.Close()
-		ctx.Respond(&AckMsg{Error: err})
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
 	case *SwitchScreenMsg:
 		err := d.display.SwitchScreen(msg.Num)
-		ctx.Respond(&AckMsg{Error: err})
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
 	case *WriteTextMsg:
 		err := d.display.WriteText(msg.Label, msg.Text...)
-		ctx.Respond(&AckMsg{Error: err})
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
 	case *WriteNumberMsg:
 		err := d.display.WriteNumber(msg.Label, msg.Num)
-		ctx.Respond(&AckMsg{Error: err})
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
 	case *PopupMsg:
 		err := d.display.Popup(msg.Label, msg.Text...)
-		ctx.Respond(&AckMsg{Error: err})
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
 	case *BeepMsg:
 		err := d.display.Beep(msg.Repeat, msg.Timeout)
-		ctx.Respond(&AckMsg{Error: err})
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
 	case *VerifyMsg:
 		err := d.display.Verify()
 		// Manejar el error
-		ctx.Respond(&AckMsg{Error: err})
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
 	case *ScreenMsg:
 		num, err := d.display.Screen()
-		ctx.Respond(&ScreenResponseMsg{
-			Screen: num,
-			Error:  err})
+		if ctx.Sender() != nil {
+			ctx.Respond(&ScreenResponseMsg{
+				Screen: num,
+				Error:  err})
+		}
 	case *ResetMsg:
 		err := d.display.Reset()
-		ctx.Respond(&AckMsg{Error: err})
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
 	case *LedMsg:
 		err := d.display.Led(msg.Label, msg.State)
-		ctx.Respond(&AckMsg{Error: err})
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
 	case *KeyNumMsg:
 		num, err := d.display.KeyNum(msg.Prompt)
-		ctx.Respond(&KeyNumResponseMsg{
-			Num:   num,
-			Error: err})
+		if ctx.Sender() != nil {
+			ctx.Respond(&KeyNumResponseMsg{
+				Num:   num,
+				Error: err})
+		}
 	case *KeyboardMsg:
 		text, err := d.display.Keyboard(msg.Prompt)
-
-		ctx.Respond(&KeyboardResponseMsg{
-			Text:  text,
-			Error: err})
+		if ctx.Sender() != nil {
+			ctx.Respond(&KeyboardResponseMsg{
+				Text:  text,
+				Error: err})
+		}
 	case *BrightnessMsg:
 		err := d.display.Brightness(msg.Percent)
-		ctx.Respond(&AckMsg{Error: err})
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
 
 	// ... (Manejar los demás mensajes para los demás métodos)
 

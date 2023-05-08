@@ -2,7 +2,7 @@ package display
 
 import "time"
 
-type Device struct {
+type DeviceMsg struct {
 	Device interface{}
 }
 type Reset struct {

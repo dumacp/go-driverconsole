@@ -1,6 +1,10 @@
 package ui
 
-import "time"
+import (
+	"time"
+
+	"github.com/asynkron/protoactor-go/actor"
+)
 
 // InitUIMsg is a message for initializing the UI.
 type InitUIMsg struct{}
@@ -147,4 +151,8 @@ type ServiceCurrentStateMsg struct {
 
 type AckMsg struct {
 	Error error
+}
+
+type AddInputsHandlerMsg struct {
+	handler actor.Actor
 }

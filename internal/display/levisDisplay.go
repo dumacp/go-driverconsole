@@ -51,13 +51,19 @@ const (
 	SCREEN_INPUT_ROUTE  = 2
 )
 
-func NewPiDisplay(dev levis.Device) (Display, error) {
+func NewPiDisplay() (Display, error) {
 	display := &display{}
-	display.dev = dev
+
 	return display, nil
 }
 
-func (m *display) Init() error {
+func (m *display) Init(dev interface{}) error {
+	pi, ok := dev.(levis.Device)
+	if !ok {
+		var ii levis.Device
+		return fmt.Errorf("device is not %T", ii)
+	}
+	m.dev = pi
 	return nil
 }
 

@@ -6,20 +6,13 @@ import (
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
-	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/display"
 )
 
 type ui struct {
 	disp    display.Display
-	rootctx *actor.RootContext
 	pid     *actor.PID
-}
-
-func New(ctx *actor.RootContext) UI {
-	u := &ui{}
-	u.rootctx = ctx
-	return nil
+	rootctx *actor.RootContext
 }
 
 type UI interface {
@@ -50,23 +43,40 @@ type UI interface {
 	ShowStats() error
 	Brightness(percent int) error
 	ServiceCurrentState(state int, prompt string) error
-	InputHandler(device interface{}) error
+	InputHandler(inputs actor.Actor) error
 }
 
-func (u *ui) Init(dev interface{}) error {
+func New(ctx actor.Context, dev, disp actor.Actor) (UI, error) {
 
-	if v, ok := dev.(device.Device); ok {
-		disp := display.NewDisplayActor(v)
-		props := actor.PropsFromFunc(NewActor(actor.PropsFromFunc(disp.Receive)).Receive)
-		pid, err := u.rootctx.SpawnNamed(props, "ui-actor")
-		if err != nil {
-			return fmt.Errorf("init UI actor error: %s", err)
-		}
-		u.pid = pid
-		return nil
+	props := actor.PropsFromFunc(NewActor(dev, disp).Receive)
+	pid, err := ctx.SpawnNamed(props, "ui-actor")
+	if err != nil {
+		return nil, fmt.Errorf("init UI actor error: %s", err)
 	}
 
-	return fmt.Errorf("unkown device interface")
+	u := &ui{}
+	u.pid = pid
+	u.rootctx = ctx.ActorSystem().Root
+
+	return u, nil
+}
+
+func (u *ui) Init() error {
+
+	return nil
+}
+
+func (u *ui) InputHandler(inputs actor.Actor) error {
+	res, err := u.rootctx.RequestFuture(u.pid, &MainScreenMsg{}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("mainScreen with response form display")
 }
 
 func (u *ui) MainScreen() error {
@@ -227,11 +237,11 @@ func (u *ui) GetScreen() (int, error) {
 	panic("not implemented") // TODO: Implement
 }
 
-func (u *ui) KeyNum(prompt string) (int, error) {
+func (u *ui) KeyNum(ctx context.Context, prompt string) (chan int, error) {
 	panic("not implemented") // TODO: Implement
 }
 
-func (u *ui) Keyboard(prompt string) (string, error) {
+func (u *ui) Keyboard(ctx context.Context, prompt string) (chan string, error) {
 	panic("not implemented") // TODO: Implement
 }
 
@@ -249,6 +259,22 @@ func (u *ui) Network(state bool) error {
 
 func (u *ui) AddNotifications(add string) error {
 	panic("not implemented") // TODO: Implement
+}
+
+func (u *ui) ShowNotifications() error {
+	return nil
+}
+
+func (u *ui) ShowProgVeh() error {
+	return nil
+}
+
+func (u *ui) ShowProgDriver() error {
+	return nil
+}
+
+func (u *ui) ShowStats() error {
+	return nil
 }
 
 func (u *ui) Brightness(percent int) error {
