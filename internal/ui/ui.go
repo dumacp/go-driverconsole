@@ -10,9 +10,11 @@ import (
 )
 
 type ui struct {
-	disp    display.Display
-	pid     *actor.PID
-	rootctx *actor.RootContext
+	lastUpdateDate time.Time
+	screen         Screen
+	disp           display.Display
+	pid            *actor.PID
+	rootctx        *actor.RootContext
 }
 
 type UI interface {
@@ -63,20 +65,24 @@ func New(ctx actor.Context, dev, disp actor.Actor) (UI, error) {
 
 func (u *ui) Init() error {
 
+	if err := u.MainScreen(); err != nil {
+		return err
+	}
+
 	return nil
 }
 
 func (u *ui) InputHandler(inputs actor.Actor) error {
-	res, err := u.rootctx.RequestFuture(u.pid, &MainScreenMsg{}, 3*time.Second).Result()
+	res, err := u.rootctx.RequestFuture(u.pid, &AddInputsHandlerMsg{Handler: inputs}, 3*time.Second).Result()
 	if err != nil {
 		return err
 	}
-	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
 		return v.Error
 	} else if ok {
 		return nil
 	}
-	return fmt.Errorf("mainScreen with response form display")
+	return fmt.Errorf("inputHandler without response form display")
 }
 
 func (u *ui) MainScreen() error {
@@ -84,12 +90,13 @@ func (u *ui) MainScreen() error {
 	if err != nil {
 		return err
 	}
-	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
 		return v.Error
 	} else if ok {
+		u.screen = MAIN
 		return nil
 	}
-	return fmt.Errorf("mainScreen with response form display")
+	return fmt.Errorf("mainScreen without response form display")
 }
 
 func (u *ui) TextWarning(text ...string) error {
@@ -97,7 +104,7 @@ func (u *ui) TextWarning(text ...string) error {
 	if err != nil {
 		return err
 	}
-	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
 		return v.Error
 	} else if ok {
 		return nil
@@ -110,7 +117,7 @@ func (u *ui) TextConfirmation(text ...string) error {
 	if err != nil {
 		return err
 	}
-	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
 		return v.Error
 	} else if ok {
 		return nil
@@ -126,7 +133,7 @@ func (u *ui) TextConfirmationPopup(timeout time.Duration, sText ...string) error
 	if err != nil {
 		return err
 	}
-	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
 		return v.Error
 	} else if ok {
 		return nil
@@ -142,7 +149,7 @@ func (u *ui) TextWarningPopup(timeout time.Duration, sText ...string) error {
 	if err != nil {
 		return err
 	}
-	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
 		return v.Error
 	} else if ok {
 		return nil
@@ -157,7 +164,7 @@ func (u *ui) Inputs(in int) error {
 	if err != nil {
 		return err
 	}
-	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
 		return v.Error
 	} else if ok {
 		return nil
@@ -172,7 +179,7 @@ func (u *ui) Outputs(out int) error {
 	if err != nil {
 		return err
 	}
-	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
 		return v.Error
 	} else if ok {
 		return nil
@@ -187,7 +194,7 @@ func (u *ui) DeviationInputs(dev int) error {
 	if err != nil {
 		return err
 	}
-	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
 		return v.Error
 	} else if ok {
 		return nil
@@ -200,12 +207,12 @@ func (u *ui) Route(route ...string) error {
 	if err != nil {
 		return err
 	}
-	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
 		return v.Error
 	} else if ok {
 		return nil
 	}
-	return fmt.Errorf("route with response form display")
+	return fmt.Errorf("route without response from display")
 }
 
 func (u *ui) Driver(data string) error {
@@ -213,12 +220,12 @@ func (u *ui) Driver(data string) error {
 	if err != nil {
 		return err
 	}
-	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
 		return v.Error
 	} else if ok {
 		return nil
 	}
-	return fmt.Errorf("driver with response form display")
+	return fmt.Errorf("driver without response from display")
 }
 
 func (u *ui) Beep(repeat int, timeout time.Duration) error {
@@ -226,11 +233,32 @@ func (u *ui) Beep(repeat int, timeout time.Duration) error {
 }
 
 func (u *ui) Date(date time.Time) error {
-	panic("not implemented") // TODO: Implement
+
+	res, err := u.rootctx.RequestFuture(u.pid, &DateMsg{Date: date}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("driver without response from display")
 }
 
 func (u *ui) Screen(num int, force bool) error {
-	panic("not implemented") // TODO: Implement
+	res, err := u.rootctx.RequestFuture(u.pid, &ScreenMsg{
+		Num: num,
+	}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("screen without response from display")
 }
 
 func (u *ui) GetScreen() (int, error) {
@@ -289,7 +317,7 @@ func (u *ui) ServiceCurrentState(state int, prompt string) error {
 	if err != nil {
 		return err
 	}
-	if v, ok := res.(*display.AckMsg); ok && v.Error != nil {
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
 		return v.Error
 	} else if ok {
 		return nil

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/display"
 	"github.com/dumacp/go-logs/pkg/logs"
 )
@@ -16,6 +17,7 @@ type ActorUI struct {
 	pidDisplay   *actor.PID
 	pidDevice    *actor.PID
 	pidInputs    *actor.PID
+	dev          device.Device
 	screen       int
 }
 
@@ -23,6 +25,7 @@ func NewActor(dev, disp actor.Actor) actor.Actor {
 
 	a := &ActorUI{}
 	a.actorDisplay = disp
+	a.actorDevice = dev
 	return a
 }
 
@@ -37,39 +40,42 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 	case *actor.Started:
 		propsDev := actor.PropsFromFunc(a.actorDevice.Receive)
-		pidDev, err := ctx.SpawnNamed(propsDev, "display-actor")
+		pidDev, err := ctx.SpawnNamed(propsDev, "device-actor")
 		if err != nil {
 			time.Sleep(3 * time.Second)
-			logs.LogError.Panicf("%q error:", ctx.Self().GetId(), err)
+			logs.LogError.Panicf("%q error: %s", ctx.Self().GetId(), err)
 		}
 		propsDisplay := actor.PropsFromFunc(a.actorDisplay.Receive)
-		pidDisplay, err := ctx.SpawnNamed(propsDisplay, "device-actor")
+		pidDisplay, err := ctx.SpawnNamed(propsDisplay, "display-actor")
 		if err != nil {
 			time.Sleep(3 * time.Second)
-			logs.LogError.Panicf("%q error:", ctx.Self().GetId(), err)
+			logs.LogError.Panicf("%q error: %s", ctx.Self().GetId(), err)
 		}
 		a.pidDevice = pidDev
 		a.pidDisplay = pidDisplay
-	case *display.DeviceMsg:
+	case *device.MsgDevice:
 		if a.pidDisplay != nil {
-			ctx.Request(a.pidDisplay, msg)
+			ctx.Send(a.pidDisplay, msg)
 		}
 		if a.pidInputs != nil {
-			ctx.Request(a.pidInputs, msg)
+			ctx.Send(a.pidInputs, msg)
 		}
 	case *InitUIMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
 			Num: 0,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *MainScreenMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
 			Num: 0,
 		}, time.Second*1))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
+		}
+		if result == nil {
+			a.screen = 0
 		}
 	case *TextWarningMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
@@ -77,15 +83,25 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			Text:  msg.Text,
 		}, time.Second*1))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *TextConfirmationMsg:
+		fmt.Printf("screen: %d\n", a.screen)
+		if a.screen != int(CONFIRMATION) {
+			result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
+				Num: int(CONFIRMATION),
+			}, 1*time.Second))
+			if ctx.Sender() != nil {
+				ctx.Respond(&AckMsg{Error: result})
+			}
+			a.screen = int(CONFIRMATION)
+		}
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
 			Label: CONFIRMATION_TEXT,
 			Text:  msg.Text,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *TextConfirmationPopupMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.PopupMsg{
@@ -93,7 +109,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			Text:  msg.Text,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *TextWarningPopupMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.PopupMsg{
@@ -101,7 +117,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			Text:  msg.Text,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *InputsMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteNumberMsg{
@@ -109,7 +125,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			Num:   int64(msg.In),
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *OutputsMsg:
 		ctx.Request(a.pidDisplay, &display.WriteNumberMsg{
@@ -123,7 +139,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			Num:   int64(msg.Dev),
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *RouteMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
@@ -131,7 +147,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			Text:  msg.Route,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *DriverMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
@@ -139,7 +155,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			Text:  []string{msg.Data},
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *BeepMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.BeepMsg{
@@ -147,7 +163,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			Timeout: 1 * time.Second,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *DateMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
@@ -155,7 +171,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			Text:  []string{msg.Date.Format("2006/01/02 15:04:05")},
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *ScreenMsg:
 		res, err := ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
@@ -165,12 +181,11 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			if ctx.Sender() != nil {
 				ctx.Respond(&AckMsg{Error: err})
 			}
-			logs.LogWarn.Printf("Get ScreenMsg error: %s", err)
+			logs.LogWarn.Printf("get ScreenMsg error: %s", err)
 			break
 		}
-		if v, ok := res.(*display.ScreenResponseMsg); ok {
-			a.screen = v.Screen
-			if ctx.Sender() != nil {
+		if v, ok := res.(*display.AckMsg); ok {
+			if v.Error != nil && ctx.Sender() != nil {
 				ctx.Respond(&AckMsg{Error: v.Error})
 			}
 		} else {
@@ -247,28 +262,28 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			Num: 3,
 		}, time.Second*1))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 		result = AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
 			Text:  msg.Text,
 			Label: PROGRAMATION_DRIVER_TEXT,
 		}, time.Second*1))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *ShowProgVehMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
 			Num: 4,
 		}, time.Second*1))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 		result = AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
 			Text:  msg.Text,
 			Label: PROGRAMATION_VEH_TEXT,
 		}, time.Second*1))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 
 	case *ShowStatsMsg:
@@ -280,16 +295,28 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			Text:  []string{msg.Prompt},
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
-			ctx.Respond(AckMsg{Error: result})
+			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *AddInputsHandlerMsg:
-		propsDev := actor.PropsFromFunc(msg.handler.Receive)
+		propsDev := actor.PropsFromFunc(msg.Handler.Receive)
 		pidDev, err := ctx.SpawnNamed(propsDev, "inputs-actor")
 		if err != nil {
-			time.Sleep(3 * time.Second)
-			logs.LogError.Printf("%q error:", ctx.Self().GetId(), err)
+			// time.Sleep(3 * time.Second)
+			logs.LogError.Printf("%q error: %s", ctx.Self().GetId(), err)
+			if ctx.Sender() != nil {
+				ctx.Respond(&AckMsg{Error: err})
+			}
+			break
+		}
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
 		}
 		a.pidInputs = pidDev
+		if a.dev != nil {
+			ctx.Request(a.pidInputs, &device.MsgDevice{
+				Device: a.dev,
+			})
+		}
 
 	default:
 		ctx.Respond(fmt.Errorf("unhandled message type: %T", msg))

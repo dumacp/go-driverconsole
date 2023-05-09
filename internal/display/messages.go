@@ -81,25 +81,25 @@ type SwitchScreenMsg struct {
 
 // WriteTextMsg is a message to write text to a specific area on the Display.
 type WriteTextMsg struct {
-	Label Label
+	Label int
 	Text  []string
 }
 
 // WriteNumberMsg is a message to write a number to a specific area on the Display.
 type WriteNumberMsg struct {
-	Label Label
+	Label int
 	Num   int64
 }
 
 // PopupMsg is a message to display a popup with text on the Display.
 type PopupMsg struct {
-	Label Label
+	Label int
 	Text  []string
 }
 
 // PopupCloseMsg is a message to close a popup on the Display.
 type PopupCloseMsg struct {
-	Label Label
+	Label int
 }
 
 // BeepMsg is a message to play a beep sound on the Display.
@@ -125,7 +125,7 @@ type ResetMsg struct{}
 
 // LedMsg is a message to control an LED on the Display.
 type LedMsg struct {
-	Label Label
+	Label int
 	State int
 }
 

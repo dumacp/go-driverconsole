@@ -12,12 +12,11 @@ import (
 
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/asynkron/protoactor-go/remote"
+	"github.com/dumacp/go-driverconsole/internal/app"
 	"github.com/dumacp/go-driverconsole/internal/buttons"
-	app "github.com/dumacp/go-driverconsole/internal/coopetransa"
+	"github.com/dumacp/go-driverconsole/internal/counterpass"
 	"github.com/dumacp/go-driverconsole/internal/device"
-	"github.com/dumacp/go-driverconsole/internal/display"
 	"github.com/dumacp/go-driverconsole/internal/pubsub"
-	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-fareCollection/pkg/messages"
 	"github.com/dumacp/go-logs/pkg/logs"
 )
@@ -56,36 +55,48 @@ func main() {
 
 			confDev := device.NewPiDevice(port, baud)
 
-			confButtons := buttons.NewConfPiButtons(0, 30, []int{
+			confButtons := buttons.NewConfPiButtons(0, 20, []int{
 				buttons.AddrAddBright, buttons.AddrEnterDriver, buttons.AddrEnterPaso, buttons.AddrEnterRuta,
 				buttons.AddrScreenAlarms, buttons.AddrSelectPaso, buttons.AddrSubBright, buttons.AddrScreenMore,
 				buttons.AddrScreenProgDriver, buttons.AddrScreenProgVeh},
 			)
 
-			confDisplay := display.NewPiDisplay(ui.Label2DisplayRegister)
+			propsButtons := actor.PropsFromFunc(buttons.NewActor(confButtons).Receive)
 
-			uii, err := ui.New(ctx,
-				device.NewActor(confDev),
-				display.NewDisplayActor(confDisplay))
+			propsCounter := actor.PropsFromFunc(counterpass.NewActor().Receive)
 
+			propsApp := actor.PropsFromFunc(app.NewActor().Receive)
+
+			pidDevice, err := ctx.SpawnNamed(propsDevice, "device")
 			if err != nil {
-				log.Fatalf("newDisplayActor error: %s", err)
+				log.Fatalln(err)
 			}
 
-			// time.Sleep(3 * time.Second)
-
-			if err := uii.InputHandler(buttons.NewActor(confButtons)); err != nil {
-				log.Fatalf("inputHandler error: %s", err)
+			pidDisplay, err := ctx.SpawnNamed(propsDisplay, "display")
+			if err != nil {
+				log.Fatalln(err)
 			}
 
-			time.Sleep(3 * time.Second)
+			pidButtons, err := ctx.SpawnNamed(propsButtons, "buttons")
+			if err != nil {
+				log.Fatalln(err)
+			}
 
-			propsApp := actor.PropsFromFunc(app.NewActor(uii, map[buttons.KeyCode]app.EventLabel{}).Receive)
+			pidCounter, err := ctx.SpawnNamed(propsCounter, "counter")
+			if err != nil {
+				log.Fatalln(err)
+			}
 
 			pidApp, err = ctx.SpawnNamed(propsApp, "app")
 			if err != nil {
-				log.Fatalf("app-actor error: %s", err)
+				log.Fatalln(err)
 			}
+
+			ctx.RequestWithCustomSender(pidDevice, &device.Subscribe{}, pidButtons)
+			ctx.RequestWithCustomSender(pidDevice, &device.Subscribe{}, pidDisplay)
+			ctx.RequestWithCustomSender(pidCounter, &counterpass.MsgSubscribe{}, pidApp)
+			ctx.RequestWithCustomSender(pidButtons, &buttons.MsgSubscribe{}, pidApp)
+			ctx.RequestWithCustomSender(pidApp, &app.MsgSubscribe{}, pidDisplay)
 
 			routes := map[int32]string{
 				10: "RUTA CARAJILLO",
@@ -94,8 +105,6 @@ func main() {
 				40: "RUTA NORTE",
 				50: "RUTA SUR",
 			}
-
-			// time.Sleep(10 * time.Second)
 
 			ctx.Send(pidApp, &app.MsgSetRoutes{Routes: routes})
 		case *actor.Stopping:
@@ -208,16 +217,16 @@ func main() {
 				root.Send(pidApp, &messages.MsgAddAlarm{Alarm: fmt.Sprintf("%s: notif (( %d ))", time.Now().Format("2006-01-02 15:04"), countAlarm)})
 				countAlarm++
 			case <-tick3:
-				root.Send(pidApp, &app.MsgScreen{ID: 3, Switch: true})
-				time.Sleep(3 * time.Second)
+				// root.Send(pidApp, &app.MsgScreen{ID: 8, Switch: true})
+				// time.Sleep(3 * time.Second)
 
-				root.Send(pidApp, &app.MsgConfirmationText{
-					Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
-				})
-				go func() {
-					time.Sleep(3 * time.Second)
-					root.Send(pidApp, &app.MsgMainScreen{})
-				}()
+				// root.Send(pidApp, &app.MsgConfirmationText{
+				// 	Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
+				// })
+				// go func() {
+				// 	time.Sleep(3 * time.Second)
+				// 	root.Send(pidApp, &app.MsgMainScreen{})
+				// }()
 			}
 		}
 

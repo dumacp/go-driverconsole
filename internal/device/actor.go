@@ -23,6 +23,7 @@ type Actor struct {
 func NewActor(dev Device) actor.Actor {
 
 	a := &Actor{}
+	a.contxt = context.TODO()
 	a.dev = dev
 	a.evts = &eventstream.EventStream{}
 	a.Fsm()
@@ -73,6 +74,9 @@ func (a *Actor) Receive(ctx actor.Context) {
 	case *MsgDevice:
 		a.fmachinae.Event(a.contxt, eOpenned)
 		a.evts.Publish(msg)
+		if ctx.Parent() != nil {
+			ctx.Request(ctx.Parent(), msg)
+		}
 
 	case *StopDevice:
 		a.fmachinae.Event(a.contxt, eClosed)

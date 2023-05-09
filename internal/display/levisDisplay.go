@@ -20,7 +20,7 @@ var timeoutRead time.Duration = 1 * time.Second
 type TypeRegister int
 
 const (
-	LED = iota
+	LED TypeRegister = iota
 	INPUT_TEXT
 	INPUT_NUM
 	ARRAY_PICT
@@ -43,7 +43,7 @@ type display struct {
 	lastUpdateDate time.Time
 	inputs         int64
 	outputs        int64
-	label2addr     func(label Label) Register
+	label2addr     func(label int) Register
 }
 
 const (
@@ -51,10 +51,11 @@ const (
 	SCREEN_INPUT_ROUTE  = 2
 )
 
-func NewPiDisplay() (Display, error) {
+func NewPiDisplay(label2addr func(label int) Register) Display {
 	display := &display{}
+	display.label2addr = label2addr
 
-	return display, nil
+	return display
 }
 
 func (m *display) Init(dev interface{}) error {
@@ -131,15 +132,16 @@ func (m *display) writeText(addr, length, size, gap int, text ...string) error {
 	return nil
 }
 
-func (m *display) WriteText(label Label, text ...string) error {
+func (m *display) WriteText(label int, text ...string) error {
 	reg := m.label2addr(label)
+	fmt.Printf("reg: %+v\n", reg)
 	if reg.Type != INPUT_TEXT {
 		return fmt.Errorf("invalid data input")
 	}
 	return m.writeText(reg.Addr, reg.Len, reg.Size, reg.Gap, text...)
 }
 
-func (m *display) WriteNumber(label Label, num int64) error {
+func (m *display) WriteNumber(label int, num int64) error {
 	reg := m.label2addr(label)
 	if reg.Type != INPUT_NUM {
 		return fmt.Errorf("invalid data input")
@@ -159,7 +161,7 @@ func (m *display) WriteNumber(label Label, num int64) error {
 	return nil
 }
 
-func (m *display) Popup(label Label, text ...string) error {
+func (m *display) Popup(label int, text ...string) error {
 	reg := m.label2addr(label)
 	if err := m.writeText(reg.Addr, reg.Len, reg.Size, reg.Gap, text...); err != nil {
 		return err
@@ -170,7 +172,7 @@ func (m *display) Popup(label Label, text ...string) error {
 	return nil
 }
 
-func (m *display) PopupClose(label Label) error {
+func (m *display) PopupClose(label int) error {
 	reg := m.label2addr(label)
 	if err := m.dev.SetIndicator(reg.Toogle, false); err != nil {
 		return err
@@ -197,7 +199,7 @@ func (m *display) Verify() error {
 	return nil
 }
 
-func (m *display) Led(label Label, state int) error {
+func (m *display) Led(label int, state int) error {
 	reg := m.label2addr(label)
 	if reg.Type == LED {
 		if err := m.dev.SetIndicator(reg.Addr, state == 0); err != nil {

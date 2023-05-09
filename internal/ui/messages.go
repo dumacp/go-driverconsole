@@ -154,5 +154,5 @@ type AckMsg struct {
 }
 
 type AddInputsHandlerMsg struct {
-	handler actor.Actor
+	Handler actor.Actor
 }

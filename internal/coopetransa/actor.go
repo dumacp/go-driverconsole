@@ -9,8 +9,8 @@ import (
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/asynkron/protoactor-go/eventstream"
 
+	"github.com/dumacp/go-actors/database"
 	"github.com/dumacp/go-driverconsole/internal/buttons"
-	"github.com/dumacp/go-driverconsole/internal/database"
 	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-fareCollection/pkg/messages"
@@ -47,6 +47,7 @@ type actorApp struct {
 
 func NewActor(uix ui.UI, button2buttonApp map[buttons.KeyCode]EventLabel) actor.Actor {
 	a := &actorApp{}
+	a.uix = uix
 	a.evts = eventstream.NewEventStream()
 	a.routes = make(map[int32]string)
 	a.evt2evtApp = button2buttonApp
@@ -94,23 +95,21 @@ func (a *actorApp) Receive(ctx actor.Context) {
 
 	switch msg := ctx.Message().(type) {
 	case *actor.Started:
-		db, err := database.Open(ctx.ActorSystem().Root, dbpath)
+		db, err := database.Open(ctx, dbpath)
 		if err != nil {
 			logs.LogWarn.Printf("open database  err: %s\n", err)
 		}
 		if db != nil {
 			a.db = db.PID()
 			ctx.Request(a.db, &database.MsgQueryData{
-				Database:   databaseName,
-				Collection: collectionAppData,
-				PrefixID:   "",
-				Reverse:    false,
+				Buckets:  []string{databaseName, collectionAppData},
+				PrefixID: "",
+				Reverse:  false,
 			})
 			ctx.Request(a.db, &database.MsgQueryData{
-				Database:   databaseName,
-				Collection: collectionDriverData,
-				PrefixID:   "",
-				Reverse:    false,
+				Buckets:  []string{databaseName, collectionDriverData},
+				PrefixID: "",
+				Reverse:  false,
 			})
 		}
 	case *actor.Stopping:
@@ -128,9 +127,13 @@ func (a *actorApp) Receive(ctx actor.Context) {
 			if len(msg.Data) <= 0 {
 				return nil
 			}
+			if len(msg.Buckets) < 1 {
+				return nil
+			}
 			data := make([]byte, len(msg.Data))
 			copy(data, msg.Data)
-			switch msg.Collection {
+			coll := msg.Buckets[len(msg.Buckets)-1]
+			switch coll {
 			case collectionAppData:
 				res := &ValidationData{}
 				if err := json.Unmarshal(data, res); err != nil {
@@ -317,6 +320,10 @@ func (a *actorApp) Receive(ctx actor.Context) {
 			}
 		case services.State_ABORTED, services.State_CANCELLED:
 
+		}
+	case *MsgScreen:
+		if err := a.uix.Screen(msg.ID, msg.Switch); err != nil {
+			logs.LogWarn.Printf("textConfirmation error: %s", err)
 		}
 
 	}

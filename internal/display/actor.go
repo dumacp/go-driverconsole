@@ -46,10 +46,12 @@ func (d *DisplayActor) InitState(ctx actor.Context) {
 	switch msg := ctx.Message().(type) {
 	case *actor.Started:
 	case *device.MsgDevice:
+
 		err := d.display.Init(msg.Device)
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: err})
 		}
+		logs.LogInfo.Printf("actor to runState")
 		d.behavior.Become(d.RunState)
 	case *InitMsg:
 	default:
@@ -73,6 +75,7 @@ func (d *DisplayActor) RunState(ctx actor.Context) {
 		// 	}
 		// }
 	case *device.MsgDevice:
+		fmt.Println("new new")
 		err := d.display.Init(msg.Device)
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: err})

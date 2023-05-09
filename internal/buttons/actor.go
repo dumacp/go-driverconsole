@@ -62,10 +62,15 @@ func (a *Actor) Receive(ctx actor.Context) {
 		contxt, cancel := context.WithCancel(context.TODO())
 		a.cancel = cancel
 
+		fmt.Println("///////////////////////")
+
 		if a.device == nil {
 			break
 		}
-		a.device.Init(msg.Device)
+		if err := a.device.Init(msg.Device); err != nil {
+			logs.LogError.Printf("listenButtons error = %s", err)
+			break
+		}
 		ch, err := a.device.ListenButtons(contxt)
 		if err != nil {
 			logs.LogError.Printf("listenButtons error = %s", err)
@@ -79,11 +84,15 @@ func (a *Actor) Receive(ctx actor.Context) {
 			for v := range ch {
 				rootctx.Request(self, v)
 			}
+			logs.LogError.Printf("listenButtons close")
 		}(ctx)
 
-		a.pidDevice = ctx.Sender()
+		// a.pidDevice = ctx.Sender()
 	case *InputEvent:
 		newmsg := *msg
 		a.evts.Publish(&newmsg)
+		if ctx.Parent() != nil {
+			ctx.Send(ctx.Parent(), &newmsg)
+		}
 	}
 }

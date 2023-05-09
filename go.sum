@@ -12,6 +12,8 @@ github.com/coreos/go-oidc v2.2.1+incompatible h1:mh48q/BqXqgjVHpy2ZY7WnWAbenxRjs
 github.com/coreos/go-oidc v2.2.1+incompatible/go.mod h1:CgnwVTmzoESiwO9qyAFEMiHoZ1nMCKZlZ9V6mm3/LKc=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/dumacp/go-actors v0.0.0-20230503160549-734b3c336394 h1:GCrOAYTjp8z3shFV6Qfxid4R8a/htaS3lYR0YMBNbnQ=
+github.com/dumacp/go-actors v0.0.0-20230503160549-734b3c336394/go.mod h1:yzZQSgsHL1lUUdWRZpWyTtSqnFDBzio6Qz46udW7Wik=
 github.com/dumacp/go-logs v0.0.0-20211122205852-dfcc5685457f/go.mod h1:dr8qC0qs36jLZFMZH/sRp3fc980yzZDCb/MkR/rHOSA=
 github.com/dumacp/go-logs v0.0.1 h1:X6pBagK6lCgNyz+MluT1V3cvoHnJsZCSIz5pjYe9YBc=
 github.com/dumacp/go-logs v0.0.1/go.mod h1:nxB2d1DaPSLGnz+0zuR29N/YRq7THIVwQLDHf0jBSRc=

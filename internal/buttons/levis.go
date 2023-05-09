@@ -44,6 +44,8 @@ func (p *pi3070g) Init(dev interface{}) error {
 		}
 	}
 
+	fmt.Printf("//////////////// conf buttons: %+v\n", p)
+
 	return nil
 }
 
