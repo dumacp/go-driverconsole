@@ -4,7 +4,9 @@ import "github.com/dumacp/go-driverconsole/internal/display"
 
 const (
 	ROUTE_TEXT int = iota
+	ROUTE_TEXT_READ
 	DRIVER_TEXT
+	DRIVER_TEXT_READ
 	INPUTS_TEXT
 	OUTPUTS_TEXT
 	DEVIATION_TEXT

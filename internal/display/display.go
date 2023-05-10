@@ -20,6 +20,7 @@ type Display interface {
 	KeyNum(prompt string) (int, error)
 	Keyboard(prompt string) (string, error)
 	Brightness(percent int) error
+	ReadBytes(label int) ([]byte, error)
 	DeviceRaw() (interface{}, error)
 }
 

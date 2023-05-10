@@ -6,15 +6,18 @@ import (
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+	"github.com/dumacp/go-driverconsole/internal/buttons"
 	"github.com/dumacp/go-driverconsole/internal/display"
 )
 
 type ui struct {
-	lastUpdateDate time.Time
-	screen         Screen
-	disp           display.Display
-	pid            *actor.PID
-	rootctx        *actor.RootContext
+	lastUpdateDate  time.Time
+	screen          Screen
+	disp            display.Display
+	chEvents        chan *Event
+	pid             *actor.PID
+	rootctx         *actor.RootContext
+	button2LabelApp map[buttons.KeyCode]EventType
 }
 
 type UI interface {
@@ -45,7 +48,8 @@ type UI interface {
 	ShowStats() error
 	Brightness(percent int) error
 	ServiceCurrentState(state int, prompt string) error
-	InputHandler(inputs actor.Actor) error
+	InputHandler(inputs actor.Actor, button2LabelApp map[buttons.KeyCode]EventType) error
+	Events() chan *Event
 }
 
 func New(ctx actor.Context, dev, disp actor.Actor) (UI, error) {
@@ -72,7 +76,12 @@ func (u *ui) Init() error {
 	return nil
 }
 
-func (u *ui) InputHandler(inputs actor.Actor) error {
+func (u *ui) Events() chan *Event {
+	return u.chEvents
+}
+
+func (u *ui) InputHandler(inputs actor.Actor, button2LabelApp map[buttons.KeyCode]EventType) error {
+	u.button2LabelApp = button2LabelApp
 	res, err := u.rootctx.RequestFuture(u.pid, &AddInputsHandlerMsg{Handler: inputs}, 3*time.Second).Result()
 	if err != nil {
 		return err

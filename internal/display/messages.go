@@ -85,6 +85,37 @@ type WriteTextMsg struct {
 	Text  []string
 }
 
+// ReadTextMsg is a message to write text to a specific area on the Display.
+type ReadTextMsg struct {
+	Label int
+	Len   int
+}
+type ResponseTextMsg struct {
+	Label int
+	Value string
+	Error error
+}
+
+// ReadNumMsg is a message to write text to a specific area on the Display.
+type ReadNumMsg struct {
+	Label int
+}
+type ResponseNumMsg struct {
+	Label int
+	Value int64
+	Error error
+}
+
+// ReadBytesMsg is a message to write text to a specific area on the Display.
+type ReadBytesMsg struct {
+	Label int
+}
+type ResponseBytesMsg struct {
+	Label int
+	Value []byte
+	Error error
+}
+
 // WriteNumberMsg is a message to write a number to a specific area on the Display.
 type WriteNumberMsg struct {
 	Label int

@@ -74,7 +74,7 @@ func main() {
 
 			// time.Sleep(3 * time.Second)
 
-			if err := uii.InputHandler(buttons.NewActor(confButtons)); err != nil {
+			if err := uii.InputHandler(buttons.NewActor(confButtons), map[buttons.KeyCode]ui.EventType{}); err != nil {
 				log.Fatalf("inputHandler error: %s", err)
 			}
 

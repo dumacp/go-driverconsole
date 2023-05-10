@@ -154,6 +154,15 @@ func (d *DisplayActor) RunState(ctx actor.Context) {
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: err})
 		}
+	case *ReadBytesMsg:
+		num, err := d.display.ReadBytes(msg.Label)
+		if ctx.Sender() != nil {
+			ctx.Respond(&ResponseBytesMsg{
+				Label: msg.Label,
+				Value: num,
+				Error: err,
+			})
+		}
 
 	// ... (Manejar los demás mensajes para los demás métodos)
 

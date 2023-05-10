@@ -5,19 +5,21 @@ import (
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+	"github.com/dumacp/go-driverconsole/internal/buttons"
 	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/display"
 	"github.com/dumacp/go-logs/pkg/logs"
 )
 
 type ActorUI struct {
-	ui           UI
+	ui           ui
 	actorDisplay actor.Actor
 	actorDevice  actor.Actor
 	pidDisplay   *actor.PID
 	pidDevice    *actor.PID
 	pidInputs    *actor.PID
 	dev          device.Device
+	evt2evtApp   map[buttons.KeyCode]EventType
 	screen       int
 }
 
@@ -316,6 +318,58 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			ctx.Request(a.pidInputs, &device.MsgDevice{
 				Device: a.dev,
 			})
+		}
+
+	case *buttons.InputEvent:
+		fmt.Printf("arrive event: %+v\n", msg)
+		label, ok := a.evt2evtApp[msg.KeyCode]
+		if !ok {
+			break
+		}
+		if err := func() error {
+			switch label {
+			case PROGRAMATION_DRIVER:
+				if err := a.ui.ShowProgDriver(); err != nil {
+					return fmt.Errorf("event ShowProgDriver error: %s", err)
+				}
+			case PROGRAMATION_VEH:
+				if err := a.ui.ShowProgVeh(); err != nil {
+					return fmt.Errorf("event ShowProgVeh error: %s", err)
+				}
+			case SHOW_NOTIF:
+				if err := a.ui.ShowNotifications(); err != nil {
+					return fmt.Errorf("event ShowNotifications error: %s", err)
+				}
+			case STATS:
+				if err := a.ui.ShowStats(); err != nil {
+					return fmt.Errorf("event ShowStats error: %s", err)
+				}
+			case ROUTE:
+				result, err := ctx.RequestFuture(a.pidDisplay, &display.ReadBytesMsg{
+					Label: ROUTE_TEXT_READ,
+				}, 1*time.Second).Result()
+				if err != nil {
+					return fmt.Errorf("get route error: %s", err)
+				}
+				switch v := result.(type) {
+				case *display.ResponseBytesMsg:
+					if v.Error != nil {
+						return v.Error
+					}
+					select {
+					case a.ui.chEvents <- &Event{
+						Type:  label,
+						Value: v.Value,
+					}:
+					default:
+					}
+				}
+			case DRIVER:
+
+			}
+			return nil
+		}(); err != nil {
+			logs.LogWarn.Println(err)
 		}
 
 	default:

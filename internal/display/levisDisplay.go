@@ -230,6 +230,23 @@ func (m *display) DeviceRaw() (interface{}, error) {
 	return m.dev, nil
 }
 
+func (m *display) ReadBytes(label int) ([]byte, error) {
+	reg := m.label2addr(label)
+	res, err := m.dev.ReadBytesRegister(reg.Addr, reg.Size)
+	if err != nil {
+		// fmt.Println(err)
+		return nil, err
+	}
+
+	fmt.Printf("debug read bytes: %v\n", res)
+
+	if len(res) <= 0 {
+		return nil, fmt.Errorf("response is empty")
+	}
+
+	return levis.EncodeToChars(res), nil
+}
+
 ///////////////////////////////////////
 //////////////////////////////////////////////////////////////
 
