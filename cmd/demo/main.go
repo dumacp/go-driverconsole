@@ -17,6 +17,7 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/display"
 	"github.com/dumacp/go-driverconsole/internal/pubsub"
+	"github.com/dumacp/go-driverconsole/internal/service"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-fareCollection/pkg/messages"
 	"github.com/dumacp/go-logs/pkg/logs"
@@ -25,8 +26,10 @@ import (
 var port string
 var baud int
 var standalone bool
+var id string
 
 func init() {
+	flag.StringVar(&id, "id", "TEST1", "device ID")
 	flag.StringVar(&port, "port", "/dev/ttyUSB0", "path to port serial in OS")
 	flag.IntVar(&baud, "baud", 19200, "serial port speed in baudios")
 	flag.BoolVar(&standalone, "standalone", false, "standalone running (without appfare supervision)")
@@ -53,6 +56,21 @@ func main() {
 
 		switch ctx.Message().(type) {
 		case *actor.Started:
+
+			// _, err := ctx.SpawnNamed(actor.PropsFromFunc(parameters.NewActor(id).Receive), "params-actor")
+			// if err != nil {
+			// 	log.Fatalf("params actor error: %s", err)
+			// }
+
+			// _, err = ctx.SpawnNamed(actor.PropsFromFunc(itinerary.NewActor(id).Receive), "iti-actor")
+			// if err != nil {
+			// 	log.Fatalf("iti actor error: %s", err)
+			// }
+
+			_, err := ctx.SpawnNamed(actor.PropsFromFunc(service.NewActor(id).Receive), "service-actor")
+			if err != nil {
+				log.Fatalf("service actor error: %s", err)
+			}
 
 			confDev := device.NewPiDevice(port, baud)
 
@@ -208,25 +226,27 @@ func main() {
 				root.Send(pidApp, &messages.MsgAddAlarm{Alarm: fmt.Sprintf("%s: notif (( %d ))", time.Now().Format("2006-01-02 15:04"), countAlarm)})
 				countAlarm++
 			case <-tick3:
-				root.Send(pidApp, &app.MsgScreen{ID: 3, Switch: true})
-				time.Sleep(3 * time.Second)
+				// root.Send(pidApp, &app.MsgScreen{ID: 3, Switch: true})
+				// time.Sleep(3 * time.Second)
 
-				root.Send(pidApp, &app.MsgConfirmationText{
-					Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
-				})
-				go func() {
-					time.Sleep(3 * time.Second)
-					root.Send(pidApp, &app.MsgMainScreen{})
-				}()
+				// root.Send(pidApp, &app.MsgConfirmationText{
+				// 	Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
+				// })
+				// go func() {
+				// 	time.Sleep(3 * time.Second)
+				// 	root.Send(pidApp, &app.MsgMainScreen{})
+				// }()
 			}
 		}
 
 	}()
 
 	for range finish {
-		// time.Sleep(300 * time.Millisecond)
+		// TODO:
 		if standalone {
-			sys.Root.Poison(pidMain)
+			sys.Root.PoisonFuture(pidMain).Wait()
+			time.Sleep(300 * time.Millisecond)
+			log.Print("Finish")
 		}
 		// root.Poison(pidButtons)
 		// root.Poison(pidDevice)

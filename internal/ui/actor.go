@@ -293,12 +293,24 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 	case *BrightnessMsg:
 	case *ServiceCurrentStateMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
-			Label: SERVICE_CURRENT_STATE,
+			Label: SERVICE_CURRENT_STATE_TEXT,
 			Text:  []string{msg.Prompt},
 		}, 1*time.Second))
+		if ctx.Sender() != nil && result != nil {
+			ctx.Respond(&AckMsg{Error: result})
+			break
+		}
+		fmt.Println("/// led ///")
+		result = AckResponse(ctx.RequestFuture(a.pidDisplay, &display.ArrayPictMsg{
+			Label: SERVICE_CURRENT_STATE,
+			Num:   msg.State,
+		}, 1*time.Second))
+		fmt.Println("/// led ///")
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: result})
+			break
 		}
+		fmt.Println("/// led ///")
 	case *AddInputsHandlerMsg:
 		propsDev := actor.PropsFromFunc(msg.Handler.Receive)
 		pidDev, err := ctx.SpawnNamed(propsDev, "inputs-actor")

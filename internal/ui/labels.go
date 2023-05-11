@@ -27,6 +27,7 @@ const (
 	PROGRAMATION_DRIVER_BUTTON
 	ADDITIONALS_BUTTON
 	SERVICE_CURRENT_STATE
+	SERVICE_CURRENT_STATE_TEXT
 )
 
 func Label2DisplayRegister(label int) display.Register {
@@ -99,6 +100,24 @@ func Label2DisplayRegister(label int) display.Register {
 		return display.Register{
 			Type:   display.INPUT_NUM,
 			Addr:   AddrNumDeviation,
+			Len:    1,
+			Size:   2,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case SERVICE_CURRENT_STATE_TEXT:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrTextCurrentService,
+			Len:    1,
+			Size:   30,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case SERVICE_CURRENT_STATE:
+		return display.Register{
+			Type:   display.ARRAY_PICT,
+			Addr:   AddrLedCurrentService,
 			Len:    1,
 			Size:   2,
 			Gap:    0,

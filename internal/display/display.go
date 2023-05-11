@@ -17,6 +17,7 @@ type Display interface {
 	Screen() (int, error)
 	Reset() error
 	Led(label int, state int) error
+	ArrayPict(label int, state int) error
 	KeyNum(prompt string) (int, error)
 	Keyboard(prompt string) (string, error)
 	Brightness(percent int) error

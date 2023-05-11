@@ -82,7 +82,7 @@ func (a *Actor) Receive(ctx actor.Context) {
 			self := ctx.Self()
 
 			for v := range ch {
-				rootctx.Request(self, v)
+				rootctx.Send(self, v)
 			}
 			logs.LogError.Printf("listenButtons close")
 		}(ctx)

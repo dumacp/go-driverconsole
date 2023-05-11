@@ -21,6 +21,8 @@ const (
 	AddrNumInputs                          = 80
 	AddrNumOutputs                         = 84
 	AddrNumDeviation                       = 88
+	AddrTextCurrentService                 = 160
+	AddrLedCurrentService                  = 200
 	AddrTextPopup                          = 400
 	AddrTextConfirmation                   = 600
 	AddrToggleConfirmation                 = 5

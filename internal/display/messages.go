@@ -122,6 +122,12 @@ type WriteNumberMsg struct {
 	Num   int64
 }
 
+// ArrayPict is a message to write a number to a specific area on the Display.
+type ArrayPictMsg struct {
+	Label int
+	Num   int
+}
+
 // PopupMsg is a message to display a popup with text on the Display.
 type PopupMsg struct {
 	Label int

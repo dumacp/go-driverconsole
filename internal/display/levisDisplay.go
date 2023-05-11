@@ -141,6 +141,28 @@ func (m *display) WriteText(label int, text ...string) error {
 	return m.writeText(reg.Addr, reg.Len, reg.Size, reg.Gap, text...)
 }
 
+func (m *display) ArrayPict(label int, num int) error {
+	reg := m.label2addr(label)
+	if reg.Type != ARRAY_PICT {
+		return fmt.Errorf("invalid data input")
+	}
+	numBytes := make([]byte, reg.Size)
+	switch reg.Size {
+	case 2:
+		binary.BigEndian.PutUint16(numBytes, uint16(num))
+	case 4:
+		binary.BigEndian.PutUint32(numBytes, uint32(num))
+	case 8:
+		binary.BigEndian.PutUint64(numBytes, uint64(num))
+	default:
+		return fmt.Errorf("invalis size (%d) to number input (%d)", reg.Size, num)
+	}
+	if err := m.dev.WriteRegister(reg.Addr, levis.EncodeFromBytes(numBytes)); err != nil {
+		return fmt.Errorf("error writeRegister: %s\n", err)
+	}
+	return nil
+}
+
 func (m *display) WriteNumber(label int, num int64) error {
 	reg := m.label2addr(label)
 	if reg.Type != INPUT_NUM {
@@ -208,7 +230,7 @@ func (m *display) Led(label int, state int) error {
 		return nil
 	}
 
-	return m.dev.WriteRegister(reg.Addr, []uint16{uint16(state)})
+	return nil
 }
 
 func (m *display) KeyNum(prompt string) (int, error) {

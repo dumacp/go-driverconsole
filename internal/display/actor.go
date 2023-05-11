@@ -97,6 +97,12 @@ func (d *DisplayActor) RunState(ctx actor.Context) {
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: err})
 		}
+	case *ArrayPictMsg:
+		fmt.Printf("arrayPictMsg: %v\n", msg)
+		err := d.display.ArrayPict(msg.Label, msg.Num)
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
 	case *WriteNumberMsg:
 		err := d.display.WriteNumber(msg.Label, msg.Num)
 		if ctx.Sender() != nil {

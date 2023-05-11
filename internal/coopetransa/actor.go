@@ -33,6 +33,7 @@ type actorApp struct {
 	evts             *eventstream.EventStream
 	subs             map[string]*eventstream.Subscription
 	routes           map[int32]string
+	shcservices      map[string]*services.ScheduleService
 	driver           int
 	route            int
 	routeString      string
@@ -311,15 +312,22 @@ func (a *actorApp) Receive(ctx actor.Context) {
 		if err := a.uix.TextWarning(string(msg.Text)); err != nil {
 			logs.LogWarn.Printf("textConfirmation error: %s", err)
 		}
-	case services.ScheduleService:
-		svc := msg
-		switch svc.State {
-		case services.State_READY_TO_START:
-			if err := a.uix.ServiceCurrentState(int(msg.GetState()), ""); err != nil {
+	case *services:
+		if len(msg.GetState()) > 0 {
+			a.shcservices[msg.GetId()] = msg
+		}
+
+		svc := msg.GetUpdate()
+		if svc.GetCheckpointTimingState() != nil && len(svc.GetCheckpointTimingState().GetState()) > 0 {
+			state := int(services.TimingState_value[svc.GetCheckpointTimingState().GetState()])
+			promtp := fmt.Sprintf("%s (%d)", svc.GetCheckpointTimingState().GetName(), svc.GetCheckpointTimingState().GetTimeDiff())
+			fmt.Printf("///// state: %d\n", state)
+			if err := a.uix.ServiceCurrentState(state, promtp); err != nil {
 				logs.LogWarn.Printf("textConfirmation error: %s", err)
 			}
-		case services.State_ABORTED, services.State_CANCELLED:
-
+			// if err := a.uix.Route(svc.); err != nil {
+			// 	logs.LogWarn.Printf("textConfirmation error: %s", err)
+			// }
 		}
 	case *MsgScreen:
 		if err := a.uix.Screen(msg.ID, msg.Switch); err != nil {
