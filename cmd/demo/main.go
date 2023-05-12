@@ -19,7 +19,8 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/pubsub"
 	"github.com/dumacp/go-driverconsole/internal/service"
 	"github.com/dumacp/go-driverconsole/internal/ui"
-	"github.com/dumacp/go-fareCollection/pkg/messages"
+
+	// "github.com/dumacp/go-fareCollection/pkg/messages"
 	"github.com/dumacp/go-logs/pkg/logs"
 )
 
@@ -185,31 +186,31 @@ func main() {
 	}
 	// sys.Root.Send(pidApp, &messages.MsgRoute{RouteCode: 10})
 
-	receiveSimulateDriverPaso := actor.PropsFromFunc(func(ctx actor.Context) {
-		fmt.Printf("message: %q --> %q, %T\n", func() string {
-			if ctx.Sender() == nil {
-				return ""
-			} else {
-				return ctx.Sender().GetId()
-			}
-		}(), ctx.Self().GetId(), ctx.Message())
-		switch msg := ctx.Message().(type) {
-		case *messages.MsgDriverPaso:
-			value := msg.GetValue()
-			if ctx.Sender() != nil {
-				ctx.Respond(&messages.MsgResponseDriverPaso{
-					Value: value,
-				})
-			}
-		}
-	})
+	// receiveSimulateDriverPaso := actor.PropsFromFunc(func(ctx actor.Context) {
+	// 	fmt.Printf("message: %q --> %q, %T\n", func() string {
+	// 		if ctx.Sender() == nil {
+	// 			return ""
+	// 		} else {
+	// 			return ctx.Sender().GetId()
+	// 		}
+	// 	}(), ctx.Self().GetId(), ctx.Message())
+	// 	switch msg := ctx.Message().(type) {
+	// 	case *messages.MsgDriverPaso:
+	// 		value := msg.GetValue()
+	// 		if ctx.Sender() != nil {
+	// 			ctx.Respond(&messages.MsgResponseDriverPaso{
+	// 				Value: value,
+	// 			})
+	// 		}
+	// 	}
+	// })
 
-	pidPaso, err := root.SpawnNamed(receiveSimulateDriverPaso, "receiveSimulateDriverPaso")
-	if err != nil {
-		log.Fatalln(err)
-	}
+	// pidPaso, err := root.SpawnNamed(receiveSimulateDriverPaso, "receiveSimulateDriverPaso")
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
 
-	root.RequestWithCustomSender(pidApp, &messages.MsgSubscribeConsole{}, pidPaso)
+	// root.RequestWithCustomSender(pidApp, &messages.MsgSubscribeConsole{}, pidPaso)
 
 	go func() {
 
@@ -217,14 +218,14 @@ func main() {
 		tick2 := time.Tick(5 * time.Second)
 		tick3 := time.Tick(10 * time.Second)
 
-		countAlarm := 0
+		// countAlarm := 0
 		for {
 			select {
 			case <-tick1:
 				// root.Send(pidApp, &messages.MsgAppPaso{Value: 1})
 			case <-tick2:
-				root.Send(pidApp, &messages.MsgAddAlarm{Alarm: fmt.Sprintf("%s: notif (( %d ))", time.Now().Format("2006-01-02 15:04"), countAlarm)})
-				countAlarm++
+				// root.Send(pidApp, &messages.MsgAddAlarm{Alarm: fmt.Sprintf("%s: notif (( %d ))", time.Now().Format("2006-01-02 15:04"), countAlarm)})
+				// countAlarm++
 			case <-tick3:
 				// root.Send(pidApp, &app.MsgScreen{ID: 3, Switch: true})
 				// time.Sleep(3 * time.Second)

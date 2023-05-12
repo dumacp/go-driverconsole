@@ -13,7 +13,6 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/buttons"
 	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/ui"
-	"github.com/dumacp/go-fareCollection/pkg/messages"
 	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/dumacp/go-schservices/api/services"
 )
@@ -76,11 +75,12 @@ func subscribeExternal(ctx actor.Context, evs *eventstream.EventStream) *eventst
 		rootctx.RequestWithCustomSender(pid, evt, self)
 	}
 	return evs.SubscribeWithPredicate(fn, func(evt interface{}) bool {
-		switch evt.(type) {
-		case *messages.MsgSetRoute, *messages.MsgDriverPaso, *messages.MsgGetParams:
-			return true
-		}
-		return false
+		// switch evt.(type) {
+		// case *messages.MsgSetRoute, *messages.MsgDriverPaso, *messages.MsgGetParams:
+		// 	return true
+		// }
+		// return false
+		return true
 	})
 }
 
@@ -282,22 +282,22 @@ func (a *actorApp) Receive(ctx actor.Context) {
 			a.evts.Unsubscribe(s)
 		}
 		a.subs[ctx.Sender().GetId()] = subscribe(ctx, a.evts)
-	case *messages.MsgSubscribeConsole:
+	// case *messages.MsgSubscribeConsole:
 
-		if ctx.Sender() == nil {
-			break
-		}
-		if a.evts == nil {
-			a.evts = eventstream.NewEventStream()
-		}
-		fmt.Printf("sender = %s\n", ctx.Sender())
-		if a.subs == nil {
-			a.subs = make(map[string]*eventstream.Subscription)
-		}
-		if s, ok := a.subs[ctx.Sender().GetId()]; ok {
-			a.evts.Unsubscribe(s)
-		}
-		a.subs[ctx.Sender().GetId()] = subscribeExternal(ctx, a.evts)
+	// 	if ctx.Sender() == nil {
+	// 		break
+	// 	}
+	// 	if a.evts == nil {
+	// 		a.evts = eventstream.NewEventStream()
+	// 	}
+	// 	fmt.Printf("sender = %s\n", ctx.Sender())
+	// 	if a.subs == nil {
+	// 		a.subs = make(map[string]*eventstream.Subscription)
+	// 	}
+	// 	if s, ok := a.subs[ctx.Sender().GetId()]; ok {
+	// 		a.evts.Unsubscribe(s)
+	// 	}
+	// 	a.subs[ctx.Sender().GetId()] = subscribeExternal(ctx, a.evts)
 	case *MsgSetRoutes:
 		a.routes = msg.Routes
 	case *MsgConfirmationText:
@@ -312,12 +312,12 @@ func (a *actorApp) Receive(ctx actor.Context) {
 		if err := a.uix.TextWarning(string(msg.Text)); err != nil {
 			logs.LogWarn.Printf("textConfirmation error: %s", err)
 		}
-	case *services:
-		if len(msg.GetState()) > 0 {
-			a.shcservices[msg.GetId()] = msg
+	case *services.UpdateServiceMsg:
+		svc := msg.GetUpdate()
+		if len(svc.GetState()) > 0 {
+			a.shcservices[svc.GetId()] = msg.Update
 		}
 
-		svc := msg.GetUpdate()
 		if svc.GetCheckpointTimingState() != nil && len(svc.GetCheckpointTimingState().GetState()) > 0 {
 			state := int(services.TimingState_value[svc.GetCheckpointTimingState().GetState()])
 			promtp := fmt.Sprintf("%s (%d)", svc.GetCheckpointTimingState().GetName(), svc.GetCheckpointTimingState().GetTimeDiff())
@@ -325,9 +325,11 @@ func (a *actorApp) Receive(ctx actor.Context) {
 			if err := a.uix.ServiceCurrentState(state, promtp); err != nil {
 				logs.LogWarn.Printf("textConfirmation error: %s", err)
 			}
-			// if err := a.uix.Route(svc.); err != nil {
-			// 	logs.LogWarn.Printf("textConfirmation error: %s", err)
-			// }
+		}
+	case *services.ServiceMsg:
+		svc := msg.GetUpdate()
+		if len(svc.GetState()) > 0 {
+			a.shcservices[svc.GetId()] = msg.Update
 		}
 	case *MsgScreen:
 		if err := a.uix.Screen(msg.ID, msg.Switch); err != nil {
