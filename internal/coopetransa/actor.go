@@ -50,6 +50,7 @@ func NewActor(uix ui.UI, button2buttonApp map[buttons.KeyCode]EventLabel) actor.
 	a.uix = uix
 	a.evts = eventstream.NewEventStream()
 	a.routes = make(map[int32]string)
+	a.shcservices = make(map[string]*services.ScheduleService)
 	a.evt2evtApp = button2buttonApp
 	return a
 }
@@ -315,7 +316,17 @@ func (a *actorApp) Receive(ctx actor.Context) {
 	case *services.UpdateServiceMsg:
 		svc := msg.GetUpdate()
 		if len(svc.GetState()) > 0 {
-			a.shcservices[svc.GetId()] = msg.Update
+			if v, ok := a.shcservices[svc.GetId()]; ok {
+				fmt.Printf("////// route: %v\n", v)
+				UpdateService(v, msg.GetUpdate())
+			} else {
+				a.shcservices[svc.GetId()] = msg.GetUpdate()
+			}
+		}
+		fmt.Printf("////////////// ROUTE: %+v\n", a.shcservices[svc.GetId()].GetRoute())
+		if a.shcservices[svc.GetId()].GetRoute() != nil &&
+			len(a.shcservices[svc.GetId()].GetRoute().Name) > 0 {
+			a.uix.Route(a.shcservices[svc.GetId()].GetRoute().Name)
 		}
 
 		if svc.GetCheckpointTimingState() != nil && len(svc.GetCheckpointTimingState().GetState()) > 0 {
@@ -329,8 +340,34 @@ func (a *actorApp) Receive(ctx actor.Context) {
 	case *services.ServiceMsg:
 		svc := msg.GetUpdate()
 		if len(svc.GetState()) > 0 {
-			a.shcservices[svc.GetId()] = msg.Update
+			a.shcservices[svc.GetId()] = svc
+		} else {
+			if v, ok := a.shcservices[svc.GetId()]; ok {
+				fmt.Printf("////// route: %v\n", v)
+				UpdateService(v, svc)
+			} else {
+				a.shcservices[svc.GetId()] = svc
+			}
 		}
+	case *services.ServiceAllMsg:
+		svcs := msg.GetUpdates()
+		a.shcservices = make(map[string]*services.ScheduleService)
+		for _, svc := range svcs {
+			if v, ok := a.shcservices[svc.GetId()]; ok {
+				fmt.Printf("////// route: %v\n", v)
+				UpdateService(v, svc)
+			} else {
+				a.shcservices[svc.GetId()] = svc
+			}
+		}
+		arr := make([]string, 0)
+		for k, _ := range a.shcservices {
+			arr = append(arr, k)
+		}
+		fmt.Printf("//////////////// services (ori: %d): %v\n", len(msg.GetUpdates()), arr)
+	case *services.RemoveServiceMsg:
+		svc := msg.GetUpdate()
+		delete(a.shcservices, svc.GetId())
 	case *MsgScreen:
 		if err := a.uix.Screen(msg.ID, msg.Switch); err != nil {
 			logs.LogWarn.Printf("textConfirmation error: %s", err)

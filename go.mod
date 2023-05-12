@@ -16,7 +16,6 @@ require (
 require (
 	github.com/asynkron/protoactor-go v0.0.0-20230414121700-22ab527f4f7a
 	github.com/dumacp/go-actors v0.0.0-20230503160549-734b3c336394
-	github.com/dumacp/go-fareCollection v0.0.0-00010101000000-000000000000
 	github.com/dumacp/go-gwiot v0.0.0-00010101000000-000000000000
 	github.com/dumacp/go-itinerary v0.0.0-20230427203726-7dd05dd6a3b5
 	github.com/dumacp/go-levis v0.0.0-20230414205412-110e9cea515c
