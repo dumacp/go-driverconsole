@@ -18,7 +18,7 @@ type ActorUI struct {
 	pidDisplay   *actor.PID
 	pidDevice    *actor.PID
 	pidInputs    *actor.PID
-	dev          device.Device
+	dev          interface{}
 	evt2evtApp   map[buttons.KeyCode]EventType
 	screen       int
 }
@@ -56,6 +56,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		a.pidDevice = pidDev
 		a.pidDisplay = pidDisplay
 	case *device.MsgDevice:
+		a.dev = msg.Device
 		if a.pidDisplay != nil {
 			ctx.Send(a.pidDisplay, msg)
 		}

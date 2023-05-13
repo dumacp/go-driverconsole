@@ -9,8 +9,8 @@ import (
 )
 
 type DisplayActor struct {
-	display   Display
-	dev       device.Device
+	display Display
+	// dev       device.Device
 	pidDevice *actor.PID
 	behavior  actor.Behavior
 }
