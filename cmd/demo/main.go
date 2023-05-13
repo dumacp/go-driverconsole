@@ -99,7 +99,9 @@ func main() {
 
 			time.Sleep(3 * time.Second)
 
-			propsApp := actor.PropsFromFunc(app.NewActor(uii, map[buttons.KeyCode]app.EventLabel{}).Receive)
+			propsApp := actor.PropsFromFunc(app.NewActor(uii, map[buttons.KeyCode]app.EventLabel{
+				8: app.PROGRAMATION_DRIVER,
+			}).Receive)
 
 			pidApp, err = ctx.SpawnNamed(propsApp, "app")
 			if err != nil {
