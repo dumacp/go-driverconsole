@@ -280,12 +280,14 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: result})
 		}
-		result = AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
-			Text:  msg.Text,
-			Label: PROGRAMATION_VEH_TEXT,
-		}, time.Second*1))
-		if ctx.Sender() != nil {
-			ctx.Respond(&AckMsg{Error: result})
+		if len(msg.Text) > 0 {
+			result = AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
+				Text:  msg.Text,
+				Label: PROGRAMATION_VEH_TEXT,
+			}, time.Second*3))
+			if ctx.Sender() != nil {
+				ctx.Respond(&AckMsg{Error: result})
+			}
 		}
 
 	case *ShowStatsMsg:

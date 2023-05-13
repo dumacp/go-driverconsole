@@ -27,4 +27,5 @@ const (
 	AddrTextConfirmation                   = 600
 	AddrToggleConfirmation                 = 5
 	AddrTogglePopup                        = 6
+	AddrTextProgVeh                        = 2000
 )

@@ -42,9 +42,9 @@ type UI interface {
 	Gps(state bool) error
 	Network(state bool) error
 	AddNotifications(add string) error
-	ShowNotifications() error
-	ShowProgDriver() error
-	ShowProgVeh() error
+	ShowNotifications(...string) error
+	ShowProgDriver(...string) error
+	ShowProgVeh(...string) error
 	ShowStats() error
 	Brightness(percent int) error
 	ServiceCurrentState(state int, prompt string) error
@@ -298,15 +298,24 @@ func (u *ui) AddNotifications(add string) error {
 	panic("not implemented") // TODO: Implement
 }
 
-func (u *ui) ShowNotifications() error {
+func (u *ui) ShowNotifications(data ...string) error {
 	return nil
 }
 
-func (u *ui) ShowProgVeh() error {
-	return nil
+func (u *ui) ShowProgVeh(data ...string) error {
+	res, err := u.rootctx.RequestFuture(u.pid, &ShowProgVehMsg{Text: data}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("showProgVeh without response from display")
 }
 
-func (u *ui) ShowProgDriver() error {
+func (u *ui) ShowProgDriver(data ...string) error {
 	return nil
 }
 

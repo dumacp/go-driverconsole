@@ -123,6 +123,15 @@ func Label2DisplayRegister(label int) display.Register {
 			Gap:    0,
 			Toogle: 0,
 		}
+	case PROGRAMATION_VEH_TEXT:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrTextProgVeh,
+			Len:    10,
+			Size:   100,
+			Gap:    100,
+			Toogle: 0,
+		}
 
 	}
 	return display.Register{}
