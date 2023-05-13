@@ -63,6 +63,8 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		if a.pidInputs != nil {
 			ctx.Send(a.pidInputs, msg)
 		}
+		// TODO: replace this slepp (i need wait because init internal devices)
+		time.Sleep(1 * time.Second)
 	case *InitUIMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
 			Num: 0,
@@ -330,9 +332,11 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 		a.pidInputs = pidDev
 		if a.dev != nil {
-			ctx.Request(a.pidInputs, &device.MsgDevice{
+			ctx.Send(a.pidInputs, &device.MsgDevice{
 				Device: a.dev,
 			})
+			// TODO: replace this slepp (i need wait because init internal devices)
+			time.Sleep(1 * time.Second)
 		}
 
 	case *buttons.InputEvent:
