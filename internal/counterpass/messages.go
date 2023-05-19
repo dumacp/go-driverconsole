@@ -16,6 +16,10 @@ type CounterEvent struct {
 	Outputs int
 }
 
+type CounterExtraEvent struct {
+	Text []byte
+}
+
 type MsgSubscribe struct{}
 type MsgRequestStatus struct {
 }

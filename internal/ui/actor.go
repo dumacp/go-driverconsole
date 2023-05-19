@@ -12,15 +12,15 @@ import (
 )
 
 type ActorUI struct {
-	ui           ui
 	actorDisplay actor.Actor
 	actorDevice  actor.Actor
 	pidDisplay   *actor.PID
 	pidDevice    *actor.PID
 	pidInputs    *actor.PID
 	dev          interface{}
-	evt2evtApp   map[buttons.KeyCode]EventType
-	screen       int
+	// evt2Label    map[int]EventType
+	evt2Func func(evt *buttons.InputEvent)
+	screen   Screen
 }
 
 func NewActor(dev, disp actor.Actor) actor.Actor {
@@ -28,6 +28,7 @@ func NewActor(dev, disp actor.Actor) actor.Actor {
 	a := &ActorUI{}
 	a.actorDisplay = disp
 	a.actorDevice = dev
+	a.screen = MAIN
 	return a
 }
 
@@ -47,7 +48,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			time.Sleep(3 * time.Second)
 			logs.LogError.Panicf("%q error: %s", ctx.Self().GetId(), err)
 		}
-		propsDisplay := actor.PropsFromFunc(a.actorDisplay.Receive)
+		propsDisplay := actor.PropsFromFunc(a.actorDisplay.Receive, actor.WithMailbox(actor.Bounded(10)))
 		pidDisplay, err := ctx.SpawnNamed(propsDisplay, "display-actor")
 		if err != nil {
 			time.Sleep(3 * time.Second)
@@ -66,9 +67,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		// TODO: replace this slepp (i need wait because init internal devices)
 		time.Sleep(1 * time.Second)
 	case *InitUIMsg:
-		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
-			Num: 0,
-		}, 1*time.Second))
+		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.InitMsg{}, 1*time.Second))
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: result})
 		}
@@ -92,14 +91,14 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *TextConfirmationMsg:
 		fmt.Printf("screen: %d\n", a.screen)
-		if a.screen != int(CONFIRMATION) {
+		if a.screen != CONFIRMATION {
 			result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
 				Num: int(CONFIRMATION),
 			}, 1*time.Second))
 			if ctx.Sender() != nil {
 				ctx.Respond(&AckMsg{Error: result})
 			}
-			a.screen = int(CONFIRMATION)
+			a.screen = CONFIRMATION
 		}
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
 			Label: CONFIRMATION_TEXT,
@@ -110,16 +109,18 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *TextConfirmationPopupMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.PopupMsg{
-			Label: POPUP_TEXT,
-			Text:  msg.Text,
+			Label:  POPUP_TEXT,
+			Text:   msg.Text,
+			Temout: msg.Timeout,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *TextWarningPopupMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.PopupMsg{
-			Label: POPUP_WARN_TEXT,
-			Text:  msg.Text,
+			Label:  POPUP_WARN_TEXT,
+			Text:   msg.Text,
+			Temout: msg.Timeout,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: result})
@@ -133,10 +134,13 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *OutputsMsg:
-		ctx.Request(a.pidDisplay, &display.WriteNumberMsg{
+		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteNumberMsg{
 			Label: OUTPUTS_TEXT,
 			Num:   int64(msg.Out),
-		})
+		}, 1*time.Second))
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: result})
+		}
 
 	case *DeviationInputsMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteNumberMsg{
@@ -156,7 +160,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *DriverMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
-			Label: ROUTE_TEXT,
+			Label: DRIVER_TEXT,
 			Text:  []string{msg.Data},
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
@@ -207,16 +211,12 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			logs.LogWarn.Printf("Get ScreenMsg error: %s", err)
 		}
 		if v, ok := res.(*display.ScreenResponseMsg); ok {
-			if v.Error != nil {
-				a.screen = v.Screen
+			if v.Error == nil {
+				a.screen = Screen(v.Screen)
 			}
-			if ctx.Sender() != nil {
-				ctx.Respond(&ScreenResponseMsg{Error: v.Error, Num: v.Screen})
-			}
+			ctx.Respond(&ScreenResponseMsg{Error: v.Error, Num: v.Screen})
 		} else {
-			if ctx.Sender() != nil {
-				ctx.Respond(&ScreenResponseMsg{Error: fmt.Errorf("unkown error")})
-			}
+			ctx.Respond(&ScreenResponseMsg{Error: fmt.Errorf("unkown error")})
 		}
 	case *KeyNumMsg:
 		if ctx.Sender() == nil {
@@ -255,21 +255,64 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 	case *DoorsMsg:
 
 	case *GpsMsg:
+		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.LedMsg{
+			State: func() int {
+				if msg.State {
+					return 0
+				}
+				return 1
+			}(),
+			Label: GPS_LED,
+		}, 1*time.Second))
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: result})
+		}
 
 	case *NetworkMsg:
+		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.LedMsg{
+			State: func() int {
+				if msg.State {
+					return 0
+				}
+				return 1
+			}(),
+			Label: NETWORK_LED,
+		}, 1*time.Second))
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: result})
+		}
 
 	case *AddNotificationsMsg:
 
 	case *ShowNotificationsMsg:
-
-	case *ShowProgDriverMsg:
-		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
-			Num: 3,
+		if a.screen != ALARM {
+			break
+		}
+		// result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
+		// 	Num: 3,
+		// }, time.Second*1))
+		// if ctx.Sender() != nil {
+		// 	ctx.Respond(&AckMsg{Error: result})
+		// }
+		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
+			Text:  msg.Text,
+			Label: NOTIFICATIONS_ALARM_TEXT,
 		}, time.Second*1))
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: result})
 		}
-		result = AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
+
+	case *ShowProgDriverMsg:
+		if a.screen != DRIVER_SCREEN {
+			break
+		}
+		// result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
+		// 	Num: 3,
+		// }, time.Second*1))
+		// if ctx.Sender() != nil {
+		// 	ctx.Respond(&AckMsg{Error: result})
+		// }
+		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
 			Text:  msg.Text,
 			Label: PROGRAMATION_DRIVER_TEXT,
 		}, time.Second*1))
@@ -277,14 +320,20 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *ShowProgVehMsg:
-		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
-			Num: 4,
-		}, time.Second*1))
-		if ctx.Sender() != nil {
-			ctx.Respond(&AckMsg{Error: result})
+		if a.screen != VEHICLE {
+			if ctx.Sender() != nil {
+				ctx.Respond(&AckMsg{Error: nil})
+			}
+			break
 		}
+		// result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.SwitchScreenMsg{
+		// 	Num: 4,
+		// }, time.Second*1))
+		// if ctx.Sender() != nil {
+		// 	ctx.Respond(&AckMsg{Error: result})
+		// }
 		if len(msg.Text) > 0 {
-			result = AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
+			result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
 				Text:  msg.Text,
 				Label: PROGRAMATION_VEH_TEXT,
 			}, time.Second*3))
@@ -297,6 +346,9 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 
 	case *BrightnessMsg:
 	case *ServiceCurrentStateMsg:
+		// if a.screen != MAIN {
+		// 	break
+		// }
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
 			Label: SERVICE_CURRENT_STATE_TEXT,
 			Text:  []string{msg.Prompt},
@@ -330,6 +382,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: err})
 		}
+		a.evt2Func = msg.Evt2Func
 		a.pidInputs = pidDev
 		if a.dev != nil {
 			ctx.Send(a.pidInputs, &device.MsgDevice{
@@ -339,53 +392,81 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			time.Sleep(1 * time.Second)
 		}
 
-	case *buttons.InputEvent:
-		fmt.Printf("arrive event: %+v\n", msg)
-		label, ok := a.evt2evtApp[msg.KeyCode]
-		if !ok {
+	case *ReadBytesRawMsg:
+		if ctx.Sender() == nil {
 			break
 		}
+		res, err := ctx.RequestFuture(a.pidDisplay, &display.ReadBytesMsg{Label: msg.Label}, 1*time.Second).Result()
+		if err != nil {
+			logs.LogWarn.Printf("Get ScreenMsg error: %s", err)
+		}
+		if v, ok := res.(*display.ResponseBytesMsg); ok {
+			if v.Error != nil {
+				ctx.Respond(&ReadBytesRawResponseMsg{
+					Label: v.Label,
+					Value: nil,
+					Error: v.Error,
+				})
+				break
+			}
+			ctx.Respond(&ReadBytesRawResponseMsg{Label: v.Label, Value: v.Value})
+		} else {
+			ctx.Respond(&ReadBytesRawResponseMsg{Label: v.Label, Error: fmt.Errorf("unkown error")})
+		}
+
+	case *buttons.InputEvent:
+
+		fmt.Printf("arrive event: %+v\n", msg)
+		// TODO: change this innencesary dependency
 		if err := func() error {
-			switch label {
-			case PROGRAMATION_DRIVER:
-				if err := a.ui.ShowProgDriver(); err != nil {
-					return fmt.Errorf("event ShowProgDriver error: %s", err)
-				}
-			case PROGRAMATION_VEH:
-				if err := a.ui.ShowProgVeh(); err != nil {
-					return fmt.Errorf("event ShowProgVeh error: %s", err)
-				}
-			case SHOW_NOTIF:
-				if err := a.ui.ShowNotifications(); err != nil {
-					return fmt.Errorf("event ShowNotifications error: %s", err)
-				}
-			case STATS:
-				if err := a.ui.ShowStats(); err != nil {
-					return fmt.Errorf("event ShowStats error: %s", err)
-				}
-			case ROUTE:
+			switch msg.KeyCode {
+			case buttons.AddrScreenSwitch:
+				a.screen = MAIN
+			case buttons.AddrScreenProgDriver:
+				a.screen = DRIVER_SCREEN
+				// ctx.Send(ctx.Self(), &ShowProgDriverMsg{})
+			case buttons.AddrScreenProgVeh:
+				a.screen = VEHICLE
+				// ctx.Send(ctx.Self(), &ShowProgVehMsg{})
+			case buttons.AddrScreenAlarms:
+				a.screen = ALARM
+				// ctx.Send(ctx.Self(), &ShowNotificationsMsg{})
+			case buttons.AddrScreenMore:
+				a.screen = SERVICE
+				// ctx.Send(ctx.Self(), &ShowStatsMsg{})
+			case buttons.AddrEnterRuta:
 				result, err := ctx.RequestFuture(a.pidDisplay, &display.ReadBytesMsg{
 					Label: ROUTE_TEXT_READ,
 				}, 1*time.Second).Result()
 				if err != nil {
 					return fmt.Errorf("get route error: %s", err)
 				}
-				switch v := result.(type) {
-				case *display.ResponseBytesMsg:
-					if v.Error != nil {
-						return v.Error
-					}
-					select {
-					case a.ui.chEvents <- &Event{
-						Type:  label,
-						Value: v.Value,
-					}:
-					default:
-					}
-				}
-			case DRIVER:
+				fmt.Printf("route: %s\n", result)
+				// switch v := result.(type) {
+				// case *display.ResponseBytesMsg:
+				// 	if v.Error != nil {
+				// 		return v.Error
+				// 	}
+				// 	select {
+				// 	case a.ui.chEvents <- &Event{
+				// 		Type:  label,
+				// 		Value: v.Value,
+				// 	}:
+				// 	default:
+				// 	}
+				// }
+			case buttons.AddrEnterDriver:
+				// result, err := ctx.RequestFuture(a.pidDisplay, &display.ReadBytesMsg{
+				// 	Label: DRIVER_TEXT_READ,
+				// }, 1*time.Second).Result()
+				// if err != nil {
+				// 	return fmt.Errorf("get driver error: %s", err)
+				// }
+				// fmt.Printf("driver: %s\n", result)
 
 			}
+			fmt.Printf("SCREEN: %v\n", a.screen)
+			go a.evt2Func(msg)
 			return nil
 		}(); err != nil {
 			logs.LogWarn.Println(err)

@@ -12,15 +12,19 @@ import (
 
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/asynkron/protoactor-go/remote"
+
 	"github.com/dumacp/go-driverconsole/internal/buttons"
 	app "github.com/dumacp/go-driverconsole/internal/coopetransa"
+	"github.com/dumacp/go-driverconsole/internal/counterpass"
+	"github.com/dumacp/go-driverconsole/internal/gps"
+	"github.com/dumacp/go-driverconsole/internal/service"
+	"github.com/dumacp/go-driverconsole/internal/ui"
+	"github.com/dumacp/go-driverconsole/internal/utils"
+
 	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/display"
 	"github.com/dumacp/go-driverconsole/internal/pubsub"
-	"github.com/dumacp/go-driverconsole/internal/service"
-	"github.com/dumacp/go-driverconsole/internal/ui"
 
-	// "github.com/dumacp/go-fareCollection/pkg/messages"
 	"github.com/dumacp/go-logs/pkg/logs"
 )
 
@@ -28,17 +32,30 @@ var port string
 var baud int
 var standalone bool
 var id string
+var debug bool
+var logStd bool
 
 func init() {
-	flag.StringVar(&id, "id", "TEST1", "device ID")
+	flag.StringVar(&id, "id", "", "device ID")
 	flag.StringVar(&port, "port", "/dev/ttyUSB0", "path to port serial in OS")
 	flag.IntVar(&baud, "baud", 19200, "serial port speed in baudios")
 	flag.BoolVar(&standalone, "standalone", false, "standalone running (without appfare supervision)")
+	flag.BoolVar(&debug, "debug", false, "debug")
+	flag.BoolVar(&logStd, "logStd", false, "send logs to stdout")
+
 }
 
 func main() {
 
 	flag.Parse()
+
+	initLogs(debug, logStd)
+
+	if len(id) <= 0 {
+		id = utils.Hostname()
+	} else {
+		utils.SetHostname(id)
+	}
 
 	sys := actor.NewActorSystem()
 	root := sys.Root
@@ -53,10 +70,16 @@ func main() {
 	pubsub.Init(root)
 
 	var pidApp *actor.PID
+	var pidGps *actor.PID
 	props := actor.PropsFromFunc(func(ctx actor.Context) {
 
 		switch ctx.Message().(type) {
 		case *actor.Started:
+
+			_, err := ctx.SpawnNamed(actor.PropsFromFunc(counterpass.NewActor().Receive), "counter-actor")
+			if err != nil {
+				log.Fatalf("counter actor error: %s", err)
+			}
 
 			// _, err := ctx.SpawnNamed(actor.PropsFromFunc(parameters.NewActor(id).Receive), "params-actor")
 			// if err != nil {
@@ -68,20 +91,25 @@ func main() {
 			// 	log.Fatalf("iti actor error: %s", err)
 			// }
 
-			_, err := ctx.SpawnNamed(actor.PropsFromFunc(service.NewActor(id).Receive), "service-actor")
+			_, err = ctx.SpawnNamed(actor.PropsFromFunc(service.NewActor(id).Receive), "service-actor")
 			if err != nil {
 				log.Fatalf("service actor error: %s", err)
+			}
+
+			pidGps, err = ctx.SpawnNamed(actor.PropsFromFunc(gps.NewActor().Receive), "gps-actor")
+			if err != nil {
+				log.Fatalf("iti actor error: %s", err)
 			}
 
 			confDev := device.NewPiDevice(port, baud)
 
 			confButtons := buttons.NewConfPiButtons(0, 30, []int{
-				buttons.AddrAddBright, buttons.AddrEnterDriver, buttons.AddrEnterPaso, buttons.AddrEnterRuta,
-				buttons.AddrScreenAlarms, buttons.AddrSelectPaso, buttons.AddrSubBright, buttons.AddrScreenMore,
-				buttons.AddrScreenProgDriver, buttons.AddrScreenProgVeh},
+				app.AddrAddBright, app.AddrEnterDriver, app.AddrEnterPaso, app.AddrEnterRuta,
+				app.AddrScreenAlarms, app.AddrSelectPaso, app.AddrSubBright, app.AddrScreenMore,
+				app.AddrScreenProgDriver, app.AddrScreenProgVeh, app.AddrScreenSwitch},
 			)
 
-			confDisplay := display.NewPiDisplay(ui.Label2DisplayRegister)
+			confDisplay := display.NewPiDisplay(app.Label2DisplayRegister)
 
 			uii, err := ui.New(ctx,
 				device.NewActor(confDev),
@@ -91,34 +119,30 @@ func main() {
 				log.Fatalf("newDisplayActor error: %s", err)
 			}
 
-			// time.Sleep(3 * time.Second)
-
-			if err := uii.InputHandler(buttons.NewActor(confButtons), map[buttons.KeyCode]ui.EventType{}); err != nil {
-				log.Fatalf("inputHandler error: %s", err)
-			}
-
 			time.Sleep(3 * time.Second)
 
-			propsApp := actor.PropsFromFunc(app.NewActor(uii, map[buttons.KeyCode]app.EventLabel{
-				8: app.PROGRAMATION_DRIVER,
-			}).Receive)
-
+			appinstance := app.NewApp(uii)
+			propsApp := actor.PropsFromFunc(appinstance.Receive)
 			pidApp, err = ctx.SpawnNamed(propsApp, "app")
 			if err != nil {
 				log.Fatalf("app-actor error: %s", err)
 			}
 
-			routes := map[int32]string{
-				10: "RUTA CARAJILLO",
-				20: "RUTA ORIENTAL",
-				30: "RUTA OCCIDENTAL",
-				40: "RUTA NORTE",
-				50: "RUTA SUR",
+			if err := uii.InputHandler(buttons.NewActor(confButtons), appinstance.Buttons()); err != nil {
+				log.Fatalf("inputHandler error: %s", err)
 			}
+
+			// routes := map[int32]string{
+			// 	10: "RUTA CARAJILLO",
+			// 	20: "RUTA ORIENTAL",
+			// 	30: "RUTA OCCIDENTAL",
+			// 	40: "RUTA NORTE",
+			// 	50: "RUTA SUR",
+			// }
 
 			// time.Sleep(10 * time.Second)
 
-			ctx.Send(pidApp, &app.MsgSetRoutes{Routes: routes})
+			// ctx.Send(pidApp, &app.MsgSetRoutes{Routes: routes})
 		case *actor.Stopping:
 			log.Print("stopping driver console")
 		case *actor.Stopped:
@@ -130,6 +154,13 @@ func main() {
 		case *actor.Restart:
 			log.Print("restart driver console")
 		default:
+			fmt.Printf("main message: %q --> %q, %T (%s)\n", func() string {
+				if ctx.Sender() == nil {
+					return ""
+				} else {
+					return ctx.Sender().GetId()
+				}
+			}(), ctx.Self().GetId(), ctx.Message(), ctx.Message())
 			if pidApp != nil {
 				ctx.RequestWithCustomSender(pidApp, ctx.Message(), ctx.Sender())
 			}
@@ -180,12 +211,21 @@ func main() {
 	signal.Notify(finish, os.Interrupt)
 
 	tickStart := time.NewTicker(1 * time.Second)
-	for range tickStart.C {
-		if pidApp != nil {
-			tickStart.Stop()
-			break
+	timerStart := time.NewTicker(5 * time.Second)
+	defer timerStart.Stop()
+	func() {
+		for {
+			select {
+			case <-tickStart.C:
+				if pidApp != nil {
+					tickStart.Stop()
+					return
+				}
+			case <-timerStart.C:
+				return
+			}
 		}
-	}
+	}()
 	// sys.Root.Send(pidApp, &messages.MsgRoute{RouteCode: 10})
 
 	// receiveSimulateDriverPaso := actor.PropsFromFunc(func(ctx actor.Context) {
@@ -214,41 +254,56 @@ func main() {
 
 	// root.RequestWithCustomSender(pidApp, &messages.MsgSubscribeConsole{}, pidPaso)
 
-	go func() {
+	if pidApp != nil {
+		go func() {
 
-		tick1 := time.Tick(30 * time.Second)
-		tick2 := time.Tick(5 * time.Second)
-		tick3 := time.Tick(10 * time.Second)
+			tick0 := time.After(1 * time.Second)
+			// tick1 := time.Tick(30 * time.Second)
+			tick2 := time.Tick(3 * time.Second)
+			tick3 := time.Tick(15 * time.Second)
 
-		// countAlarm := 0
-		for {
-			select {
-			case <-tick1:
+			// countAlarm := 0
+			for {
+				select {
+				case <-tick0:
+
+					// root.Send(pidApp, &counterpass.CounterMap{Inputs0: 20, Outputs1: 21})
+				// case <-tick1:
 				// root.Send(pidApp, &messages.MsgAppPaso{Value: 1})
-			case <-tick2:
-				// root.Send(pidApp, &messages.MsgAddAlarm{Alarm: fmt.Sprintf("%s: notif (( %d ))", time.Now().Format("2006-01-02 15:04"), countAlarm)})
-				// countAlarm++
-			case <-tick3:
-				// root.Send(pidApp, &app.MsgScreen{ID: 3, Switch: true})
-				// time.Sleep(3 * time.Second)
+				case <-tick2:
+					// root.Send(pidApp, &messages.MsgAddAlarm{Alarm: fmt.Sprintf("%s: notif (( %d ))", time.Now().Format("2006-01-02 15:04"), countAlarm)})
+					// countAlarm++
 
-				// root.Send(pidApp, &app.MsgConfirmationText{
-				// 	Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
-				// })
-				// go func() {
-				// 	time.Sleep(3 * time.Second)
-				// 	root.Send(pidApp, &app.MsgMainScreen{})
-				// }()
+					root.Send(pidApp, &app.MsgUpdateTime{})
+					// root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 1})
+
+				case <-tick3:
+					if pidGps != nil {
+						root.RequestWithCustomSender(pidGps, &gps.MsgGpsStatusRequest{}, pidApp)
+					}
+					// root.Send(pidApp, &counterpass.CounterEvent{Inputs: 0, Outputs: 1})
+					// root.Send(pidApp, &app.MsgScreen{ID: 3, Switch: true})
+					// time.Sleep(3 * time.Second)
+
+					// root.Send(pidApp, &app.MsgConfirmationText{
+					// 	Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
+					// })
+					// go func() {
+					// 	time.Sleep(3 * time.Second)
+					// 	root.Send(pidApp, &app.MsgMainScreen{})
+					// }()
+
+				}
 			}
-		}
 
-	}()
+		}()
+	}
 
 	for range finish {
 		// TODO:
 		if standalone {
 			sys.Root.PoisonFuture(pidMain).Wait()
-			time.Sleep(300 * time.Millisecond)
+			time.Sleep(400 * time.Millisecond)
 			log.Print("Finish")
 		}
 		// root.Poison(pidButtons)

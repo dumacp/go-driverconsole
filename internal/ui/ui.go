@@ -11,13 +11,13 @@ import (
 )
 
 type ui struct {
-	lastUpdateDate  time.Time
-	screen          Screen
-	disp            display.Display
-	chEvents        chan *Event
-	pid             *actor.PID
-	rootctx         *actor.RootContext
-	button2LabelApp map[buttons.KeyCode]EventType
+	lastUpdateDate time.Time
+	screen         Screen
+	disp           display.Display
+	notif          []string
+	// chEvents       chan *Event
+	pid     *actor.PID
+	rootctx *actor.RootContext
 }
 
 type UI interface {
@@ -27,9 +27,9 @@ type UI interface {
 	TextConfirmation(text ...string) error
 	TextConfirmationPopup(timeout time.Duration, text ...string) error
 	TextWarningPopup(timeout time.Duration, sText ...string) error
-	Inputs(in int) error
-	Outputs(out int) error
-	DeviationInputs(dev int) error
+	Inputs(in int32) error
+	Outputs(out int32) error
+	DeviationInputs(dev int32) error
 	Route(route ...string) error
 	Driver(data string) error
 	Beep(repeat int, timeout time.Duration) error
@@ -48,8 +48,9 @@ type UI interface {
 	ShowStats() error
 	Brightness(percent int) error
 	ServiceCurrentState(state int, prompt string) error
-	InputHandler(inputs actor.Actor, button2LabelApp map[buttons.KeyCode]EventType) error
-	Events() chan *Event
+	InputHandler(inputs actor.Actor, callback func(evt *buttons.InputEvent)) error
+	ReadBytesRawDisplay(label int) ([]byte, error)
+	// Events() chan *Event
 }
 
 func New(ctx actor.Context, dev, disp actor.Actor) (UI, error) {
@@ -61,6 +62,7 @@ func New(ctx actor.Context, dev, disp actor.Actor) (UI, error) {
 	}
 
 	u := &ui{}
+	u.notif = make([]string, 0)
 	u.pid = pid
 	u.rootctx = ctx.ActorSystem().Root
 
@@ -69,20 +71,25 @@ func New(ctx actor.Context, dev, disp actor.Actor) (UI, error) {
 
 func (u *ui) Init() error {
 
-	if err := u.MainScreen(); err != nil {
+	res, err := u.rootctx.RequestFuture(u.pid, &InitUIMsg{}, 1*time.Second).Result()
+	if err != nil {
 		return err
 	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("init with response form display")
 
-	return nil
 }
 
-func (u *ui) Events() chan *Event {
-	return u.chEvents
-}
+// func (u *ui) Events() chan *Event {
+// 	return u.chEvents
+// }
 
-func (u *ui) InputHandler(inputs actor.Actor, button2LabelApp map[buttons.KeyCode]EventType) error {
-	u.button2LabelApp = button2LabelApp
-	res, err := u.rootctx.RequestFuture(u.pid, &AddInputsHandlerMsg{Handler: inputs}, 3*time.Second).Result()
+func (u *ui) InputHandler(inputs actor.Actor, callback func(evt *buttons.InputEvent)) error {
+	res, err := u.rootctx.RequestFuture(u.pid, &AddInputsHandlerMsg{Handler: inputs, Evt2Func: callback}, 2*time.Second).Result()
 	if err != nil {
 		return err
 	}
@@ -95,7 +102,7 @@ func (u *ui) InputHandler(inputs actor.Actor, button2LabelApp map[buttons.KeyCod
 }
 
 func (u *ui) MainScreen() error {
-	res, err := u.rootctx.RequestFuture(u.pid, &MainScreenMsg{}, 3*time.Second).Result()
+	res, err := u.rootctx.RequestFuture(u.pid, &MainScreenMsg{}, 2*time.Second).Result()
 	if err != nil {
 		return err
 	}
@@ -109,7 +116,7 @@ func (u *ui) MainScreen() error {
 }
 
 func (u *ui) TextWarning(text ...string) error {
-	res, err := u.rootctx.RequestFuture(u.pid, &TextWarningMsg{Text: text}, 3*time.Second).Result()
+	res, err := u.rootctx.RequestFuture(u.pid, &TextWarningMsg{Text: text}, 2*time.Second).Result()
 	if err != nil {
 		return err
 	}
@@ -122,7 +129,7 @@ func (u *ui) TextWarning(text ...string) error {
 }
 
 func (u *ui) TextConfirmation(text ...string) error {
-	res, err := u.rootctx.RequestFuture(u.pid, &TextConfirmationMsg{Text: text}, 3*time.Second).Result()
+	res, err := u.rootctx.RequestFuture(u.pid, &TextConfirmationMsg{Text: text}, 2*time.Second).Result()
 	if err != nil {
 		return err
 	}
@@ -166,7 +173,7 @@ func (u *ui) TextWarningPopup(timeout time.Duration, sText ...string) error {
 	return fmt.Errorf("textWarningPopup with response form display")
 }
 
-func (u *ui) Inputs(in int) error {
+func (u *ui) Inputs(in int32) error {
 	res, err := u.rootctx.RequestFuture(u.pid, &InputsMsg{
 		In: in,
 	}, 3*time.Second).Result()
@@ -181,7 +188,7 @@ func (u *ui) Inputs(in int) error {
 	return fmt.Errorf("inputs with response form display")
 }
 
-func (u *ui) Outputs(out int) error {
+func (u *ui) Outputs(out int32) error {
 	res, err := u.rootctx.RequestFuture(u.pid, &OutputsMsg{
 		Out: out,
 	}, 3*time.Second).Result()
@@ -196,7 +203,7 @@ func (u *ui) Outputs(out int) error {
 	return fmt.Errorf("outputs with response form display")
 }
 
-func (u *ui) DeviationInputs(dev int) error {
+func (u *ui) DeviationInputs(dev int32) error {
 	res, err := u.rootctx.RequestFuture(u.pid, &DeviationInputsMsg{
 		Dev: dev,
 	}, 3*time.Second).Result()
@@ -212,7 +219,7 @@ func (u *ui) DeviationInputs(dev int) error {
 }
 
 func (u *ui) Route(route ...string) error {
-	res, err := u.rootctx.RequestFuture(u.pid, &RouteMsg{Route: route}, 3*time.Second).Result()
+	res, err := u.rootctx.RequestFuture(u.pid, &RouteMsg{Route: route}, 2*time.Second).Result()
 	if err != nil {
 		return err
 	}
@@ -225,7 +232,7 @@ func (u *ui) Route(route ...string) error {
 }
 
 func (u *ui) Driver(data string) error {
-	res, err := u.rootctx.RequestFuture(u.pid, &DriverMsg{Data: data}, 3*time.Second).Result()
+	res, err := u.rootctx.RequestFuture(u.pid, &DriverMsg{Data: data}, 2*time.Second).Result()
 	if err != nil {
 		return err
 	}
@@ -243,7 +250,7 @@ func (u *ui) Beep(repeat int, timeout time.Duration) error {
 
 func (u *ui) Date(date time.Time) error {
 
-	res, err := u.rootctx.RequestFuture(u.pid, &DateMsg{Date: date}, 3*time.Second).Result()
+	res, err := u.rootctx.RequestFuture(u.pid, &DateMsg{Date: date}, 2*time.Second).Result()
 	if err != nil {
 		return err
 	}
@@ -287,19 +294,51 @@ func (u *ui) Doors(state ...bool) error {
 }
 
 func (u *ui) Gps(state bool) error {
-	panic("not implemented") // TODO: Implement
+	res, err := u.rootctx.RequestFuture(u.pid, &GpsMsg{State: state}, 1*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("network without response from display")
 }
 
 func (u *ui) Network(state bool) error {
-	panic("not implemented") // TODO: Implement
+	res, err := u.rootctx.RequestFuture(u.pid, &NetworkMsg{State: state}, 1*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("network without response from display")
 }
 
 func (u *ui) AddNotifications(add string) error {
-	panic("not implemented") // TODO: Implement
+	u.notif = append(u.notif, add)
+	if len(u.notif) > 10 {
+		copy(u.notif, u.notif[1:])
+		u.notif = u.notif[:len(u.notif)-1]
+	}
+	return nil
 }
 
 func (u *ui) ShowNotifications(data ...string) error {
-	return nil
+	res, err := u.rootctx.RequestFuture(u.pid, &ShowNotificationsMsg{Text: data}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("showNotifications without response from display")
 }
 
 func (u *ui) ShowProgVeh(data ...string) error {
@@ -316,7 +355,16 @@ func (u *ui) ShowProgVeh(data ...string) error {
 }
 
 func (u *ui) ShowProgDriver(data ...string) error {
-	return nil
+	res, err := u.rootctx.RequestFuture(u.pid, &ShowProgDriverMsg{Text: data}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("showProgDriver without response from display")
 }
 
 func (u *ui) ShowStats() error {
@@ -331,7 +379,7 @@ func (u *ui) ServiceCurrentState(state int, prompt string) error {
 	res, err := u.rootctx.RequestFuture(u.pid, &ServiceCurrentStateMsg{
 		State:  state,
 		Prompt: prompt,
-	}, 3*time.Second).Result()
+	}, 2*time.Second).Result()
 	if err != nil {
 		return err
 	}
@@ -341,4 +389,19 @@ func (u *ui) ServiceCurrentState(state int, prompt string) error {
 		return nil
 	}
 	return fmt.Errorf("deviationInputs with response form display")
+}
+
+func (u *ui) ReadBytesRawDisplay(label int) ([]byte, error) {
+	res, err := u.rootctx.RequestFuture(u.pid, &ReadBytesRawMsg{Label: label}, 2*time.Second).Result()
+	if err != nil {
+		return nil, err
+	}
+	if v, ok := res.(*ReadBytesRawResponseMsg); ok && v.Error != nil {
+		return nil, v.Error
+	} else if ok {
+		data := make([]byte, len(v.Value))
+		copy(data, v.Value)
+		return data, nil
+	}
+	return nil, fmt.Errorf("textWarning with response form display")
 }

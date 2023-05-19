@@ -4,6 +4,7 @@ import (
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+	"github.com/dumacp/go-driverconsole/internal/buttons"
 )
 
 // InitUIMsg is a message for initializing the UI.
@@ -36,17 +37,17 @@ type TextWarningPopupMsg struct {
 
 // InputsMsg is a message for setting the number of inputs.
 type InputsMsg struct {
-	In int
+	In int32
 }
 
 // OutputsMsg is a message for setting the number of outputs.
 type OutputsMsg struct {
-	Out int
+	Out int32
 }
 
 // DeviationInputsMsg is a message for setting the number of deviation inputs.
 type DeviationInputsMsg struct {
-	Dev int
+	Dev int32
 }
 
 // RouteMsg is a message for displaying the route.
@@ -122,7 +123,9 @@ type AddNotificationsMsg struct {
 }
 
 // ShowNotificationsMsg is a message for showing notifications.
-type ShowNotificationsMsg struct{}
+type ShowNotificationsMsg struct {
+	Text []string
+}
 
 // ShowProgDriverMsg is a message for showing the driver's progress.
 type ShowProgDriverMsg struct {
@@ -154,5 +157,16 @@ type AckMsg struct {
 }
 
 type AddInputsHandlerMsg struct {
-	Handler actor.Actor
+	Handler  actor.Actor
+	Evt2Func func(evt *buttons.InputEvent)
+}
+
+type ReadBytesRawMsg struct {
+	Label int
+}
+
+type ReadBytesRawResponseMsg struct {
+	Label int
+	Value []byte
+	Error error
 }

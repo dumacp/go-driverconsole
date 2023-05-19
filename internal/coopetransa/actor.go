@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"sort"
+	"strings"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -12,7 +12,8 @@ import (
 
 	"github.com/dumacp/go-actors/database"
 	"github.com/dumacp/go-driverconsole/internal/buttons"
-	"github.com/dumacp/go-driverconsole/internal/device"
+	"github.com/dumacp/go-driverconsole/internal/counterpass"
+	"github.com/dumacp/go-driverconsole/internal/gps"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/dumacp/go-schservices/api/services"
@@ -25,34 +26,41 @@ const (
 	collectionDriverData = "terminaldata"
 )
 
-type actorApp struct {
-	countUsosParcial int
-	countUsosDriver  int
-	countUsosAppFare int
-	timeLapse        int
-	evts             *eventstream.EventStream
-	subs             map[string]*eventstream.Subscription
-	routes           map[int32]string
-	shcservices      map[string]*services.ScheduleService
-	driver           int
-	route            int
-	routeString      string
-	evt2evtApp       map[buttons.KeyCode]EventLabel
-	uix              ui.UI
-	db               *actor.PID
-	contxt           context.Context
-	buttonDevice     buttons.ButtonDevice
-	buttonCancel     func()
-	cancel           func()
+type App struct {
+	updateTime  time.Time
+	countInput  int32
+	countOutput int32
+	deviation   int32
+	timeLapse   int
+	driver      int
+	route       int
+	routeString string
+	evts        *eventstream.EventStream
+	subs        map[string]*eventstream.Subscription
+	routes      map[int32]string
+	shcservices map[string]*services.ScheduleService
+	notif       []string
+	// evt2evtApp       map[buttons.KeyCode]EventLabel
+	uix          ui.UI
+	ctx          actor.Context
+	db           *actor.PID
+	contxt       context.Context
+	buttonDevice buttons.ButtonDevice
+	buttonCancel func()
+	cancel       func()
+	gps          bool
+	network      bool
 }
 
-func NewActor(uix ui.UI, button2buttonApp map[buttons.KeyCode]EventLabel) actor.Actor {
-	a := &actorApp{}
+func NewApp(uix ui.UI) *App {
+	a := &App{}
 	a.uix = uix
+	a.network = true
+	a.gps = true
 	a.evts = eventstream.NewEventStream()
 	a.routes = make(map[int32]string)
 	a.shcservices = make(map[string]*services.ScheduleService)
-	a.evt2evtApp = button2buttonApp
+	// a.evt2evtApp = button2buttonApp
 	return a
 }
 
@@ -86,15 +94,16 @@ func subscribeExternal(ctx actor.Context, evs *eventstream.EventStream) *eventst
 	})
 }
 
-func (a *actorApp) Receive(ctx actor.Context) {
+func (a *App) Receive(ctx actor.Context) {
 
-	fmt.Printf("message: %q --> %q, %T (%s)\n", func() string {
+	a.ctx = ctx
+	fmt.Printf("message: %q --> %q, %T\n", func() string {
 		if ctx.Sender() == nil {
 			return ""
 		} else {
 			return ctx.Sender().GetId()
 		}
-	}(), ctx.Self().GetId(), ctx.Message(), ctx.Message())
+	}(), ctx.Self().GetId(), ctx.Message())
 
 	switch msg := ctx.Message().(type) {
 	case *actor.Started:
@@ -103,19 +112,54 @@ func (a *actorApp) Receive(ctx actor.Context) {
 			logs.LogWarn.Printf("open database  err: %s\n", err)
 		}
 		if db != nil {
+			fmt.Println("database")
 			a.db = db.PID()
 			ctx.Request(a.db, &database.MsgQueryData{
-				Buckets:  []string{databaseName, collectionAppData},
+				Buckets:  []string{collectionAppData},
 				PrefixID: "",
 				Reverse:  false,
 			})
 			ctx.Request(a.db, &database.MsgQueryData{
-				Buckets:  []string{databaseName, collectionDriverData},
+				Buckets:  []string{collectionDriverData},
 				PrefixID: "",
 				Reverse:  false,
 			})
 		}
+
+		// if err := a.uix.Inputs(int64(a.countInput)); err != nil {
+		// 	logs.LogWarn.Printf("inputs error: %s", err)
+		// }
+		// if err := a.uix.Outputs(int64(a.countOutput)); err != nil {
+		// 	logs.LogWarn.Printf("outputs error: %s", err)
+		// }
+		// if err := a.uix.DeviationInputs(int64(0)); err != nil {
+		// 	logs.LogWarn.Printf("devitation error: %s", err)
+		// }
+		ctx.Send(ctx.Self(), &ValidationData{})
+
+		time.Sleep(1 * time.Second)
+		if err := a.uix.Init(); err != nil {
+			logs.LogWarn.Printf("init error: %s", err)
+		}
+		time.Sleep(3 * time.Second)
 	case *actor.Stopping:
+		if a.db != nil {
+			data, err := json.Marshal(&ValidationData{
+				CountInputs:  a.countInput,
+				CountOutputs: a.countOutput,
+				Time:         time.Now().UnixMilli(),
+			})
+			if err != nil {
+				logs.LogWarn.Printf("database persistence error: %s", err)
+				break
+			}
+			ctx.RequestFuture(a.db, &database.MsgUpdateData{
+				ID:      "counters",
+				Buckets: []string{collectionDriverData},
+				Data:    data,
+			}, time.Millisecond*100).Wait()
+			fmt.Printf("backup database data: %s\n", data)
+		}
 		if a.db != nil {
 			ctx.Send(a.db, &database.MsgCloseDB{})
 		}
@@ -123,6 +167,7 @@ func (a *actorApp) Receive(ctx actor.Context) {
 			a.cancel()
 		}
 	case *database.MsgQueryResponse:
+		fmt.Printf("form database: %q\n", msg)
 		if err := func() error {
 			if ctx.Sender() != nil {
 				ctx.Send(ctx.Sender(), &database.MsgQueryNext{})
@@ -135,10 +180,11 @@ func (a *actorApp) Receive(ctx actor.Context) {
 			}
 			data := make([]byte, len(msg.Data))
 			copy(data, msg.Data)
+			fmt.Printf("form database: %q\n", data)
 			coll := msg.Buckets[len(msg.Buckets)-1]
 			switch coll {
 			case collectionAppData:
-				res := &ValidationData{}
+				var res *ValidationData
 				if err := json.Unmarshal(data, res); err != nil {
 					return err
 				}
@@ -147,31 +193,36 @@ func (a *actorApp) Receive(ctx actor.Context) {
 				if time.Unix(res.Time, 0).Before(tn.Add(-time.Duration(tn.Hour()) * time.Hour).Truncate(1 * time.Hour)) {
 					break
 				}
-				a.countUsosAppFare = res.Counter
-				a.evts.Publish(&MsgCounters{
-					Parcial:  a.countUsosParcial,
-					Efectivo: a.countUsosDriver,
-					App:      a.countUsosAppFare,
-				})
 			case collectionDriverData:
+				fmt.Printf("***** data (%s) restore: %s\n", msg.ID, data)
 				res := &ValidationData{}
 				if err := json.Unmarshal(data, res); err != nil {
 					return err
 				}
-				tn := time.Now()
-				if time.Unix(res.Time, 0).Before(tn.Add(-time.Duration(tn.Hour()) * time.Hour).Truncate(1 * time.Hour)) {
+				if time.UnixMilli(res.Time).Hour() != time.Now().Hour() {
 					break
 				}
-				a.countUsosDriver = res.Counter
-				a.evts.Publish(&MsgCounters{
-					Parcial:  a.countUsosParcial,
-					Efectivo: a.countUsosDriver,
-					App:      a.countUsosAppFare,
-				})
+				fmt.Printf("recover database data: %v\n", res)
+
+				ctx.Send(ctx.Self(), res)
+
 			}
 			return nil
 		}(); err != nil {
 			logs.LogWarn.Printf("error updating data from database: %s", err)
+		}
+	case *ValidationData:
+		a.countInput += msg.CountInputs
+		a.countOutput += msg.CountOutputs
+		a.deviation = a.countInput - a.countOutput
+		if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+			logs.LogWarn.Printf("inputs error: %s", err)
+		}
+		if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+			logs.LogWarn.Printf("outputs error: %s", err)
+		}
+		if err := a.uix.DeviationInputs(int32(a.deviation)); err != nil {
+			logs.LogWarn.Printf("devitation error: %s", err)
 		}
 
 	case *MsgDoors:
@@ -179,125 +230,6 @@ func (a *actorApp) Receive(ctx actor.Context) {
 			break
 		}
 		a.evts.Publish(msg)
-	case *device.MsgDevice:
-		contxt, cancel := context.WithCancel(context.TODO())
-		a.contxt = contxt
-		a.cancel = cancel
-
-		a.buttonDevice.Init(msg.Device)
-		ch, err := a.buttonDevice.ListenButtons(contxt)
-		if err != nil {
-			logs.LogError.Printf("listenButtons error = %s", err)
-			break
-		}
-		go func(ctx actor.Context) {
-			rootctx := ctx.ActorSystem().Root
-			self := ctx.Self()
-
-			for v := range ch {
-				rootctx.Request(self, v)
-			}
-		}(ctx)
-	case *buttons.InputEvent:
-		label, ok := a.evt2evtApp[msg.KeyCode]
-		if !ok {
-			break
-		}
-		if a.buttonCancel != nil {
-			a.buttonCancel()
-		}
-		if err := func() error {
-			switch label {
-			case PROGRAMATION_DRIVER:
-				if err := a.uix.ShowProgDriver(); err != nil {
-					return fmt.Errorf("event ShowProgDriver error: %s", err)
-				}
-			case PROGRAMATION_VEH:
-				ss := make([]*services.ScheduleService, 0)
-				if len(a.shcservices) > 0 {
-					for _, v := range a.shcservices {
-						ss = append(ss, v)
-					}
-					sort.SliceStable(ss, func(i, j int) bool {
-						return ss[i].GetScheduleDateTime() > ss[j].GetScheduleDateTime()
-					})
-
-				}
-				reverseSlice := make([]string, 0)
-				reverseSlice = append(reverseSlice, "")
-				for _, v := range ss {
-					ts := time.UnixMilli(v.GetScheduleDateTime())
-					reverseSlice = append(reverseSlice,
-						fmt.Sprintf("%s: (%d) %s (%s)", ts.Format("01/02 15:04"),
-							v.GetItinerary().GetId(), v.GetItinerary().GetName(), v.GetRoute().GetName()))
-					if time.Until(ts) < 0 {
-						break
-					}
-				}
-				dataSlice := make([]string, 0)
-				for i := range reverseSlice {
-					dataSlice = append(dataSlice, reverseSlice[len(reverseSlice)-i-1])
-					if i >= 9 {
-						break
-					}
-				}
-				if err := a.uix.ShowProgVeh(dataSlice...); err != nil {
-					return fmt.Errorf("event ShowProgVeh error: %s", err)
-				}
-			case SHOW_NOTIF:
-				if err := a.uix.ShowNotifications(); err != nil {
-					return fmt.Errorf("event ShowNotifications error: %s", err)
-				}
-			case STATS:
-				if err := a.uix.ShowStats(); err != nil {
-					return fmt.Errorf("event ShowStats error: %s", err)
-				}
-			case ROUTE:
-				contxt, cancel := context.WithCancel(a.contxt)
-				a.buttonCancel = cancel
-				num, err := a.uix.KeyNum(contxt, "ingrese el número de ruta:")
-				if err != nil {
-					return fmt.Errorf("route keyNum error: %s", err)
-				}
-				go func() {
-					defer cancel()
-					self := ctx.Self()
-					rootctx := ctx.ActorSystem().Root
-
-					select {
-					case <-contxt.Done():
-					case v := <-num:
-						rootctx.Send(self, &MsgChangeRoute{
-							ID: v,
-						})
-					}
-				}()
-			case DRIVER:
-				contxt, cancel := context.WithCancel(a.contxt)
-				a.buttonCancel = cancel
-				num, err := a.uix.KeyNum(contxt, "ingrese el ID del conductor:")
-				if err != nil {
-					return fmt.Errorf("driver keyNum error: %s", err)
-				}
-				go func() {
-					defer cancel()
-					self := ctx.Self()
-					rootctx := ctx.ActorSystem().Root
-
-					select {
-					case <-contxt.Done():
-					case v := <-num:
-						rootctx.Send(self, &MsgChangeDriver{
-							ID: v,
-						})
-					}
-				}()
-			}
-			return nil
-		}(); err != nil {
-			logs.LogWarn.Println(err)
-		}
-
 	case *MsgSubscribe:
 		if ctx.Sender() == nil {
 			break
@@ -342,14 +274,36 @@ func (a *actorApp) Receive(ctx actor.Context) {
 		if err := a.uix.TextWarning(string(msg.Text)); err != nil {
 			logs.LogWarn.Printf("textConfirmation error: %s", err)
 		}
+	case *services.StatusSch:
+		fmt.Printf("******** %v **********", msg)
+		if msg.State == 0 && a.network {
+			if err := a.uix.Network(true); err != nil {
+				logs.LogWarn.Printf("network error: %s", err)
+			}
+		} else if msg.State == 1 && !a.network {
+			if err := a.uix.Network(false); err != nil {
+				logs.LogWarn.Printf("network error: %s", err)
+			}
+		}
+		a.network = func() bool { return msg.State != 0 }()
 	case *services.UpdateServiceMsg:
+
 		svc := msg.GetUpdate()
 		if len(svc.GetState()) > 0 {
 			if v, ok := a.shcservices[svc.GetId()]; ok {
-				fmt.Printf("////// route: %v\n", v)
+				// fmt.Printf("////// route: %v\n", v)
 				UpdateService(v, msg.GetUpdate())
+				fmt.Printf("////// update: %v\n", v)
 			} else {
 				a.shcservices[svc.GetId()] = msg.GetUpdate()
+			}
+			v := a.shcservices[svc.GetId()]
+			data := strings.ToLower(fmt.Sprintf(" %s: (%d) %s (%s)", time.Now().Format("01/02 15:04"),
+				v.GetItinenary().GetId(), v.GetItinenary().GetName(), v.GetState()))
+			a.notif = append(a.notif, data)
+			if len(a.notif) > 10 {
+				copy(a.notif, a.notif[1:])
+				a.notif = a.notif[:len(a.notif)-1]
 			}
 		}
 		fmt.Printf("////////////// ROUTE: %+v\n", a.shcservices[svc.GetId()].GetRoute())
@@ -396,11 +350,91 @@ func (a *actorApp) Receive(ctx actor.Context) {
 		fmt.Printf("//////////////// services (ori: %d): %v\n", len(msg.GetUpdates()), arr)
 	case *services.RemoveServiceMsg:
 		svc := msg.GetUpdate()
+		if svc.GetCheckpointTimingState() != nil && len(svc.GetCheckpointTimingState().GetState()) > 0 {
+			state := int(services.TimingState_value[svc.GetCheckpointTimingState().GetState()])
+			promtp := fmt.Sprintf("%s (%d / fin)", svc.GetCheckpointTimingState().GetName(), svc.GetCheckpointTimingState().GetTimeDiff())
+			fmt.Printf("///// state: %d\n", state)
+			if err := a.uix.ServiceCurrentState(0, promtp); err != nil {
+				logs.LogWarn.Printf("textConfirmation error: %s", err)
+			}
+		} else {
+			if err := a.uix.ServiceCurrentState(0, ""); err != nil {
+				logs.LogWarn.Printf("textConfirmation error: %s", err)
+			}
+		}
 		delete(a.shcservices, svc.GetId())
 	case *MsgScreen:
 		if err := a.uix.Screen(msg.ID, msg.Switch); err != nil {
-			logs.LogWarn.Printf("textConfirmation error: %s", err)
+			logs.LogWarn.Printf("msgScreen error: %s", err)
 		}
+	case *counterpass.CounterEvent:
+		a.countInput += int32(msg.Inputs)
+		if msg.Inputs > 0 {
+			if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+				logs.LogWarn.Printf("inputs error: %s", err)
+			}
+		}
+		a.countOutput += int32(msg.Outputs)
+		if msg.Outputs > 0 {
+			if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+				logs.LogWarn.Printf("outputs error: %s", err)
+			}
+		}
+		dev := a.countInput - a.countOutput
+		if dev != a.deviation {
+			if err := a.uix.DeviationInputs(int32(dev)); err != nil {
+				logs.LogWarn.Printf("devitation error: %s", err)
+			}
+		}
+		a.deviation = dev
 
+	case *counterpass.CounterExtraEvent:
+		if len(msg.Text) > 0 {
+			if err := a.uix.TextWarningPopup(2*time.Second, string(msg.Text)); err != nil {
+				logs.LogWarn.Printf("textWarningPopup error: %s", err)
+			}
+		}
+	case *counterpass.CounterMap:
+		// if msg.Inputs0+msg.Inputs1 > a.countInput {
+		// 	a.countInput = msg.Inputs0 + msg.Inputs1
+		// 	if err := a.uix.Inputs(int64(a.countInput)); err != nil {
+		// 		logs.LogWarn.Printf("inputs error: %s", err)
+		// 	}
+		// }
+
+		// if msg.Outputs0+msg.Outputs1 > a.countOutput {
+		// 	a.countOutput = msg.Outputs0 + msg.Outputs1
+		// 	if err := a.uix.Outputs(int64(a.countOutput)); err != nil {
+		// 		logs.LogWarn.Printf("outputs error: %s", err)
+		// 	}
+		// }
+
+		// if a.countOutput != a.countInput {
+		// 	dev := a.countOutput - a.countInput
+		// 	if err := a.uix.DeviationInputs(int64(dev)); err != nil {
+		// 		logs.LogWarn.Printf("devitation error: %s", err)
+		// 	}
+		// }
+	case *gps.MsgGpsStatus:
+		fmt.Printf("******** %v **********", msg)
+		if !msg.State && a.gps {
+			if err := a.uix.Gps(true); err != nil {
+				logs.LogWarn.Printf("network error: %s", err)
+			}
+		} else if msg.State && !a.gps {
+			if err := a.uix.Gps(false); err != nil {
+				logs.LogWarn.Printf("network error: %s", err)
+			}
+		}
+		a.gps = msg.State
+	case *MsgUpdateTime:
+		tNow := time.Now()
+		if a.updateTime.Minute() == tNow.Minute() && a.updateTime.Hour() == tNow.Hour() {
+			break
+		}
+		a.updateTime = tNow
+		if err := a.uix.Date(tNow); err != nil {
+			logs.LogWarn.Printf("date error: %s", err)
+		}
 	}
 }

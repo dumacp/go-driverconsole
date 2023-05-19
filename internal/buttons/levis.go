@@ -63,10 +63,12 @@ const (
 	AddrEnterRuta   = 2
 	AddrEnterDriver = 3
 
+	AddrScreenSwitch     = 4
 	AddrScreenAlarms     = 7
 	AddrScreenProgVeh    = 8
 	AddrScreenProgDriver = 9
 	AddrScreenMore       = 10
+	AddrReset            = 20
 	AddrAddBright        = 21
 	AddrSubBright        = 22
 )
@@ -109,6 +111,12 @@ func (p *pi3070g) ListenButtons(contxt context.Context) (<-chan *InputEvent, err
 			// 		}
 			// 	}
 			case button, ok := <-ch:
+				if button.Value == 0 {
+					break
+				}
+				if err := p.dev.SetIndicator(button.Addr, false); err != nil {
+					fmt.Println(err)
+				}
 				if !ok {
 					evt := &InputEvent{
 						Error: fmt.Errorf("device closed"),

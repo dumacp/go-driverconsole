@@ -99,3 +99,5 @@ type MsgGetItinieary struct {
 type MsgItinirary struct {
 	Data itinerary.Itinerary
 }
+
+type MsgUpdateTime struct{}

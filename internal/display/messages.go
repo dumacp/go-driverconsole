@@ -130,8 +130,9 @@ type ArrayPictMsg struct {
 
 // PopupMsg is a message to display a popup with text on the Display.
 type PopupMsg struct {
-	Label int
-	Text  []string
+	Label  int
+	Text   []string
+	Temout time.Duration
 }
 
 // PopupCloseMsg is a message to close a popup on the Display.

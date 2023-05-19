@@ -158,3 +158,21 @@ func LoadLocalCert() *http.Transport {
 	}
 	return tr
 }
+
+func PingHttp(client *http.Client, url string) (int, error) {
+	if client == nil {
+		tr := LoadLocalCert()
+		client = &http.Client{Transport: tr}
+		client.Timeout = 30 * time.Second
+	}
+	req, err := http.NewRequest("HEAD", url, nil)
+	if err != nil {
+		return 0, err
+	}
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, err
+	}
+	resp.Body.Close()
+	return resp.StatusCode, nil
+}

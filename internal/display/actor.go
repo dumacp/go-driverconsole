@@ -2,6 +2,7 @@ package display
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/dumacp/go-driverconsole/internal/device"
@@ -81,6 +82,10 @@ func (d *DisplayActor) RunState(ctx actor.Context) {
 			ctx.Respond(&AckMsg{Error: err})
 		}
 	case *InitMsg:
+		err := d.display.Reset()
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
 
 	case *CloseMsg:
 		err := d.display.Close()
@@ -110,6 +115,16 @@ func (d *DisplayActor) RunState(ctx actor.Context) {
 		}
 	case *PopupMsg:
 		err := d.display.Popup(msg.Label, msg.Text...)
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: err})
+		}
+		timeout := msg.Temout
+		if timeout > 5*time.Second || timeout < 1*time.Second {
+			timeout = 3 * time.Second
+		}
+		d.display.PopupClose(msg.Label)
+	case *PopupCloseMsg:
+		err := d.display.PopupClose(msg.Label)
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: err})
 		}

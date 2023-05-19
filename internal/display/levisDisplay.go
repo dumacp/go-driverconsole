@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dumacp/go-driverconsole/internal/buttons"
 	"github.com/dumacp/go-levis"
 )
 
@@ -77,6 +78,14 @@ func (m *display) Close() error {
 }
 
 func (m *display) Reset() error {
+	if err := m.dev.SetIndicator(buttons.AddrReset, true); err != nil {
+		return err
+	}
+	if err := m.dev.SetIndicator(buttons.AddrReset, false); err != nil {
+		return err
+	}
+	fmt.Println("**************** RESET ********************")
+	m.screenActual = 0
 	return nil
 }
 
@@ -93,12 +102,12 @@ func (m *display) writeText(addr, length, size, gap int, text ...string) error {
 	if length <= 1 {
 		for i, v := range text {
 			textBytes = append(textBytes, []byte(v)...)
-			if i < len(text) {
+			if i < len(text)-1 {
 				textBytes = append(textBytes, '\n')
 			}
 		}
-		if size < len(textBytes) {
-			return fmt.Errorf("len text in greather that register")
+		if size < len(string(textBytes)) {
+			return fmt.Errorf("len text in greather that register (%d > %d) %s, %v", len(string(textBytes)), size, textBytes, textBytes)
 		}
 		if err := m.dev.WriteRegister(addr, make([]uint16, size/2)); err != nil {
 			return fmt.Errorf("error writeRegister: %s\n", err)
@@ -113,7 +122,7 @@ func (m *display) writeText(addr, length, size, gap int, text ...string) error {
 				break
 			}
 			if size < len(v) {
-				return fmt.Errorf("len text in greather that register")
+				return fmt.Errorf("len text in greather that register (%d > %d)", len(v), size)
 			}
 			if err := m.dev.WriteRegister(addr+(i*gap), make([]uint16, size/2)); err != nil {
 				return fmt.Errorf("error writeRegister: %s\n", err)
@@ -138,7 +147,10 @@ func (m *display) WriteText(label int, text ...string) error {
 	if reg.Type != INPUT_TEXT {
 		return fmt.Errorf("invalid data input")
 	}
-	return m.writeText(reg.Addr, reg.Len, reg.Size, reg.Gap, text...)
+	if err := m.writeText(reg.Addr, reg.Len, reg.Size, reg.Gap, text...); err != nil {
+		return fmt.Errorf("reg: %v, text: %v, %w", reg, text, err)
+	}
+	return nil
 }
 
 func (m *display) ArrayPict(label int, num int) error {
@@ -149,11 +161,11 @@ func (m *display) ArrayPict(label int, num int) error {
 	numBytes := make([]byte, reg.Size)
 	switch reg.Size {
 	case 2:
-		binary.BigEndian.PutUint16(numBytes, uint16(num))
+		binary.LittleEndian.PutUint16(numBytes, uint16(num))
 	case 4:
-		binary.BigEndian.PutUint32(numBytes, uint32(num))
+		binary.LittleEndian.PutUint32(numBytes, uint32(num))
 	case 8:
-		binary.BigEndian.PutUint64(numBytes, uint64(num))
+		binary.LittleEndian.PutUint64(numBytes, uint64(num))
 	default:
 		return fmt.Errorf("invalis size (%d) to number input (%d)", reg.Size, num)
 	}
@@ -168,12 +180,30 @@ func (m *display) WriteNumber(label int, num int64) error {
 	if reg.Type != INPUT_NUM {
 		return fmt.Errorf("invalid data input")
 	}
+	fmt.Printf("***** reg: %v, num: %d\n", reg, num)
 	numBytes := make([]byte, reg.Size)
 	switch reg.Size {
 	case 2:
-		binary.BigEndian.PutUint32(numBytes, uint32(num))
+		binary.LittleEndian.PutUint16(numBytes, uint16(num))
+		// buf := new(bytes.Buffer)
+		// if err := binary.Write(buf, binary.BigEndian, int16(num)); err != nil {
+		// 	fmt.Println("binary.Write failed:", err)
+		// }
+		// copy(numBytes, buf.Bytes())
 	case 4:
-		binary.BigEndian.PutUint64(numBytes, uint64(num))
+		binary.LittleEndian.PutUint32(numBytes, uint32(num))
+		// buf := new(bytes.Buffer)
+		// if err := binary.Write(buf, binary.BigEndian, int32(num)); err != nil {
+		// 	fmt.Println("binary.Write failed:", err)
+		// }
+		// copy(numBytes, buf.Bytes())
+	case 8:
+		binary.LittleEndian.PutUint64(numBytes, uint64(num))
+		// buf := new(bytes.Buffer)
+		// if err := binary.Write(buf, binary.BigEndian, int64(num)); err != nil {
+		// 	fmt.Println("binary.Write failed:", err)
+		// }
+		// copy(numBytes, buf.Bytes())
 	default:
 		return fmt.Errorf("invalis size (%d) to number input (%d)", reg.Size, num)
 	}

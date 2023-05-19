@@ -10,7 +10,6 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/pubsub"
 	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/dumacp/gpsnmea"
-	"github.com/golang/geo/s2"
 )
 
 // Actor actor to listen events
@@ -30,7 +29,7 @@ func NewActor() actor.Actor {
 
 func parseEvents() func([]byte) interface{} {
 
-	mem := new(GPSData)
+	// mem := new(GPSData)
 
 	return func(msg []byte) interface{} {
 
@@ -38,32 +37,38 @@ func parseEvents() func([]byte) interface{} {
 		switch {
 		case bytes.Contains(msg, []byte("GPRMC")):
 			rmc := gpsnmea.ParseRMC(string(msg))
-			lat := gpsnmea.LatLongToDecimalDegree(rmc.Lat, rmc.LatCord)
-			lon := gpsnmea.LatLongToDecimalDegree(rmc.Lat, rmc.LongCord)
-			latlon := s2.LatLngFromDegrees(lat, lon)
-			event.LatLon = latlon
-			event.Speed = float32(rmc.Speed * 1.852)
-			if mem.HDop >= 0 && time.Since(mem.Time) < 5*time.Second {
-				event.HDop = mem.HDop
-			} else {
-				event.HDop = float32(-1)
+			if rmc != nil {
+				event.Validity = rmc.Validity
 			}
+			// lat := gpsnmea.LatLongToDecimalDegree(rmc.Lat, rmc.LatCord)
+			// lon := gpsnmea.LatLongToDecimalDegree(rmc.Lat, rmc.LongCord)
+			// latlon := s2.LatLngFromDegrees(lat, lon)
+			// event.LatLon = latlon
+			// event.Speed = float32(rmc.Speed * 1.852)
+			// if mem.HDop >= 0 && time.Since(mem.Time) < 5*time.Second {
+			// 	event.HDop = mem.HDop
+			// } else {
+			// 	event.HDop = float32(-1)
+			// }
 		case bytes.Contains(msg, []byte("GPGGA")):
 			gga := gpsnmea.ParseGGA(string(msg))
-			lat := gpsnmea.LatLongToDecimalDegree(gga.Lat, gga.LatCord)
-			lon := gpsnmea.LatLongToDecimalDegree(gga.Lat, gga.LongCord)
-			latlon := s2.LatLngFromDegrees(lat, lon)
-			event.LatLon = latlon
-			event.HDop = float32(gga.HDop)
-			if mem.Speed >= 0 && time.Since(mem.Time) < 5*time.Second {
-				event.Speed = mem.Speed
-			} else {
-				event.Speed = float32(-1)
+			if gga != nil && len(gga.TimeStamp) > 0 {
+				event.Validity = true
 			}
+			// lat := gpsnmea.LatLongToDecimalDegree(gga.Lat, gga.LatCord)
+			// lon := gpsnmea.LatLongToDecimalDegree(gga.Lat, gga.LongCord)
+			// latlon := s2.LatLngFromDegrees(lat, lon)
+			// event.LatLon = latlon
+			// event.HDop = float32(gga.HDop)
+			// if mem.Speed >= 0 && time.Since(mem.Time) < 5*time.Second {
+			// 	event.Speed = mem.Speed
+			// } else {
+			// 	event.Speed = float32(-1)
+			// }
 		default:
 			return fmt.Errorf("unknown frame")
 		}
-		mem = event
+		// mem = event
 		event.Time = time.Now()
 
 		return event
@@ -113,7 +118,19 @@ func (a *Actor) Receive(ctx actor.Context) {
 		logs.LogWarn.Printf("\"%s\" - Terminated actor, reason -> %v", ctx.Self(), msg)
 	case *GPSData:
 		a.lastFrame = *msg
-
+	case *MsgGpsStatusRequest:
+		if ctx.Sender() == nil {
+			break
+		}
+		if time.Since(a.lastFrame.Time) > 30*time.Second {
+			ctx.Respond(&MsgGpsStatus{
+				State: false,
+			})
+		} else {
+			ctx.Respond(&MsgGpsStatus{
+				State: a.lastFrame.Validity,
+			})
+		}
 	case *MsgSubscribe:
 		if ctx.Sender() == nil {
 			break
