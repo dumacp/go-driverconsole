@@ -6,21 +6,55 @@ import (
 	"github.com/dumacp/go-schservices/api/services"
 )
 
-// func UpdateService(prev, current *services.ScheduleService) *services.ScheduleService {
-// 	for i := 0; i < reflect.TypeOf(*prev).NumField(); i++ {
-// 		// field := reflect.TypeOf(prev).Field(i)
-// 		value1 := reflect.ValueOf(*prev).Field(i)
-// 		value2 := reflect.ValueOf(*current).Field(i)
+func UpdateServiceStable(prev, current *services.ScheduleService) *services.ScheduleService {
+	if current == nil {
+		return prev
+	}
+	if prev == nil {
+		return current
+	}
+	if current != nil && prev != nil && current.Id != prev.Id {
+		return prev
+	}
 
-// 		if value2.IsZero() {
-// 			continue
-// 		}
-// 		value1.Set(value2.Elem())
-// 	}
-// 	return prev
-// }
+	if current.CheckpointTimingState != nil {
+		prev.CheckpointTimingState = current.CheckpointTimingState
+	}
+	if current.Driver != nil {
+		prev.Driver = current.Driver
+	}
+	if current.DriverIds != nil {
+		prev.DriverIds = current.DriverIds
+	}
+	if current.Itinenary != nil {
+		prev.Itinenary = current.Itinenary
+	}
+	if current.OrganizationId != "" {
+		prev.OrganizationId = current.OrganizationId
+	}
+	if current.Route != nil {
+		prev.Route = current.Route
+	}
+	if current.ScheduleDateTime > 0 {
+		prev.ScheduleDateTime = current.ScheduleDateTime
+	}
+	if current.State != "" {
+		prev.State = current.State
+	}
+
+	return prev
+}
 
 func UpdateService(prev, current *services.ScheduleService) *services.ScheduleService {
+	if current == nil {
+		return prev
+	}
+	if prev == nil {
+		return current
+	}
+	if current != nil && prev != nil && current.Id != prev.Id {
+		return prev
+	}
 	sourceValue := reflect.ValueOf(current).Elem()
 	destinationValue := reflect.ValueOf(prev).Elem()
 

@@ -34,6 +34,9 @@ var standalone bool
 var id string
 var debug bool
 var logStd bool
+var showversion bool
+
+const version = "1.0.0"
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")
@@ -42,12 +45,17 @@ func init() {
 	flag.BoolVar(&standalone, "standalone", false, "standalone running (without appfare supervision)")
 	flag.BoolVar(&debug, "debug", false, "debug")
 	flag.BoolVar(&logStd, "logStd", false, "send logs to stdout")
+	flag.BoolVar(&showversion, "version", false, "show version")
 
 }
 
 func main() {
 
 	flag.Parse()
+	if showversion {
+		fmt.Printf("version: %s\n", version)
+		os.Exit(2)
+	}
 
 	initLogs(debug, logStd)
 
@@ -275,13 +283,13 @@ func main() {
 					// countAlarm++
 
 					root.Send(pidApp, &app.MsgUpdateTime{})
-					root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 1})
+					// root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 1})
 
 				case <-tick3:
 					if pidGps != nil {
 						root.RequestWithCustomSender(pidGps, &gps.MsgGpsStatusRequest{}, pidApp)
 					}
-					root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 0})
+					// root.Send(pidApp, &counterpass.CounterEvent{Inputs: 0, Outputs: 1})
 					// root.Send(pidApp, &app.MsgScreen{ID: 3, Switch: true})
 					// time.Sleep(3 * time.Second)
 
