@@ -60,6 +60,10 @@ func parseEvents(msg []byte) interface{} {
 
 	// fmt.Printf("********* parse event: %v, value: %v\n", message, message.Value)
 
+	if !strings.Contains(message.Type, "COUNTERSDOOR") {
+		return fmt.Errorf("extraEvent not configured, type: %s, value: %q", message.Type, message.Value)
+	}
+
 	event := new(CounterEvent)
 
 	if val.Counters != nil && len(val.Counters) > 1 {
@@ -187,5 +191,8 @@ func (a *Actor) Receive(ctx actor.Context) {
 			break
 		}
 		ctx.Respond(&MsgStatus{State: true})
+	case error:
+		err := msg.Error()
+		logs.LogWarn.Println(err)
 	}
 }

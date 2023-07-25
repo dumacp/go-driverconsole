@@ -14,10 +14,10 @@ import (
 	"github.com/asynkron/protoactor-go/remote"
 
 	"github.com/dumacp/go-driverconsole/internal/buttons"
-	app "github.com/dumacp/go-driverconsole/internal/coopetransa"
 	"github.com/dumacp/go-driverconsole/internal/counterpass"
 	"github.com/dumacp/go-driverconsole/internal/gps"
 	"github.com/dumacp/go-driverconsole/internal/service"
+	app "github.com/dumacp/go-driverconsole/internal/sibus"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-driverconsole/internal/utils"
 
@@ -106,7 +106,8 @@ func main() {
 			confButtons := buttons.NewConfPiButtons(0, 30, []int{
 				app.AddrAddBright, app.AddrEnterDriver, app.AddrEnterPaso, app.AddrEnterRuta,
 				app.AddrScreenAlarms, app.AddrSelectPaso, app.AddrSubBright, app.AddrScreenMore,
-				app.AddrScreenProgDriver, app.AddrScreenProgVeh, app.AddrScreenSwitch},
+				app.AddrScreenProgDriver, app.AddrScreenProgVeh, app.AddrScreenSwitch,
+				app.AddrSwitchStep, app.AddrSendStep},
 			)
 
 			confDisplay := display.NewPiDisplay(app.Label2DisplayRegister)
@@ -275,11 +276,11 @@ func main() {
 					// countAlarm++
 
 					root.Send(pidApp, &app.MsgUpdateTime{})
-					root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 1})
+					// root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 1})
 
 				case <-tick3:
 					if pidGps != nil {
-						root.RequestWithCustomSender(pidGps, &gps.MsgGpsStatusRequest{}, pidApp)
+						// root.RequestWithCustomSender(pidGps, &gps.MsgGpsStatusRequest{}, pidApp)
 					}
 					root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 0})
 					// root.Send(pidApp, &app.MsgScreen{ID: 3, Switch: true})

@@ -413,7 +413,19 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		} else {
 			ctx.Respond(&ReadBytesRawResponseMsg{Label: v.Label, Error: fmt.Errorf("unkown error")})
 		}
-
+	case *StepEnableMsg:
+		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.LedMsg{
+			State: func() int {
+				if msg.State {
+					return 0
+				}
+				return 1
+			}(),
+			Label: STEP_ENABLE,
+		}, 1*time.Second))
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: result})
+		}
 	case *buttons.InputEvent:
 
 		fmt.Printf("arrive event: %+v\n", msg)
@@ -463,7 +475,6 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 				// 	return fmt.Errorf("get driver error: %s", err)
 				// }
 				// fmt.Printf("driver: %s\n", result)
-
 			}
 			fmt.Printf("SCREEN: %v\n", a.screen)
 			go a.evt2Func(msg)

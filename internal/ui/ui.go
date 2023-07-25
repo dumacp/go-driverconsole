@@ -40,6 +40,7 @@ type UI interface {
 	Keyboard(ctx context.Context, prompt string) (chan string, error)
 	Doors(state ...bool) error
 	Gps(state bool) error
+	StepEnable(state bool) error
 	Network(state bool) error
 	AddNotifications(add string) error
 	ShowNotifications(...string) error
@@ -404,4 +405,17 @@ func (u *ui) ReadBytesRawDisplay(label int) ([]byte, error) {
 		return data, nil
 	}
 	return nil, fmt.Errorf("textWarning with response form display")
+}
+
+func (u *ui) StepEnable(state bool) error {
+	res, err := u.rootctx.RequestFuture(u.pid, &StepEnableMsg{State: state}, 2*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("stepEnable without response from display")
 }

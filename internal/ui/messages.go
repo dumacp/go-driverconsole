@@ -170,3 +170,8 @@ type ReadBytesRawResponseMsg struct {
 	Value []byte
 	Error error
 }
+
+// stepEnableMsg is a message for Step enable
+type StepEnableMsg struct {
+	State bool
+}

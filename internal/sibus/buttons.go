@@ -1,6 +1,7 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"sort"
 	"strings"
@@ -28,6 +29,8 @@ const (
 	ROUTE
 	DRIVER
 	SCREEN_SWITCH
+	STEP_ENABLE
+	STEP_APPLY
 )
 
 func (a *App) Buttons() func(evt *buttons.InputEvent) {
@@ -41,6 +44,8 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 			AddrScreenProgVeh:    PROGRAMATION_VEH,
 			AddrScreenProgDriver: PROGRAMATION_DRIVER,
 			AddrScreenAlarms:     SHOW_NOTIF,
+			AddrSwitchStep:       STEP_ENABLE,
+			AddrSendStep:         STEP_APPLY,
 		}
 
 		label, ok := evt2EvtLabel[int(evt.KeyCode)]
@@ -204,6 +209,70 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 					}
 					if err := a.uix.Driver(fmt.Sprintf(" %s", data)); err != nil {
 						return fmt.Errorf("error Driver: %s", err)
+					}
+				}
+			case STEP_ENABLE:
+				if v, ok := evt.Value.(bool); ok {
+					if !v {
+						fmt.Println("/////////// step enable: true ////////////")
+						a.enableStep = true
+						if a.cancelStep != nil {
+							a.cancelStep()
+						}
+
+						go func() {
+
+							contxt, cancel := context.WithCancel(context.Background())
+							defer cancel()
+							a.cancelStep = cancel
+
+							func() {
+								for {
+									timer := time.NewTimer(10 * time.Second)
+									defer timer.Stop()
+
+									renewcontxt, renewcancel := context.WithCancel(context.TODO())
+									defer renewcancel()
+									a.renewStep = renewcancel
+
+									select {
+									case <-contxt.Done():
+										return
+									case <-renewcontxt.Done():
+										if !timer.Stop() {
+											select {
+											case <-timer.C:
+											case <-time.After(30 * time.Millisecond):
+											}
+										}
+										timer.Reset(10 * time.Second)
+									case <-timer.C:
+										return
+									}
+
+								}
+							}()
+							a.enableStep = false
+							fmt.Println("/////////// step enable: false ////////////")
+							a.uix.StepEnable(false)
+						}()
+					} else {
+						a.enableStep = false
+						if a.cancelStep != nil {
+							a.cancelStep()
+						}
+					}
+				}
+
+			case STEP_APPLY:
+				// release button
+				if v, ok := evt.Value.(bool); !ok || v {
+					break
+				}
+				if a.enableStep {
+					a.ctx.Send(a.ctx.Self(), &StepMsg{})
+					if a.renewStep != nil {
+						a.renewStep()
 					}
 				}
 
