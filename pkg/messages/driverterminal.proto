@@ -1,0 +1,14 @@
+syntax = "proto3";
+package messages;
+
+option go_package = "github.com/dumacp/go-driverconsole/pkg/messages";
+
+
+message discovery {
+    string address = 1;
+    string id = 2;
+}
+message discoveryResponse {
+    string address = 1;
+    string id = 2;
+}

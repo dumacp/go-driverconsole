@@ -7,5 +7,5 @@ import (
 )
 
 func NewActor(id string) actor.Actor {
-	return params.Actor(id, route.NatsActor(id, &DiscoveryActor{}))
+	return params.Actor(id, false, route.NatsActor(id, &DiscoveryActor{}))
 }

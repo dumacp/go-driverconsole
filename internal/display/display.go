@@ -12,7 +12,7 @@ type Display interface {
 	WriteNumber(label int, num int64) error
 	Popup(label int, text ...string) error
 	PopupClose(label int) error
-	Beep(repeat int, timeout time.Duration) error
+	Beep(repeat, duty int, period time.Duration) error
 	Verify() error
 	Screen() (int, error)
 	Reset() error

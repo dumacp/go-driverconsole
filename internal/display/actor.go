@@ -122,14 +122,17 @@ func (d *DisplayActor) RunState(ctx actor.Context) {
 		if timeout > 5*time.Second || timeout < 1*time.Second {
 			timeout = 3 * time.Second
 		}
-		d.display.PopupClose(msg.Label)
+		go func() {
+			time.Sleep(timeout)
+			d.display.PopupClose(msg.Label)
+		}()
 	case *PopupCloseMsg:
 		err := d.display.PopupClose(msg.Label)
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: err})
 		}
 	case *BeepMsg:
-		err := d.display.Beep(msg.Repeat, msg.Timeout)
+		err := d.display.Beep(msg.Repeat, msg.Duty, msg.Period)
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: err})
 		}

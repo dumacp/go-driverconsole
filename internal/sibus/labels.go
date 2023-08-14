@@ -119,19 +119,19 @@ func Label2DisplayRegister(label int) display.Register {
 			Gap:    0,
 			Toogle: AddrToggleWarnPopup,
 		}
-	case ui.INPUTS_TEXT:
+	case ui.CASH_INPUTS_TEXT:
 		return display.Register{
 			Type:   display.INPUT_NUM,
-			Addr:   AddrNumInputs,
+			Addr:   AddrNumCashInputs,
 			Len:    1,
 			Size:   4,
 			Gap:    0,
 			Toogle: 0,
 		}
-	case ui.OUTPUTS_TEXT:
+	case ui.ELECT_INPUTS_TEXT:
 		return display.Register{
 			Type:   display.INPUT_NUM,
-			Addr:   AddrNumOutputs,
+			Addr:   AddrNumElectonicInputs,
 			Len:    1,
 			Size:   4,
 			Gap:    0,

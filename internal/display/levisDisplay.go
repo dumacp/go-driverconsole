@@ -232,16 +232,30 @@ func (m *display) PopupClose(label int) error {
 	return nil
 }
 
-func (m *display) Beep(repeat int, timeout time.Duration) error {
+func (m *display) Beep(repeat, duty int, period time.Duration) error {
 	go func() {
 		for range make([]int, repeat) {
+			t0 := time.Now()
+			tsleep := time.NewTimer(period)
+			defer tsleep.Stop()
+			tdown := time.NewTimer(200 * time.Millisecond)
+			defer tdown.Stop()
 			if err := m.dev.SetIndicator(23, true); err != nil {
 				fmt.Println(err)
 			}
-			time.Sleep(timeout)
-			if err := m.dev.SetIndicator(23, false); err != nil {
-				fmt.Println(err)
-			}
+			func() {
+				for {
+					select {
+					case <-tdown.C:
+						if err := m.dev.SetIndicator(23, false); err != nil {
+							fmt.Println(err)
+						}
+					case <-tsleep.C:
+						return
+					}
+				}
+			}()
+			fmt.Printf("(%d, %d, %s) millisecons = %s\n", repeat, duty, period, time.Since(t0))
 		}
 	}()
 	return nil

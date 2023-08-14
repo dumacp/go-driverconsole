@@ -29,10 +29,12 @@ type UI interface {
 	TextWarningPopup(timeout time.Duration, sText ...string) error
 	Inputs(in int32) error
 	Outputs(out int32) error
+	CashInputs(in int32) error
+	ElectronicInputs(out int32) error
 	DeviationInputs(dev int32) error
 	Route(route ...string) error
 	Driver(data string) error
-	Beep(repeat int, timeout time.Duration) error
+	Beep(repeat, duty int, period time.Duration) error
 	Date(date time.Time) error
 	Screen(num int, force bool) error
 	GetScreen() (int, error)
@@ -219,6 +221,36 @@ func (u *ui) DeviationInputs(dev int32) error {
 	return fmt.Errorf("deviationInputs with response form display")
 }
 
+func (u *ui) CashInputs(in int32) error {
+	res, err := u.rootctx.RequestFuture(u.pid, &CashInputsMsg{
+		In: in,
+	}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("inputs with response form display")
+}
+
+func (u *ui) ElectronicInputs(in int32) error {
+	res, err := u.rootctx.RequestFuture(u.pid, &ElectronicInputsMsg{
+		In: in,
+	}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("inputs with response form display")
+}
+
 func (u *ui) Route(route ...string) error {
 	res, err := u.rootctx.RequestFuture(u.pid, &RouteMsg{Route: route}, 2*time.Second).Result()
 	if err != nil {
@@ -245,8 +277,17 @@ func (u *ui) Driver(data string) error {
 	return fmt.Errorf("driver without response from display")
 }
 
-func (u *ui) Beep(repeat int, timeout time.Duration) error {
-	return nil
+func (u *ui) Beep(repeat, duty int, period time.Duration) error {
+	res, err := u.rootctx.RequestFuture(u.pid, &BeepMsg{Repeat: repeat, Duty: duty, Period: period}, 2*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("beep without response from display")
 }
 
 func (u *ui) Date(date time.Time) error {
@@ -260,7 +301,7 @@ func (u *ui) Date(date time.Time) error {
 	} else if ok {
 		return nil
 	}
-	return fmt.Errorf("driver without response from display")
+	return fmt.Errorf("date without response from display")
 }
 
 func (u *ui) Screen(num int, force bool) error {

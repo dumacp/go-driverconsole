@@ -282,7 +282,7 @@ func main() {
 					if pidGps != nil {
 						// root.RequestWithCustomSender(pidGps, &gps.MsgGpsStatusRequest{}, pidApp)
 					}
-					root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 0})
+					// root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 0})
 					// root.Send(pidApp, &app.MsgScreen{ID: 3, Switch: true})
 					// time.Sleep(3 * time.Second)
 

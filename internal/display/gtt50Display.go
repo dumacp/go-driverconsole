@@ -320,7 +320,7 @@ func (m *touchDisplay) updateRuta(ruta, subruta string) {
 
 }
 
-func (m *touchDisplay) alertBeep(repeat int) {
+func (m *touchDisplay) alertBeep(repeat, duty int, period time.Duration) {
 	for i := 0; i < repeat; i++ {
 		m.dev.BuzzerActive(1000, 150)
 		time.Sleep(time.Millisecond * 400)

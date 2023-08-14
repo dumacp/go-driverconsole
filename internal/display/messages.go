@@ -142,8 +142,9 @@ type PopupCloseMsg struct {
 
 // BeepMsg is a message to play a beep sound on the Display.
 type BeepMsg struct {
-	Repeat  int
-	Timeout time.Duration
+	Repeat int
+	Duty   int
+	Period time.Duration
 }
 
 // VerifyMsg is a message to perform a verification on the Display.

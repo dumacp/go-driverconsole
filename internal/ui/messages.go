@@ -40,6 +40,16 @@ type InputsMsg struct {
 	In int32
 }
 
+// CashInputsMsg is a message for setting the number of inputs.
+type CashInputsMsg struct {
+	In int32
+}
+
+// ElectronicInputsMsg is a message for setting the number of inputs.
+type ElectronicInputsMsg struct {
+	In int32
+}
+
 // OutputsMsg is a message for setting the number of outputs.
 type OutputsMsg struct {
 	Out int32
@@ -62,8 +72,9 @@ type DriverMsg struct {
 
 // BeepMsg is a message for making a beep sound.
 type BeepMsg struct {
-	Repeat  int
-	Timeout time.Duration
+	Repeat int
+	Duty   int
+	Period time.Duration
 }
 
 // DateMsg is a message for displaying the date.

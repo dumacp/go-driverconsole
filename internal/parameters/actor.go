@@ -6,5 +6,5 @@ import (
 )
 
 func NewActor(id string) actor.Actor {
-	return params.Actor(id, params.NatsActor(id, &DiscoveryActor{}))
+	return params.Actor(id, false, params.NatsActor(id, &DiscoveryActor{}))
 }

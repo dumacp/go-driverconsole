@@ -12,9 +12,12 @@ import (
 
 	"github.com/dumacp/go-actors/database"
 	"github.com/dumacp/go-driverconsole/internal/buttons"
+	"github.com/dumacp/go-driverconsole/internal/constant"
 	"github.com/dumacp/go-driverconsole/internal/counterpass"
 	"github.com/dumacp/go-driverconsole/internal/gps"
+	"github.com/dumacp/go-driverconsole/internal/pubsub"
 	"github.com/dumacp/go-driverconsole/internal/ui"
+	msgdriverterminal "github.com/dumacp/go-driverconsole/pkg/messages"
 	"github.com/dumacp/go-fareCollection/pkg/messages"
 	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/dumacp/go-schservices/api/services"
@@ -33,7 +36,8 @@ type App struct {
 	updateTime  time.Time
 	countInput  int32
 	countOutput int32
-	deviation   int32
+	cashInput   int32
+	electInput  int32
 	timeLapse   int
 	driver      int
 	route       int
@@ -151,7 +155,18 @@ func (a *App) Receive(ctx actor.Context) {
 			time.Sleep(4 * time.Second)
 		}
 
-		contxt, cancel := context.WithCancel(context.TODO())
+		fmt.Printf("********* /////////// subscribe to %q topic\n", constant.DISCOVERY_TOPIC)
+		pubsub.Subscribe(constant.DISCOVERY_TOPIC, ctx.Self(), func(b []byte) interface{} {
+			fmt.Printf("********* /////////// message arrive %q topic, msg: %s\n", constant.DISCOVERY_TOPIC, b)
+			msg := new(msgdriverterminal.Discovery)
+			if err := json.Unmarshal(b, msg); err != nil {
+				logs.LogWarn.Printf("discovery parse error: %s", err)
+				return err
+			}
+			return msg
+		})
+
+		contxt, cancel := context.WithCancel(context.Background())
 		a.cancel = cancel
 		go tick(contxt, ctx, TIMEOUT)
 
@@ -163,6 +178,8 @@ func (a *App) Receive(ctx actor.Context) {
 			data, err := json.Marshal(&ValidationData{
 				CountInputs:  a.countInput,
 				CountOutputs: a.countOutput,
+				CashInputs:   a.cashInput,
+				ElectInputs:  a.electInput,
 				Time:         time.Now().UnixMilli(),
 			})
 			if err != nil {
@@ -185,13 +202,71 @@ func (a *App) Receive(ctx actor.Context) {
 		if a.cancelStep != nil {
 			a.cancelStep()
 		}
+	case *msgdriverterminal.Discovery:
+		if len(msg.GetAddress()) <= 0 || len(msg.GetId()) <= 0 {
+			logs.LogWarn.Println("Discovery bad message")
+			break
+		}
+		pid := actor.NewPID(msg.GetAddress(), msg.GetId())
+		ctx.Request(pid, &msgdriverterminal.DiscoveryResponse{})
 	case *StepMsg:
 		if a.pidApp == nil {
 			break
 		}
 		mss := &messages.MsgDriverPaso{}
 		ctx.Request(a.pidApp, mss)
+	case *messages.MsgWritePayment:
+		if ctx.Sender() != nil {
+			ctx.Send(ctx.Sender(), &messages.MsgWritePaymentResponse{
+				Uid:    msg.Uid,
+				Type:   msg.Type,
+				Raw:    make(map[string]string),
+				Samuid: "",
+				Seq:    msg.GetSeq(),
+			})
+		}
+	case *messages.MsgAppPaso:
 
+		if msg.GetCode() == messages.MsgAppPaso_CASH {
+			a.cashInput += 1
+			if a.uix != nil {
+				if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
+					logs.LogWarn.Printf("inputs error: %s", err)
+				}
+			}
+		} else {
+			a.electInput += 1
+			if a.uix != nil {
+				a.uix.Beep(3, 50, 600*time.Millisecond)
+				if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+					logs.LogWarn.Printf("outputs error: %s", err)
+				}
+				if err := a.uix.TextConfirmationPopup(4*time.Second, "entrada confirmada"); err != nil {
+					logs.LogWarn.Printf("textConfirmation error: %s", err)
+				}
+			}
+		}
+		// if a.uix != nil {
+		// 	if err := a.uix.TextConfirmationPopup(4*time.Second, "entrada confirmada"); err != nil {
+		// 		logs.LogWarn.Printf("textConfirmation error: %s", err)
+		// 	}
+		// }
+	case *messages.MsgAppError:
+		textBytes := make([]string, 0)
+		v := msg.GetError()
+		if len(v) > 26 {
+			for _, vv := range SplitHeader(v, 26) {
+				textBytes = append(textBytes, vv)
+			}
+		} else {
+			textBytes = append(textBytes, v)
+		}
+		if a.uix != nil {
+			a.uix.Beep(12, 90, 300*time.Millisecond)
+			if err := a.uix.TextWarningPopup(5*time.Second, textBytes...); err != nil {
+				logs.LogWarn.Printf("textConfirmation error: %s", err)
+			}
+		}
 	case *tickResetCountersMsg:
 		if a.db != nil {
 			if err := func() error {
@@ -200,6 +275,8 @@ func (a *App) Receive(ctx actor.Context) {
 				data, err := json.Marshal(&ValidationData{
 					CountInputs:  0,
 					CountOutputs: 0,
+					CashInputs:   0,
+					ElectInputs:  0,
 					Time:         time.Now().UnixMilli(),
 				})
 				if err != nil {
@@ -245,6 +322,8 @@ func (a *App) Receive(ctx actor.Context) {
 						data, err := json.Marshal(&ValidationData{
 							CountInputs:  a.countInput,
 							CountOutputs: a.countOutput,
+							CashInputs:   a.cashInput,
+							ElectInputs:  a.electInput,
 							Time:         time.Now().UnixMilli(),
 						})
 						if err != nil {
@@ -271,16 +350,14 @@ func (a *App) Receive(ctx actor.Context) {
 	case *ValidationData:
 		a.countInput += msg.CountInputs
 		a.countOutput += msg.CountOutputs
-		a.deviation = a.countInput - a.countOutput
+		a.cashInput += msg.CashInputs
+		a.electInput += msg.ElectInputs
 		if a.uix != nil {
-			if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+			if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
 				logs.LogWarn.Printf("inputs error: %s", err)
 			}
-			if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+			if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
 				logs.LogWarn.Printf("outputs error: %s", err)
-			}
-			if err := a.uix.DeviationInputs(int32(a.deviation)); err != nil {
-				logs.LogWarn.Printf("devitation error: %s", err)
 			}
 		}
 
@@ -440,13 +517,6 @@ func (a *App) Receive(ctx actor.Context) {
 				logs.LogWarn.Printf("outputs error: %s", err)
 			}
 		}
-		dev := a.countInput - a.countOutput
-		if dev != a.deviation {
-			if err := a.uix.DeviationInputs(int32(dev)); err != nil {
-				logs.LogWarn.Printf("devitation error: %s", err)
-			}
-		}
-		a.deviation = dev
 
 	case *counterpass.CounterExtraEvent:
 		if len(msg.Text) > 0 {

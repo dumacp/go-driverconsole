@@ -150,6 +150,22 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: result})
 		}
+	case *CashInputsMsg:
+		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteNumberMsg{
+			Label: CASH_INPUTS_TEXT,
+			Num:   int64(msg.In),
+		}, 1*time.Second))
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: result})
+		}
+	case *ElectronicInputsMsg:
+		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteNumberMsg{
+			Label: ELECT_INPUTS_TEXT,
+			Num:   int64(msg.In),
+		}, 1*time.Second))
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: result})
+		}
 	case *RouteMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
 			Label: ROUTE_TEXT,
@@ -168,8 +184,9 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *BeepMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.BeepMsg{
-			Repeat:  3,
-			Timeout: 1 * time.Second,
+			Repeat: msg.Repeat,
+			Period: msg.Period,
+			Duty:   msg.Duty,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: result})
