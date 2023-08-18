@@ -33,20 +33,27 @@ const (
 )
 
 type App struct {
-	updateTime  time.Time
-	countInput  int32
-	countOutput int32
-	cashInput   int32
-	electInput  int32
-	timeLapse   int
-	driver      int
-	route       int
-	routeString string
-	evts        *eventstream.EventStream
-	subs        map[string]*eventstream.Subscription
-	routes      map[int32]string
-	shcservices map[string]*services.ScheduleService
-	notif       []string
+	updateTime time.Time
+
+	totalCountInput  int32
+	totalCountOutput int32
+	countInput       int32
+	countOutput      int32
+	cashInput        int32
+	electInput       int32
+	timeLapse        int
+	driver           int
+	route            int
+	brightness       int
+	routeString      string
+	routeCode        string
+	driverCode       string
+	displayVendor    string
+	evts             *eventstream.EventStream
+	subs             map[string]*eventstream.Subscription
+	routes           map[int32]string
+	shcservices      map[string]*services.ScheduleService
+	notif            []string
 	// evt2evtApp       map[buttons.KeyCode]EventLabel
 	uix          ui.UI
 	ctx          actor.Context
@@ -63,9 +70,10 @@ type App struct {
 	enableStep   bool
 }
 
-func NewApp(uix ui.UI) *App {
+func NewApp(uix ui.UI, displayVendor string) *App {
 	a := &App{}
 	a.uix = uix
+	a.displayVendor = displayVendor
 	a.network = true
 	a.gps = true
 	a.evts = eventstream.NewEventStream()
@@ -206,6 +214,56 @@ func (a *App) Receive(ctx actor.Context) {
 		if a.cancelStep != nil {
 			a.cancelStep()
 		}
+	case *MsgMainScreen:
+		fmt.Printf("**** screen: %d\n", a.uix.GetScreen())
+		if a.uix.GetScreen() == ui.MAIN_SCREEN {
+			break
+		}
+		if err := func() error {
+			if err := a.uix.MainScreen(); err != nil {
+				return fmt.Errorf("main screen error: %s", err)
+			}
+			if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+				return fmt.Errorf("electInput error: %s", err)
+			}
+			if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
+				return fmt.Errorf("cashInput error: %s", err)
+			}
+			if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+				return fmt.Errorf("countInput error: %s", err)
+			}
+			if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+				return fmt.Errorf("countOutput error: %s", err)
+			}
+			if err := a.uix.DateWithFormat(a.updateTime, "2006/01/02 15:04"); err != nil {
+				return fmt.Errorf("date error: %s", err)
+			}
+			if err := a.uix.Driver(fmt.Sprintf("%d", a.driver)); err != nil {
+				return fmt.Errorf("driver error: %s", err)
+			}
+			if len(a.routes) > 0 {
+				if err := a.uix.Route(a.routeString); err != nil {
+					return fmt.Errorf("driver error: %s", err)
+				}
+			}
+			return nil
+		}(); err != nil {
+			logs.LogWarn.Println(err)
+		}
+	case *MsgSetDriver:
+		a.driver = msg.Driver
+		if err := a.uix.Driver(fmt.Sprintf("%d", msg.Driver)); err != nil {
+			logs.LogWarn.Printf("driver error: %s", err)
+		}
+	case *MsgSetRoute:
+		if len(a.routes) <= 0 {
+			break
+		}
+		a.route = msg.Route
+		a.routeString = a.routes[int32(msg.Route)]
+		if err := a.uix.Route(a.routeString); err != nil {
+			logs.LogWarn.Printf("route error: %s", err)
+		}
 	case *msgdriverterminal.Discovery:
 		if len(msg.GetAddress()) <= 0 || len(msg.GetId()) <= 0 {
 			logs.LogWarn.Println("Discovery bad message")
@@ -214,15 +272,11 @@ func (a *App) Receive(ctx actor.Context) {
 		pid := actor.NewPID(msg.GetAddress(), msg.GetId())
 		ctx.Request(pid, &msgdriverterminal.DiscoveryResponse{})
 	case *StepMsg:
-		if a.pidApp == nil && ctx.Parent() == nil {
+		if a.pidApp == nil {
 			break
 		}
 		mss := &messages.MsgDriverPaso{}
-		if a.pidApp != nil {
-			ctx.Request(a.pidApp, mss)
-		} else if ctx.Parent() != nil {
-			ctx.Request(ctx.Parent(), mss)
-		}
+		ctx.Request(a.pidApp, mss)
 	case *messages.MsgWritePayment:
 		if ctx.Sender() != nil {
 			ctx.Send(ctx.Sender(), &messages.MsgWritePaymentResponse{
@@ -234,7 +288,7 @@ func (a *App) Receive(ctx actor.Context) {
 			})
 		}
 	case *messages.MsgAppPaso:
-
+		fmt.Printf("**** screen: %d\n", a.uix.GetScreen())
 		if msg.GetCode() == messages.MsgAppPaso_CASH {
 			a.cashInput += 1
 			if a.uix != nil {
@@ -264,18 +318,28 @@ func (a *App) Receive(ctx actor.Context) {
 							if err := a.uix.TextConfirmationPopupclose(); err != nil {
 								logs.LogWarn.Printf("textConfirmation error: %s", err)
 							}
+							if strings.EqualFold(GTT50, a.displayVendor) {
+								if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+									logs.LogWarn.Printf("electInput error: %s", err)
+								}
+								if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
+									logs.LogWarn.Printf("cashInput error: %s", err)
+								}
+								if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+									logs.LogWarn.Printf("countInput error: %s", err)
+								}
+								if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+									logs.LogWarn.Printf("countOutput error: %s", err)
+								}
+							}
 						}
 					}()
 
 				}
 			}
 		}
-		// if a.uix != nil {
-		// 	if err := a.uix.TextConfirmationPopup(4*time.Second, "entrada confirmada"); err != nil {
-		// 		logs.LogWarn.Printf("textConfirmation error: %s", err)
-		// 	}
-		// }
 	case *messages.MsgAppError:
+		fmt.Printf("**** screen: %d\n", a.uix.GetScreen())
 		textBytes := make([]string, 0)
 		v := msg.GetError()
 		if len(v) > 26 {
@@ -291,9 +355,9 @@ func (a *App) Receive(ctx actor.Context) {
 			if a.uix.GetScreen() == ui.MAIN_SCREEN {
 				contxt, cancel := context.WithCancel(context.TODO())
 				a.cancelPop = cancel
-				if err := a.uix.TextWarningPopup(textBytes...); err != nil {
+				if err := a.uix.TextWarningPopup(
+					textBytes...); err != nil {
 					logs.LogWarn.Printf("textWarningPopup error: %s", err)
-					break
 				}
 				go func() {
 					defer cancel()
@@ -303,8 +367,23 @@ func (a *App) Receive(ctx actor.Context) {
 						if err := a.uix.TextWarningPopupClose(); err != nil {
 							logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
 						}
+						if strings.EqualFold(a.displayVendor, GTT50) {
+							if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+								logs.LogWarn.Printf("electInput error: %s", err)
+							}
+							if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
+								logs.LogWarn.Printf("cashInput error: %s", err)
+							}
+							if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+								logs.LogWarn.Printf("countInput error: %s", err)
+							}
+							if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+								logs.LogWarn.Printf("countOutput error: %s", err)
+							}
+						}
 					}
 				}()
+
 			}
 		}
 	case *tickResetCountersMsg:
@@ -392,7 +471,7 @@ func (a *App) Receive(ctx actor.Context) {
 		a.countOutput += msg.CountOutputs
 		a.cashInput += msg.CashInputs
 		a.electInput += msg.ElectInputs
-		if a.uix != nil {
+		if a.uix != nil && a.uix.GetScreen() == ui.MAIN_SCREEN {
 			if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
 				logs.LogWarn.Printf("inputs error: %s", err)
 			}
@@ -443,34 +522,46 @@ func (a *App) Receive(ctx actor.Context) {
 		if err := a.uix.TextConfirmation(string(msg.Text)); err != nil {
 			logs.LogWarn.Printf("textConfirmation error: %s", err)
 		}
+	case *MsgWarningTextInMainScreen:
 	case *MsgConfirmationTextMainScreen:
-		if a.uix != nil && a.uix.GetScreen() == ui.MAIN_SCREEN {
-			a.uix.Beep(3, 50, 600*time.Millisecond)
-			if a.uix.GetScreen() == ui.MAIN_SCREEN {
-				if a.cancelPop != nil {
-					a.cancelPop()
-				}
-				contxt, cancel := context.WithCancel(context.TODO())
-				a.cancelPop = cancel
-				if err := a.uix.TextConfirmationPopup(
-					"entrada confirmada"); err != nil {
+		if a.uix == nil || a.uix.GetScreen() != ui.MAIN_SCREEN {
+			break
+		}
+		if a.cancelPop != nil {
+			a.cancelPop()
+		}
+		contxt, cancel := context.WithCancel(context.TODO())
+		a.cancelPop = cancel
+		if err := a.uix.TextConfirmationPopup(string(msg.Text)); err != nil {
+			logs.LogWarn.Printf("textConfirmation error: %s", err)
+		}
+		go func() {
+			defer cancel()
+			select {
+			case <-contxt.Done():
+			case <-time.After(4 * time.Second):
+				if err := a.uix.TextConfirmationPopupclose(); err != nil {
 					logs.LogWarn.Printf("textConfirmation error: %s", err)
 				}
-				go func() {
-					defer cancel()
-					select {
-					case <-contxt.Done():
-					case <-time.After(4 * time.Second):
-						if err := a.uix.TextConfirmationPopupclose(); err != nil {
-							logs.LogWarn.Printf("textConfirmation error: %s", err)
-						}
+				if strings.EqualFold(GTT50, a.displayVendor) {
+					if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+						logs.LogWarn.Printf("electInput error: %s", err)
 					}
-				}()
+					if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
+						logs.LogWarn.Printf("cashInput error: %s", err)
+					}
+					if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+						logs.LogWarn.Printf("countInput error: %s", err)
+					}
+					if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+						logs.LogWarn.Printf("countOutput error: %s", err)
+					}
+				}
 			}
-		}
+		}()
 	case *MsgWarningText:
 		if err := a.uix.TextWarning(string(msg.Text)); err != nil {
-			logs.LogWarn.Printf("textConfirmation error: %s", err)
+			logs.LogWarn.Printf("textWarning error: %s", err)
 		}
 	case *services.StatusSch:
 		fmt.Printf("******** %v **********", msg)
@@ -566,48 +657,119 @@ func (a *App) Receive(ctx actor.Context) {
 			logs.LogWarn.Printf("msgScreen error: %s", err)
 		}
 	case *counterpass.CounterEvent:
-		a.countInput += int32(msg.Inputs)
-		if msg.Inputs > 0 {
-			if err := a.uix.Inputs(int32(a.countInput)); err != nil {
-				logs.LogWarn.Printf("inputs error: %s", err)
-			}
-		}
-		a.countOutput += int32(msg.Outputs)
-		if msg.Outputs > 0 {
-			if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
-				logs.LogWarn.Printf("outputs error: %s", err)
-			}
-		}
-
-	case *counterpass.CounterExtraEvent:
-		if len(msg.Text) > 0 {
-			if err := a.uix.TextWarningPopup(string(msg.Text)); err != nil {
-				logs.LogWarn.Printf("textWarningPopup error: %s", err)
-			}
-		}
-	case *counterpass.CounterMap:
-		// if msg.Inputs0+msg.Inputs1 > a.countInput {
-		// 	a.countInput = msg.Inputs0 + msg.Inputs1
-		// 	if err := a.uix.Inputs(int64(a.countInput)); err != nil {
+		// a.countInput += int32(msg.Inputs)
+		// if msg.Inputs > 0 {
+		// 	if err := a.uix.Inputs(int32(a.countInput)); err != nil {
 		// 		logs.LogWarn.Printf("inputs error: %s", err)
 		// 	}
 		// }
-
-		// if msg.Outputs0+msg.Outputs1 > a.countOutput {
-		// 	a.countOutput = msg.Outputs0 + msg.Outputs1
-		// 	if err := a.uix.Outputs(int64(a.countOutput)); err != nil {
+		// a.countOutput += int32(msg.Outputs)
+		// if msg.Outputs > 0 {
+		// 	if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
 		// 		logs.LogWarn.Printf("outputs error: %s", err)
 		// 	}
 		// }
 
-		// if a.countOutput != a.countInput {
-		// 	dev := a.countOutput - a.countInput
-		// 	if err := a.uix.DeviationInputs(int64(dev)); err != nil {
-		// 		logs.LogWarn.Printf("devitation error: %s", err)
-		// 	}
-		// }
+	case *counterpass.CounterExtraEvent:
+		if a.uix.GetScreen() != ui.MAIN_SCREEN {
+			break
+		}
+		if len(msg.Text) > 0 {
+			if a.cancelPop != nil {
+				a.cancelPop()
+			}
+			contxt, cancel := context.WithCancel(context.TODO())
+			a.cancelPop = cancel
+			if err := a.uix.TextWarningPopup(
+				string(msg.Text)); err != nil {
+				logs.LogWarn.Printf("textWarningPopup error: %s", err)
+			}
+			go func() {
+				defer cancel()
+				select {
+				case <-contxt.Done():
+				case <-time.After(4 * time.Second):
+					if err := a.uix.TextWarningPopupClose(); err != nil {
+						logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+					}
+					if strings.EqualFold(a.displayVendor, GTT50) {
+						if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+							logs.LogWarn.Printf("electInput error: %s", err)
+						}
+						if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
+							logs.LogWarn.Printf("cashInput error: %s", err)
+						}
+						if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+							logs.LogWarn.Printf("countInput error: %s", err)
+						}
+						if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+							logs.LogWarn.Printf("countOutput error: %s", err)
+						}
+					}
+				}
+			}()
+		}
+	case *counterpass.CounterMap:
+		totalCountInput := int32(msg.Inputs0 + msg.Inputs1)
+		if a.totalCountInput < totalCountInput {
+			if a.totalCountInput == 0 {
+				a.totalCountInput = totalCountInput
+			}
+			a.countInput += a.totalCountInput - totalCountInput
+			if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+				logs.LogWarn.Printf("inputs error: %s", err)
+			}
+		}
+		a.totalCountInput = totalCountInput
+		totalCountOutput := int32(msg.Outputs0 + msg.Outputs1)
+		if a.totalCountOutput < totalCountOutput {
+			if a.totalCountOutput == 0 {
+				a.totalCountOutput = totalCountInput
+			}
+			a.countOutput += a.totalCountOutput - totalCountOutput
+			if err := a.uix.Outputs(a.countOutput); err != nil {
+				logs.LogWarn.Printf("outputs error: %s", err)
+			}
+		}
+		a.totalCountOutput = totalCountOutput
+	case *messages.MsgGpsOk:
+		a.gps = true
+		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
+			break
+		}
+		if err := a.uix.Gps(true); err != nil {
+			logs.LogWarn.Printf("gps error: %s", err)
+		}
+	case *messages.MsgGpsErr:
+		a.gps = false
+		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
+			break
+		}
+		if err := a.uix.Gps(false); err != nil {
+			logs.LogWarn.Printf("gps error: %s", err)
+		}
+	case *messages.MsgGroundOk:
+		a.network = true
+		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
+			break
+		}
+		if err := a.uix.Network(true); err != nil {
+			logs.LogWarn.Printf("network error: %s", err)
+		}
+	case *messages.MsgGroundErr:
+		a.network = false
+		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
+			break
+		}
+		if err := a.uix.Network(false); err != nil {
+			logs.LogWarn.Printf("network error: %s", err)
+		}
 	case *gps.MsgGpsStatus:
 		fmt.Printf("******** %v **********", msg)
+		a.gps = msg.State
+		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
+			break
+		}
 		if !msg.State && a.gps {
 			if err := a.uix.Gps(true); err != nil {
 				logs.LogWarn.Printf("network error: %s", err)
@@ -617,14 +779,17 @@ func (a *App) Receive(ctx actor.Context) {
 				logs.LogWarn.Printf("network error: %s", err)
 			}
 		}
-		a.gps = msg.State
+
 	case *MsgUpdateTime:
 		tNow := time.Now()
 		if a.updateTime.Minute() == tNow.Minute() && a.updateTime.Hour() == tNow.Hour() {
 			break
 		}
 		a.updateTime = tNow
-		if err := a.uix.Date(tNow); err != nil {
+		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
+			break
+		}
+		if err := a.uix.DateWithFormat(tNow, "2006/01/02 15:04"); err != nil {
 			logs.LogWarn.Printf("date error: %s", err)
 		}
 	}

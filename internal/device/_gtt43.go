@@ -1,5 +1,5 @@
-//go:build gtt43
-// +build gtt43
+//go:build gtt43 && !levis && !gtt50
+// +build gtt43,!levis,!gtt50
 
 package device
 

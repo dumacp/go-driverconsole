@@ -1,6 +1,3 @@
-//go:build gtt43
-// +build gtt43
-
 package display
 
 import (

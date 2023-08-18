@@ -1,7 +1,7 @@
 package ui
 
 const (
-	ROUTE_TEXT int = iota
+	ROUTE_TEXT int = iota + 100
 	ROUTE_TEXT_READ
 	DRIVER_TEXT
 	DRIVER_TEXT_READ

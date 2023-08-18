@@ -16,7 +16,6 @@ type InputText struct {
 
 type SelectPaso struct{}
 type StepMsg struct{}
-type TestStepMsg struct{}
 type ResetCounter struct{}
 
 type MsgAppPaso struct {
@@ -51,10 +50,13 @@ type MsgRoute struct {
 	Route string
 }
 type MsgSetRoute struct {
-	Route string
+	Route int
 }
 type MsgDriver struct {
 	Driver string
+}
+type MsgSetDriver struct {
+	Driver int
 }
 
 type MsgSetRoutes struct {

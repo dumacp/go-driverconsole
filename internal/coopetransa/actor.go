@@ -49,6 +49,7 @@ type App struct {
 	contxt       context.Context
 	buttonDevice buttons.ButtonDevice
 	cancel       func()
+	cancelPop    func()
 	gps          bool
 	network      bool
 }
@@ -153,6 +154,9 @@ func (a *App) Receive(ctx actor.Context) {
 	case *actor.Stopping:
 		if a.cancel != nil {
 			a.cancel()
+		}
+		if a.cancelPop != nil {
+			a.cancelPop()
 		}
 		if a.db != nil {
 			data, err := json.Marshal(&ValidationData{
@@ -311,8 +315,28 @@ func (a *App) Receive(ctx actor.Context) {
 			logs.LogWarn.Printf("textConfirmation error: %s", err)
 		}
 	case *MsgConfirmationTextMainScreen:
-		if err := a.uix.TextConfirmationPopup(3*time.Second, string(msg.Text)); err != nil {
-			logs.LogWarn.Printf("textConfirmation error: %s", err)
+		a.uix.Beep(3, 50, 600*time.Millisecond)
+		if a.cancelPop != nil {
+			a.cancelPop()
+		}
+		if a.uix.GetScreen() == ui.MAIN_SCREEN {
+			contxt, cancel := context.WithCancel(context.TODO())
+			a.cancelPop = cancel
+			if err := a.uix.TextConfirmationPopup(
+				string(msg.Text)); err != nil {
+				logs.LogWarn.Printf("textConfirmation error: %s", err)
+			}
+			go func() {
+				defer cancel()
+				select {
+				case <-contxt.Done():
+				case <-time.After(4 * time.Second):
+					if err := a.uix.TextConfirmationPopupclose(); err != nil {
+						logs.LogWarn.Printf("textConfirmation error: %s", err)
+					}
+				}
+			}()
+
 		}
 	case *MsgWarningText:
 		if err := a.uix.TextWarning(string(msg.Text)); err != nil {
@@ -434,9 +458,26 @@ func (a *App) Receive(ctx actor.Context) {
 
 	case *counterpass.CounterExtraEvent:
 		if len(msg.Text) > 0 {
-			if err := a.uix.TextWarningPopup(2*time.Second, string(msg.Text)); err != nil {
-				logs.LogWarn.Printf("textWarningPopup error: %s", err)
+			a.uix.Beep(12, 90, 300*time.Millisecond)
+			if a.cancelPop != nil {
+				a.cancelPop()
 			}
+			contxt, cancel := context.WithCancel(context.TODO())
+			a.cancelPop = cancel
+			if err := a.uix.TextWarningPopup(string(msg.Text)); err != nil {
+				logs.LogWarn.Printf("textWarningPopup error: %s", err)
+				break
+			}
+			go func() {
+				defer cancel()
+				select {
+				case <-contxt.Done():
+				case <-time.After(4 * time.Second):
+					if err := a.uix.TextWarningPopupClose(); err != nil {
+						logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+					}
+				}
+			}()
 		}
 	case *counterpass.CounterMap:
 		// if msg.Inputs0+msg.Inputs1 > a.countInput {

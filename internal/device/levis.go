@@ -1,17 +1,14 @@
-//go:build levis
-// +build levis
-
 package device
 
 import "github.com/dumacp/go-levis"
 
-type dev struct {
+type devPi struct {
 	port  string
 	speed int
 	dev   interface{}
 }
 
-func (d *dev) Init() (interface{}, error) {
+func (d *devPi) Init() (interface{}, error) {
 	dev, err := levis.NewDevice(d.port, d.speed)
 	if err != nil {
 		return nil, err
@@ -20,7 +17,7 @@ func (d *dev) Init() (interface{}, error) {
 	return dev, nil
 }
 
-func (d *dev) Close() error {
+func (d *devPi) Close() error {
 	if v, ok := d.dev.(levis.Device); ok {
 		return v.Close()
 	}
@@ -28,7 +25,7 @@ func (d *dev) Close() error {
 }
 
 func NewPiDevice(port string, speed int) Device {
-	dev := &dev{
+	dev := &devPi{
 		port:  port,
 		speed: speed,
 	}

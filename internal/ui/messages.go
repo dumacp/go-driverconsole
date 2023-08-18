@@ -25,15 +25,20 @@ type TextConfirmationMsg struct {
 
 // TextConfirmationPopupMsg is a message for displaying a confirmation popup with a timeout.
 type TextConfirmationPopupMsg struct {
-	Timeout time.Duration
-	Text    []string
+	Timeout     time.Duration
+	Text        []string
+	RestoreData map[int]interface{}
 }
+type TextConfirmationPopupCloseMsg struct{}
 
 // TextWarningPopupMsg is a message for displaying a warning popup with a timeout.
 type TextWarningPopupMsg struct {
-	Timeout time.Duration
-	Text    []string
+	Timeout     time.Duration
+	Text        []string
+	RestoreData map[int]interface{}
 }
+
+type TextWarningPopupCloseMsg struct{}
 
 // InputsMsg is a message for setting the number of inputs.
 type InputsMsg struct {
@@ -79,7 +84,8 @@ type BeepMsg struct {
 
 // DateMsg is a message for displaying the date.
 type DateMsg struct {
-	Date time.Time
+	Date   time.Time
+	Format string
 }
 
 // ScreenMsg is a message for switching to a specific screen.

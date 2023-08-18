@@ -2,7 +2,6 @@ package display
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/dumacp/go-driverconsole/internal/device"
@@ -28,13 +27,13 @@ func NewDisplayActor(disp Display) actor.Actor {
 }
 
 func (d *DisplayActor) Receive(ctx actor.Context) {
-	fmt.Printf("message: %q --> %q, %T\n", func() string {
+	fmt.Printf("message: %q --> %q, %T, %v\n", func() string {
 		if ctx.Sender() == nil {
 			return ""
 		} else {
 			return ctx.Sender().GetId()
 		}
-	}(), ctx.Self().GetId(), ctx.Message())
+	}(), ctx.Self().GetId(), ctx.Message(), ctx.Message())
 	switch ctx.Message().(type) {
 	case *actor.Started:
 	}
@@ -118,14 +117,7 @@ func (d *DisplayActor) RunState(ctx actor.Context) {
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: err})
 		}
-		timeout := msg.Temout
-		if timeout > 5*time.Second || timeout < 1*time.Second {
-			timeout = 3 * time.Second
-		}
-		go func() {
-			time.Sleep(timeout)
-			d.display.PopupClose(msg.Label)
-		}()
+
 	case *PopupCloseMsg:
 		err := d.display.PopupClose(msg.Label)
 		if ctx.Sender() != nil {

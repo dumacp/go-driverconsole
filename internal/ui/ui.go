@@ -12,7 +12,7 @@ import (
 
 type ui struct {
 	lastUpdateDate time.Time
-	screen         Screen
+	screen         int
 	disp           display.Display
 	notif          []string
 	// chEvents       chan *Event
@@ -25,8 +25,12 @@ type UI interface {
 	MainScreen() error
 	TextWarning(text ...string) error
 	TextConfirmation(text ...string) error
-	TextConfirmationPopup(timeout time.Duration, text ...string) error
-	TextWarningPopup(timeout time.Duration, sText ...string) error
+	TextConfirmationPopup(text ...string) error
+	TextConfirmationPopupclose() error
+	TextWarningPopup(sText ...string) error
+	TextWarningPopupClose() error
+	// TextConfirmationPopupWithRestoreData(timeout time.Duration, restore map[int]interface{}, text ...string) error
+	// TextWarningPopupWithRestoreData(timeout time.Duration, restore map[int]interface{}, sText ...string) error
 	Inputs(in int32) error
 	Outputs(out int32) error
 	CashInputs(in int32) error
@@ -36,8 +40,9 @@ type UI interface {
 	Driver(data string) error
 	Beep(repeat, duty int, period time.Duration) error
 	Date(date time.Time) error
+	DateWithFormat(date time.Time, format string) error
 	Screen(num int, force bool) error
-	GetScreen() (int, error)
+	GetScreen() int
 	KeyNum(ctx context.Context, prompt string) (chan int, error)
 	Keyboard(ctx context.Context, prompt string) (chan string, error)
 	Doors(state ...bool) error
@@ -74,7 +79,7 @@ func New(ctx actor.Context, dev, disp actor.Actor) (UI, error) {
 
 func (u *ui) Init() error {
 
-	res, err := u.rootctx.RequestFuture(u.pid, &InitUIMsg{}, 1*time.Second).Result()
+	res, err := u.rootctx.RequestFuture(u.pid, &InitUIMsg{}, 5*time.Second).Result()
 	if err != nil {
 		return err
 	}
@@ -105,14 +110,14 @@ func (u *ui) InputHandler(inputs actor.Actor, callback func(evt *buttons.InputEv
 }
 
 func (u *ui) MainScreen() error {
-	res, err := u.rootctx.RequestFuture(u.pid, &MainScreenMsg{}, 2*time.Second).Result()
+	res, err := u.rootctx.RequestFuture(u.pid, &MainScreenMsg{}, 5*time.Second).Result()
 	if err != nil {
 		return err
 	}
 	if v, ok := res.(*AckMsg); ok && v.Error != nil {
 		return v.Error
 	} else if ok {
-		u.screen = MAIN
+		// u.screen = MAIN_SCREEN
 		return nil
 	}
 	return fmt.Errorf("mainScreen without response form display")
@@ -144,10 +149,9 @@ func (u *ui) TextConfirmation(text ...string) error {
 	return fmt.Errorf("textConfirmation with response form display")
 }
 
-func (u *ui) TextConfirmationPopup(timeout time.Duration, sText ...string) error {
+func (u *ui) TextConfirmationPopup(sText ...string) error {
 	res, err := u.rootctx.RequestFuture(u.pid, &TextConfirmationPopupMsg{
-		Text:    sText,
-		Timeout: timeout,
+		Text: sText,
 	}, 3*time.Second).Result()
 	if err != nil {
 		return err
@@ -160,10 +164,22 @@ func (u *ui) TextConfirmationPopup(timeout time.Duration, sText ...string) error
 	return fmt.Errorf("textConfirmationPopup with response form display")
 }
 
-func (u *ui) TextWarningPopup(timeout time.Duration, sText ...string) error {
+func (u *ui) TextConfirmationPopupclose() error {
+	res, err := u.rootctx.RequestFuture(u.pid, &TextConfirmationPopupCloseMsg{}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("textConfirmationPopupClose with response form display")
+}
+
+func (u *ui) TextWarningPopup(sText ...string) error {
 	res, err := u.rootctx.RequestFuture(u.pid, &TextWarningPopupMsg{
-		Timeout: timeout,
-		Text:    sText,
+		Text: sText,
 	}, 3*time.Second).Result()
 	if err != nil {
 		return err
@@ -174,6 +190,19 @@ func (u *ui) TextWarningPopup(timeout time.Duration, sText ...string) error {
 		return nil
 	}
 	return fmt.Errorf("textWarningPopup with response form display")
+}
+
+func (u *ui) TextWarningPopupClose() error {
+	res, err := u.rootctx.RequestFuture(u.pid, &TextWarningPopupCloseMsg{}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("textWarningPopupClose with response form display")
 }
 
 func (u *ui) Inputs(in int32) error {
@@ -304,10 +333,25 @@ func (u *ui) Date(date time.Time) error {
 	return fmt.Errorf("date without response from display")
 }
 
+func (u *ui) DateWithFormat(date time.Time, format string) error {
+
+	res, err := u.rootctx.RequestFuture(u.pid, &DateMsg{Date: date, Format: format}, 2*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("date without response from display")
+}
+
 func (u *ui) Screen(num int, force bool) error {
 	res, err := u.rootctx.RequestFuture(u.pid, &ScreenMsg{
-		Num: num,
-	}, 3*time.Second).Result()
+		Num:   num,
+		Force: force,
+	}, 5*time.Second).Result()
 	if err != nil {
 		return err
 	}
@@ -319,8 +363,17 @@ func (u *ui) Screen(num int, force bool) error {
 	return fmt.Errorf("screen without response from display")
 }
 
-func (u *ui) GetScreen() (int, error) {
-	panic("not implemented") // TODO: Implement
+func (u *ui) GetScreen() int {
+	res, err := u.rootctx.RequestFuture(u.pid, &GetScreenMsg{}, 3*time.Second).Result()
+	if err != nil {
+		return -1
+	}
+	if v, ok := res.(*ScreenResponseMsg); ok && v.Error != nil {
+		return -1
+	} else if ok {
+		return v.Num
+	}
+	return -1
 }
 
 func (u *ui) KeyNum(ctx context.Context, prompt string) (chan int, error) {
@@ -414,7 +467,16 @@ func (u *ui) ShowStats() error {
 }
 
 func (u *ui) Brightness(percent int) error {
-	panic("not implemented") // TODO: Implement
+	res, err := u.rootctx.RequestFuture(u.pid, &BrightnessMsg{Percent: percent}, 2*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("brightness without response from display")
 }
 
 func (u *ui) ServiceCurrentState(state int, prompt string) error {

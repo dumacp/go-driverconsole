@@ -5,7 +5,7 @@ go 1.19
 //github.com/AsynkronIT/protoactor-go v0.0.0-20220121183416-233df622d732
 require (
 	github.com/dumacp/go-logs v0.0.1
-	github.com/dumacp/matrixorbital v0.0.0-20211112030057-e5299bc41d1f
+	github.com/dumacp/matrixorbital v0.0.0-20230818142648-d37611aecca5
 	github.com/dumacp/pubsub v0.0.0-20200115200904-f16f29d84ee0
 	github.com/eclipse/paho.mqtt.golang v1.4.2
 	github.com/google/uuid v1.3.0 // indirect

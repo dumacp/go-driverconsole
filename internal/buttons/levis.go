@@ -1,6 +1,3 @@
-//go:build levis
-// +build levis
-
 package buttons
 
 import (
@@ -10,6 +7,23 @@ import (
 
 	"github.com/dumacp/go-levis"
 	"github.com/dumacp/go-logs/pkg/logs"
+)
+
+const (
+	// AddrSelectPaso  = 0
+	// AddrEnterPaso   = 1
+	// AddrEnterRuta   = 2
+	// AddrEnterDriver = 3
+
+	// AddrScreenSwitch     = 4
+	// AddrScreenAlarms     = 7
+	// AddrScreenProgVeh    = 8
+	// AddrScreenProgDriver = 9
+	// AddrScreenMore       = 10
+	AddrReset = 20
+	AddrBeep  = 23
+	// AddrAddBright        = 21
+	// AddrSubBright        = 22
 )
 
 type pi3070g struct {
@@ -56,22 +70,6 @@ func (p *pi3070g) Close() error {
 	}
 	return nil
 }
-
-const (
-	AddrSelectPaso  = 0
-	AddrEnterPaso   = 1
-	AddrEnterRuta   = 2
-	AddrEnterDriver = 3
-
-	AddrScreenSwitch     = 4
-	AddrScreenAlarms     = 7
-	AddrScreenProgVeh    = 8
-	AddrScreenProgDriver = 9
-	AddrScreenMore       = 10
-	AddrReset            = 20
-	AddrAddBright        = 21
-	AddrSubBright        = 22
-)
 
 // addrNoRoute    = 120
 // addrNameRoute  = 100

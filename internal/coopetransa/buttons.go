@@ -54,6 +54,9 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 				if v, ok := evt.Value.(bool); !ok || v {
 					break
 				}
+				if err := a.uix.Screen(int(ui.PROGRAMATION_DRIVER_SCREEN), false); err != nil {
+					return fmt.Errorf("event SCREEN error: %s", err)
+				}
 				// if err := a.uix.ShowProgDriver(); err != nil {
 				// 	return fmt.Errorf("event ShowProgDriver error: %s", err)
 				// }
@@ -106,6 +109,9 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 					return fmt.Errorf("event ShowProgDriver error: %s", err)
 				}
 			case PROGRAMATION_VEH:
+				if err := a.uix.Screen(int(ui.PROGRAMATION_VEH_SCREEN), false); err != nil {
+					return fmt.Errorf("event SCREEN error: %s", err)
+				}
 				// release button
 				if v, ok := evt.Value.(bool); !ok || v {
 					break
@@ -149,6 +155,9 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 					return fmt.Errorf("event ShowProgVeh error: %s", err)
 				}
 			case SHOW_NOTIF:
+				if err := a.uix.Screen(int(ui.ALARMS_SCREEN), false); err != nil {
+					return fmt.Errorf("event SCREEN error: %s", err)
+				}
 				// release button
 				if v, ok := evt.Value.(bool); !ok || v {
 					break
@@ -159,6 +168,9 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 					}
 				}
 			case STATS:
+				if err := a.uix.Screen(int(ui.ADDITIONALS_SCREEN), false); err != nil {
+					return fmt.Errorf("event SCREEN error: %s", err)
+				}
 				// release button
 				if v, ok := evt.Value.(bool); !ok || v {
 					break
@@ -168,9 +180,9 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 				}
 			case ROUTE:
 				// release button
-				if v, ok := evt.Value.(bool); !ok || v {
-					break
-				}
+				// if v, ok := evt.Value.(bool); !ok || v {
+				// 	break
+				// }
 				// contxt, cancel := context.WithCancel(a.contxt)
 				// a.buttonCancel = cancel
 				// num, err := a.uix.KeyNum(contxt, "ingrese el número de ruta:")

@@ -1,0 +1,273 @@
+package main
+
+import (
+	"flag"
+	"fmt"
+	"log"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
+
+	"github.com/asynkron/protoactor-go/actor"
+
+	"github.com/dumacp/go-driverconsole/internal/buttons"
+	app "github.com/dumacp/go-driverconsole/internal/sibus"
+	"github.com/dumacp/go-driverconsole/internal/ui"
+	"github.com/dumacp/go-driverconsole/internal/utils"
+	"github.com/dumacp/go-fareCollection/pkg/messages"
+
+	"github.com/dumacp/go-driverconsole/internal/device"
+	"github.com/dumacp/go-driverconsole/internal/display"
+	"github.com/dumacp/go-driverconsole/internal/pubsub"
+)
+
+var port string
+var baud int
+var standalone bool
+var id string
+var debug bool
+var logStd bool
+
+func init() {
+	flag.StringVar(&id, "id", "test", "device ID")
+	flag.StringVar(&port, "port", "/dev/ttymxc3", "path to port serial in OS")
+	flag.IntVar(&baud, "baud", 38400, "serial port speed in baudios")
+
+}
+
+func main() {
+
+	flag.Parse()
+
+	initLogs(debug, logStd)
+
+	if len(id) <= 0 {
+		id = utils.Hostname()
+	} else {
+		utils.SetHostname(id)
+	}
+
+	sys := actor.NewActorSystem()
+	root := sys.Root
+
+	// decider := func(reason interface{}) actor.Directive {
+	// 	fmt.Println("handling failure for child")
+	// 	return actor.RestartDirective
+	// }
+
+	// strategy := actor.NewAllForOneStrategy(100, 30*time.Second, decider)
+
+	pubsub.Init(root)
+
+	var pidApp *actor.PID
+	props := actor.PropsFromFunc(func(ctx actor.Context) {
+
+		switch ctx.Message().(type) {
+		case *actor.Started:
+
+			confDev := device.NewPiDevice(port, baud)
+
+			confButtons := buttons.NewConfPiButtons(0, 30, []int{
+				app.AddrAddBright, app.AddrEnterDriver, app.AddrEnterPaso, app.AddrEnterRuta,
+				app.AddrScreenAlarms, app.AddrSelectPaso, app.AddrSubBright, app.AddrScreenMore,
+				app.AddrScreenProgDriver, app.AddrScreenProgVeh, app.AddrScreenSwitch,
+				app.AddrSwitchStep, app.AddrSendStep},
+			)
+
+			confDisplay := display.NewPiDisplay(app.Label2DisplayRegister)
+
+			uii, err := ui.New(ctx,
+				device.NewActor(confDev),
+				display.NewDisplayActor(confDisplay))
+
+			if err != nil {
+				log.Fatalf("newDisplayActor error: %s", err)
+			}
+
+			time.Sleep(3 * time.Second)
+
+			appinstance := app.NewApp(uii)
+			propsApp := actor.PropsFromFunc(appinstance.Receive)
+			pidApp, err = ctx.SpawnNamed(propsApp, "app")
+			if err != nil {
+				log.Fatalf("app-actor error: %s", err)
+			}
+
+			if err := uii.InputHandler(buttons.NewActor(confButtons), appinstance.Buttons()); err != nil {
+				log.Fatalf("inputHandler error: %s", err)
+			}
+
+			// routes := map[int32]string{
+			// 	10: "RUTA CARAJILLO",
+			// 	20: "RUTA ORIENTAL",
+			// 	30: "RUTA OCCIDENTAL",
+			// 	40: "RUTA NORTE",
+			// 	50: "RUTA SUR",
+			// }
+
+			// time.Sleep(10 * time.Second)
+
+			// ctx.Send(pidApp, &app.MsgSetRoutes{Routes: routes})
+		case *actor.Stopping:
+			log.Print("stopping driver console")
+		case *actor.Stopped:
+			log.Print("stopped driver console")
+		case *actor.Terminated:
+			log.Print("terminated driver console")
+		case *actor.Restarting:
+			log.Print("restarting driver console")
+		case *actor.Restart:
+			log.Print("restart driver console")
+		case *messages.MsgDriverPaso:
+			if ctx.Sender() == nil {
+				break
+			}
+			ctx.Respond(&messages.MsgAppPaso{
+				Value: 1,
+				Code:  messages.MsgAppPaso_CASH,
+			})
+		default:
+			fmt.Printf("main message: %q --> %q, %T (%s)\n", func() string {
+				if ctx.Sender() == nil {
+					return ""
+				} else {
+					return ctx.Sender().GetId()
+				}
+			}(), ctx.Self().GetId(), ctx.Message(), ctx.Message())
+			if pidApp != nil {
+				ctx.RequestWithCustomSender(pidApp, ctx.Message(), ctx.Sender())
+			}
+
+		}
+		// }).WithSupervisor(strategy)
+	})
+
+	var pidMain *actor.PID
+
+	var err error
+	pidMain, err = sys.Root.SpawnNamed(props, " driverconsole")
+	if err != nil {
+		log.Fatalln(err)
+	}
+
+	// log.Printf("kind: %s", remote.NewKind("driverconsole", props).Kind)
+
+	finish := make(chan os.Signal, 1)
+	signal.Notify(finish, syscall.SIGINT)
+	signal.Notify(finish, syscall.SIGTERM)
+	signal.Notify(finish, os.Interrupt)
+
+	tickStart := time.NewTicker(1 * time.Second)
+	timerStart := time.NewTicker(5 * time.Second)
+	defer timerStart.Stop()
+	func() {
+		for {
+			select {
+			case <-tickStart.C:
+				if pidApp != nil {
+					tickStart.Stop()
+					return
+				}
+			case <-timerStart.C:
+				return
+			}
+		}
+	}()
+	// sys.Root.Send(pidApp, &messages.MsgRoute{RouteCode: 10})
+
+	// receiveSimulateDriverPaso := actor.PropsFromFunc(func(ctx actor.Context) {
+	// 	fmt.Printf("message: %q --> %q, %T\n", func() string {
+	// 		if ctx.Sender() == nil {
+	// 			return ""
+	// 		} else {
+	// 			return ctx.Sender().GetId()
+	// 		}
+	// 	}(), ctx.Self().GetId(), ctx.Message())
+	// 	switch msg := ctx.Message().(type) {
+	// 	case *messages.MsgDriverPaso:
+	// 		value := msg.GetValue()
+	// 		if ctx.Sender() != nil {
+	// 			ctx.Respond(&messages.MsgResponseDriverPaso{
+	// 				Value: value,
+	// 			})
+	// 		}
+	// 	}
+	// })
+
+	// pidPaso, err := root.SpawnNamed(receiveSimulateDriverPaso, "receiveSimulateDriverPaso")
+	// if err != nil {
+	// 	log.Fatalln(err)
+	// }
+
+	// root.RequestWithCustomSender(pidApp, &messages.MsgSubscribeConsole{}, pidPaso)
+
+	if pidApp != nil {
+		go func() {
+
+			tick0 := time.After(1 * time.Second)
+			// tick1 := time.Tick(30 * time.Second)
+			tick2 := time.Tick(3 * time.Second)
+			tick3 := time.Tick(15 * time.Second)
+
+			toggle := false
+
+			// countAlarm := 0
+			for {
+				select {
+				case <-tick0:
+
+					// root.Send(pidApp, &counterpass.CounterMap{Inputs0: 20, Outputs1: 21})
+				// case <-tick1:
+				// root.Send(pidApp, &messages.MsgAppPaso{Value: 1})
+				case <-tick2:
+					// root.Send(pidApp, &messages.MsgAddAlarm{Alarm: fmt.Sprintf("%s: notif (( %d ))", time.Now().Format("2006-01-02 15:04"), countAlarm)})
+					// countAlarm++
+
+					root.Send(pidApp, &app.MsgUpdateTime{})
+					// root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 1})
+
+				case <-tick3:
+					toggle = !toggle
+					if toggle {
+						root.Request(pidApp, &app.MsgNetDown{})
+						root.Request(pidApp, &app.MsgGpsDown{})
+					} else {
+						root.Request(pidApp, &app.MsgNetUP{})
+						root.Request(pidApp, &app.MsgGpsUP{})
+					}
+					root.Send(pidApp, &messages.MsgAppPaso{
+						Value: 1,
+						Code:  messages.MsgAppPaso_ELECTRONIC,
+					})
+					// root.Send(pidApp, &app.MsgScreen{ID: 3, Switch: true})
+					// time.Sleep(3 * time.Second)
+
+					// root.Send(pidApp, &app.MsgConfirmationText{
+					// 	Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
+					// })
+					// go func() {
+					// 	time.Sleep(3 * time.Second)
+					// 	root.Send(pidApp, &app.MsgMainScreen{})
+					// }()
+
+				}
+			}
+
+		}()
+	}
+
+	for range finish {
+		// TODO:
+		if standalone {
+			sys.Root.PoisonFuture(pidMain).Wait()
+			time.Sleep(400 * time.Millisecond)
+			log.Print("Finish")
+		}
+		// root.Poison(pidButtons)
+		// root.Poison(pidDevice)
+		// time.Sleep(300 * time.Millisecond)
+		log.Print("finish")
+		return
+	}
+}

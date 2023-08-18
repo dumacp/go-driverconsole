@@ -1,6 +1,3 @@
-//go:build levis
-// +build levis
-
 package display
 
 import (
@@ -11,30 +8,6 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/buttons"
 	"github.com/dumacp/go-levis"
 )
-
-var dayActual int = -1
-var minActual int = -1
-var statePuerta1 int = 0
-var statePuerta2 int = 0
-var timeoutRead time.Duration = 1 * time.Second
-
-type TypeRegister int
-
-const (
-	LED TypeRegister = iota
-	INPUT_TEXT
-	INPUT_NUM
-	ARRAY_PICT
-)
-
-type Register struct {
-	Type   TypeRegister
-	Addr   int
-	Len    int
-	Size   int
-	Gap    int
-	Toogle int
-}
 
 type display struct {
 	dev            levis.Device
@@ -90,6 +63,7 @@ func (m *display) Reset() error {
 }
 
 func (m *display) SwitchScreen(num int) error {
+	// TODO: label2Reg woth screen
 	if err := m.dev.WriteRegister(0, []uint16{uint16(num)}); err != nil {
 		return err
 	}
@@ -110,7 +84,7 @@ func (m *display) writeText(addr, length, size, gap int, text ...string) error {
 			return fmt.Errorf("len text in greather that register (%d > %d) %s, %v", len(string(textBytes)), size, textBytes, textBytes)
 		}
 		if err := m.dev.WriteRegister(addr, make([]uint16, size/2)); err != nil {
-			return fmt.Errorf("error writeRegister: %s\n", err)
+			return fmt.Errorf("error writeRegister: %s", err)
 		}
 		data := levis.EncodeFromChars(textBytes[:])
 		if err := m.dev.WriteRegister(addr, data); err != nil {
@@ -125,7 +99,7 @@ func (m *display) writeText(addr, length, size, gap int, text ...string) error {
 				return fmt.Errorf("len text in greather that register (%d > %d)", len(v), size)
 			}
 			if err := m.dev.WriteRegister(addr+(i*gap), make([]uint16, size/2)); err != nil {
-				return fmt.Errorf("error writeRegister: %s\n", err)
+				return fmt.Errorf("error writeRegister: %s", err)
 			}
 		}
 		for i, v := range text {
@@ -134,7 +108,7 @@ func (m *display) writeText(addr, length, size, gap int, text ...string) error {
 			}
 			if err := m.dev.WriteRegister(addr+(i*gap),
 				levis.EncodeFromChars([]byte(v))); err != nil {
-				return fmt.Errorf("error writeRegister: %s\n", err)
+				return fmt.Errorf("error writeRegister: %s", err)
 			}
 		}
 	}
@@ -170,7 +144,7 @@ func (m *display) ArrayPict(label int, num int) error {
 		return fmt.Errorf("invalis size (%d) to number input (%d)", reg.Size, num)
 	}
 	if err := m.dev.WriteRegister(reg.Addr, levis.EncodeFromBytes(numBytes)); err != nil {
-		return fmt.Errorf("error writeRegister: %s\n", err)
+		return fmt.Errorf("error writeRegister: %s", err)
 	}
 	return nil
 }
@@ -208,7 +182,7 @@ func (m *display) WriteNumber(label int, num int64) error {
 		return fmt.Errorf("invalis size (%d) to number input (%d)", reg.Size, num)
 	}
 	if err := m.dev.WriteRegister(reg.Addr, levis.EncodeFromBytes(numBytes)); err != nil {
-		return fmt.Errorf("error writeRegister: %s\n", err)
+		return fmt.Errorf("error writeRegister: %s", err)
 	}
 	return nil
 }
@@ -240,7 +214,7 @@ func (m *display) Beep(repeat, duty int, period time.Duration) error {
 			defer tsleep.Stop()
 			tdown := time.NewTimer(200 * time.Millisecond)
 			defer tdown.Stop()
-			if err := m.dev.SetIndicator(23, true); err != nil {
+			if err := m.dev.SetIndicator(buttons.AddrBeep, true); err != nil {
 				fmt.Println(err)
 			}
 			func() {
