@@ -184,6 +184,6 @@ func (d *DisplayActor) RunState(ctx actor.Context) {
 
 	default:
 		// Opcional: manejar mensajes desconocidos o inesperados
-		logs.LogWarn.Printf("DisplayActor recibió un mensaje desconocido: %v", msg)
+		logs.LogWarn.Printf("DisplayActor recibió un mensaje desconocido: %v (%T)", msg, msg)
 	}
 }

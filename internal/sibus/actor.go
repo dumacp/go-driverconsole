@@ -11,10 +11,8 @@ import (
 	"github.com/asynkron/protoactor-go/eventstream"
 
 	"github.com/dumacp/go-actors/database"
-	"github.com/dumacp/go-driverconsole/internal/buttons"
 	"github.com/dumacp/go-driverconsole/internal/constant"
 	"github.com/dumacp/go-driverconsole/internal/counterpass"
-	"github.com/dumacp/go-driverconsole/internal/gps"
 	"github.com/dumacp/go-driverconsole/internal/pubsub"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	msgdriverterminal "github.com/dumacp/go-driverconsole/pkg/messages"
@@ -48,19 +46,17 @@ type App struct {
 	shcservices map[string]*services.ScheduleService
 	notif       []string
 	// evt2evtApp       map[buttons.KeyCode]EventLabel
-	uix          ui.UI
-	ctx          actor.Context
-	db           *actor.PID
-	pidApp       *actor.PID
-	contxt       context.Context
-	buttonDevice buttons.ButtonDevice
-	cancel       func()
-	cancelStep   func()
-	renewStep    func()
-	cancelPop    func()
-	gps          bool
-	network      bool
-	enableStep   bool
+	uix        ui.UI
+	ctx        actor.Context
+	db         *actor.PID
+	pidApp     *actor.PID
+	cancel     func()
+	cancelStep func()
+	renewStep  func()
+	cancelPop  func()
+	gps        bool
+	network    bool
+	enableStep bool
 }
 
 func NewApp(uix ui.UI) *App {
@@ -172,12 +168,14 @@ func (a *App) Receive(ctx actor.Context) {
 		go tick(contxt, ctx, TIMEOUT)
 
 	case *actor.Stopping:
+		fmt.Printf("backup database data: %d\n", a.cashInput)
 		if a.cancel != nil {
 			a.cancel()
 		}
 		if a.cancelPop != nil {
 			a.cancelPop()
 		}
+		fmt.Printf("backup database data: %d\n", a.cashInput)
 		if a.db != nil {
 			data, err := json.Marshal(&ValidationData{
 				CountInputs:  a.countInput,
@@ -190,15 +188,16 @@ func (a *App) Receive(ctx actor.Context) {
 				logs.LogWarn.Printf("database persistence error: %s", err)
 				break
 			}
+			fmt.Printf("backup 0 database data: %s\n", data)
 			ctx.RequestFuture(a.db, &database.MsgUpdateData{
 				ID:      "counters",
 				Buckets: []string{collectionDriverData},
 				Data:    data,
 			}, time.Millisecond*100).Wait()
-			fmt.Printf("backup database data: %s\n", data)
+			fmt.Printf("backup 1 database data: %s\n", data)
 		}
 		if a.db != nil {
-			ctx.Send(a.db, &database.MsgCloseDB{})
+			ctx.RequestFuture(a.db, &database.MsgCloseDB{}, 100*time.Millisecond).Wait()
 		}
 		if a.cancel != nil {
 			a.cancel()
@@ -268,13 +267,11 @@ func (a *App) Receive(ctx actor.Context) {
 					}()
 
 				}
+				if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+					logs.LogWarn.Printf("inputs error: %s", err)
+				}
 			}
 		}
-		// if a.uix != nil {
-		// 	if err := a.uix.TextConfirmationPopup(4*time.Second, "entrada confirmada"); err != nil {
-		// 		logs.LogWarn.Printf("textConfirmation error: %s", err)
-		// 	}
-		// }
 	case *messages.MsgAppError:
 		textBytes := make([]string, 0)
 		v := msg.GetError()
@@ -426,17 +423,28 @@ func (a *App) Receive(ctx actor.Context) {
 			break
 		}
 		a.pidApp = ctx.Sender()
-	// 	if a.evts == nil {
-	// 		a.evts = eventstream.NewEventStream()
-	// 	}
-	// 	fmt.Printf("sender = %s\n", ctx.Sender())
-	// 	if a.subs == nil {
-	// 		a.subs = make(map[string]*eventstream.Subscription)
-	// 	}
-	// 	if s, ok := a.subs[ctx.Sender().GetId()]; ok {
-	// 		a.evts.Unsubscribe(s)
-	// 	}
-	// 	a.subs[ctx.Sender().GetId()] = subscribeExternal(ctx, a.evts)
+
+	case *messages.MsgAppMapRoute:
+		fmt.Printf("message -> \"%v\"\n", msg)
+		a.routes = msg.Routes
+	case *messages.MsgRoute:
+		fmt.Printf("message -> \"%v\"\n", msg)
+		v := msg.GetItineraryName()
+		a.route = int(msg.GetItineraryCode())
+		if a.routeString == v {
+			break
+		}
+		a.routeString = v
+		if err := a.uix.Route(a.routeString); err != nil {
+			logs.LogWarn.Printf("route error: %s", err)
+		}
+	case *MsgSetRoute:
+		if a.pidApp != nil {
+			mss := &messages.MsgSetRoute{
+				Code: int32(a.route),
+			}
+			ctx.Request(a.pidApp, mss)
+		}
 	case *MsgSetRoutes:
 		a.routes = msg.Routes
 	case *MsgConfirmationText:
@@ -586,38 +594,27 @@ func (a *App) Receive(ctx actor.Context) {
 			}
 		}
 	case *counterpass.CounterMap:
-		// if msg.Inputs0+msg.Inputs1 > a.countInput {
-		// 	a.countInput = msg.Inputs0 + msg.Inputs1
-		// 	if err := a.uix.Inputs(int64(a.countInput)); err != nil {
-		// 		logs.LogWarn.Printf("inputs error: %s", err)
-		// 	}
-		// }
 
-		// if msg.Outputs0+msg.Outputs1 > a.countOutput {
-		// 	a.countOutput = msg.Outputs0 + msg.Outputs1
-		// 	if err := a.uix.Outputs(int64(a.countOutput)); err != nil {
-		// 		logs.LogWarn.Printf("outputs error: %s", err)
-		// 	}
-		// }
-
-		// if a.countOutput != a.countInput {
-		// 	dev := a.countOutput - a.countInput
-		// 	if err := a.uix.DeviationInputs(int64(dev)); err != nil {
-		// 		logs.LogWarn.Printf("devitation error: %s", err)
-		// 	}
-		// }
-	case *gps.MsgGpsStatus:
-		fmt.Printf("******** %v **********", msg)
-		if !msg.State && a.gps {
-			if err := a.uix.Gps(true); err != nil {
-				logs.LogWarn.Printf("network error: %s", err)
-			}
-		} else if msg.State && !a.gps {
-			if err := a.uix.Gps(false); err != nil {
-				logs.LogWarn.Printf("network error: %s", err)
-			}
+	case *messages.MsgGpsOk:
+		a.gps = true
+		if err := a.uix.Gps(false); err != nil {
+			logs.LogWarn.Printf("gps error: %s", err)
 		}
-		a.gps = msg.State
+	case *messages.MsgGpsErr:
+		a.gps = false
+		if err := a.uix.Gps(true); err != nil {
+			logs.LogWarn.Printf("gps error: %s", err)
+		}
+	case *messages.MsgGroundOk:
+		a.network = true
+		if err := a.uix.Network(false); err != nil {
+			logs.LogWarn.Printf("network error: %s", err)
+		}
+	case *messages.MsgGroundErr:
+		a.network = false
+		if err := a.uix.Network(true); err != nil {
+			logs.LogWarn.Printf("network error: %s", err)
+		}
 	case *MsgUpdateTime:
 		tNow := time.Now()
 		if a.updateTime.Minute() == tNow.Minute() && a.updateTime.Hour() == tNow.Hour() {
@@ -627,6 +624,10 @@ func (a *App) Receive(ctx actor.Context) {
 		if err := a.uix.Date(tNow); err != nil {
 			logs.LogWarn.Printf("date error: %s", err)
 		}
+	case error:
+		fmt.Printf("error message: %s (%s)\n", msg, ctx.Self().GetId())
+	default:
+		fmt.Printf("unhandled message type: %T (%s)\n", msg, ctx.Self().GetId())
 	}
 }
 

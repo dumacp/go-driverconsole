@@ -18,6 +18,7 @@ require (
 	github.com/dumacp/go-actors v0.0.0-20230714144318-a7af7e9e701a
 	github.com/dumacp/go-fareCollection v0.0.0-00010101000000-000000000000
 	github.com/dumacp/go-gwiot v0.0.0-20230301184410-367f90defccc
+	github.com/dumacp/go-ignition v0.0.0-20230824145936-0bdddd08a7a4
 	github.com/dumacp/go-itinerary v0.0.0-20230427203726-7dd05dd6a3b5
 	github.com/dumacp/go-levis v0.0.0-20230519201809-bcd03f1dfb87
 	github.com/dumacp/go-params v0.0.0-00010101000000-000000000000
@@ -77,3 +78,5 @@ replace github.com/dumacp/go-gwiot => ../go-gwiot
 replace github.com/dumacp/go-schservices => ../go-schservices
 
 replace github.com/dumacp/go-actors => ../go-actors
+
+replace github.com/dumacp/matrixorbital => ../matrixorbital

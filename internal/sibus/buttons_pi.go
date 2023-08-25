@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 	"unicode"
@@ -14,58 +15,25 @@ import (
 	"github.com/dumacp/go-schservices/api/services"
 )
 
-type Event struct {
-	Label EventLabel
-	Value interface{}
-}
-
-type EventLabel int
-
-const (
-	PROGRAMATION_DRIVER EventLabel = iota
-	PROGRAMATION_VEH
-	STATS
-	SHOW_NOTIF
-	ROUTE
-	DRIVER
-	SCREEN_SWITCH
-	STEP_ENABLE
-	STEP_APPLY
-)
-
-func (a *App) Buttons() func(evt *buttons.InputEvent) {
+func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 
 	return func(evt *buttons.InputEvent) {
 
-		evt2EvtLabel := map[int]EventLabel{
-			AddrEnterRuta:        ROUTE,
-			AddrEnterDriver:      DRIVER,
-			AddrScreenSwitch:     SCREEN_SWITCH,
-			AddrScreenProgVeh:    PROGRAMATION_VEH,
-			AddrScreenProgDriver: PROGRAMATION_DRIVER,
-			AddrScreenMore:       STATS,
-			AddrScreenAlarms:     SHOW_NOTIF,
-			AddrSwitchStep:       STEP_ENABLE,
-			AddrSendStep:         STEP_APPLY,
-		}
-
-		label, ok := evt2EvtLabel[int(evt.KeyCode)]
-		if !ok {
-			return
-		}
 		if err := func() error {
-			switch label {
-			case PROGRAMATION_DRIVER:
-				if err := a.uix.Screen(int(ui.PROGRAMATION_DRIVER_SCREEN), false); err != nil {
+			switchScreen := false
+			switch evt.KeyCode {
+			case AddrScreenSwitch:
+				if err := a.uix.Screen(int(ui.MAIN_SCREEN), switchScreen); err != nil {
+					return fmt.Errorf("event SCREEN error: %s", err)
+				}
+			case AddrScreenProgDriver:
+				if err := a.uix.Screen(int(ui.PROGRAMATION_DRIVER_SCREEN), switchScreen); err != nil {
 					return fmt.Errorf("event SCREEN error: %s", err)
 				}
 				// release button
 				if v, ok := evt.Value.(bool); !ok || v {
 					break
 				}
-				// if err := a.uix.ShowProgDriver(); err != nil {
-				// 	return fmt.Errorf("event ShowProgDriver error: %s", err)
-				// }
 				ss := make([]*services.ScheduleService, 0)
 				if len(a.shcservices) > 0 {
 					for _, v := range a.shcservices {
@@ -74,7 +42,6 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 					sort.SliceStable(ss, func(i, j int) bool {
 						return ss[i].GetScheduleDateTime() > ss[j].GetScheduleDateTime()
 					})
-
 				}
 				reverseSlice := make([]string, 0)
 				// reverseSlice = append(reverseSlice, "")
@@ -114,8 +81,8 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 				if err := a.uix.ShowProgDriver(dataSlice...); err != nil {
 					return fmt.Errorf("event ShowProgDriver error: %s", err)
 				}
-			case PROGRAMATION_VEH:
-				if err := a.uix.Screen(int(ui.PROGRAMATION_VEH_SCREEN), false); err != nil {
+			case AddrScreenProgVeh:
+				if err := a.uix.Screen(int(ui.PROGRAMATION_VEH_SCREEN), switchScreen); err != nil {
 					return fmt.Errorf("event SCREEN error: %s", err)
 				}
 				// release button
@@ -160,8 +127,8 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 				if err := a.uix.ShowProgVeh(dataSlice...); err != nil {
 					return fmt.Errorf("event ShowProgVeh error: %s", err)
 				}
-			case SHOW_NOTIF:
-				if err := a.uix.Screen(int(ui.NOTIFICATIONS_SCREEN), false); err != nil {
+			case AddrScreenAlarms:
+				if err := a.uix.Screen(int(ui.NOTIFICATIONS_SCREEN), switchScreen); err != nil {
 					return fmt.Errorf("event SCREEN error: %s", err)
 				}
 				// release button
@@ -173,8 +140,8 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 						return fmt.Errorf("event ShowNotifications error: %s", err)
 					}
 				}
-			case STATS:
-				if err := a.uix.Screen(int(ui.ADDITIONALS_SCREEN), false); err != nil {
+			case AddrScreenMore:
+				if err := a.uix.Screen(int(ui.ADDITIONALS_SCREEN), switchScreen); err != nil {
 					return fmt.Errorf("event SCREEN error: %s", err)
 				}
 				// release button
@@ -184,46 +151,47 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 				if err := a.uix.ShowStats(); err != nil {
 					return fmt.Errorf("event ShowStats error: %s", err)
 				}
-			case ROUTE:
+			case AddrEnterRuta:
 				// release button
 				if v, ok := evt.Value.(bool); !ok || v {
 					break
+				}
+				if err := a.uix.SetLed(AddrEnterRuta, false); err != nil {
+					return fmt.Errorf("error setLed (ROUTE_TEXT_READ): %s", err)
 				}
 				if v, err := a.uix.ReadBytesRawDisplay(ui.ROUTE_TEXT_READ); err != nil {
 					return fmt.Errorf("error ReadBytesRawDisplay (ROUTE_TEXT_READ): %s", err)
 				} else {
 					data := strings.ReplaceAll(string(v), "\x00", "")
-					if len(data) < 6 {
-						return fmt.Errorf("error ReadBytesRawDisplay (len < 6): %s", data)
+					if len(data) < 1 {
+						return fmt.Errorf("error ReadBytesRawDisplay (len < 1): %s", data)
 					}
-					if err := a.uix.Route(fmt.Sprintf(" %s", data)); err != nil {
+					rutaCodeInt, err := strconv.Atoi(strings.TrimSpace(data))
+					if err != nil {
+						return fmt.Errorf("error route: %s", err)
+					}
+					a.route = rutaCodeInt
+					if a.routes != nil {
+						if routeString, ok := a.routes[int32(rutaCodeInt)]; ok {
+							a.routeString = routeString
+						} else {
+							a.routeString = fmt.Sprintf("%d", rutaCodeInt)
+						}
+					}
+					a.ctx.Send(a.ctx.Self(), &MsgSetRoute{
+						Route: rutaCodeInt,
+					})
+					if err := a.uix.Route(a.routeString); err != nil {
 						return fmt.Errorf("error Route: %s", err)
 					}
 				}
-
-				// contxt, cancel := context.WithCancel(a.contxt)
-				// a.buttonCancel = cancel
-				// num, err := a.uix.KeyNum(contxt, "ingrese el número de ruta:")
-				// if err != nil {
-				// 	return fmt.Errorf("route keyNum error: %s", err)
-				// }
-				// go func() {
-				// 	defer cancel()
-				// 	self := a.ctx.Self()
-				// 	rootctx := a.ctx.ActorSystem().Root
-
-				// 	select {
-				// 	case <-contxt.Done():
-				// 	case v := <-num:
-				// 		rootctx.Send(self, &MsgChangeRoute{
-				// 			ID: v,
-				// 		})
-				// 	}
-				// }()
-			case DRIVER:
+			case AddrEnterDriver:
 				// release button
 				if v, ok := evt.Value.(bool); !ok || v {
 					break
+				}
+				if err := a.uix.SetLed(AddrEnterDriver, false); err != nil {
+					return fmt.Errorf("error setLed (Driver_TEXT_READ): %s", err)
 				}
 				if v, err := a.uix.ReadBytesRawDisplay(ui.DRIVER_TEXT_READ); err != nil {
 					return fmt.Errorf("error ReadBytesRawDisplay (DRIVER_TEXT_READ): %s", err)
@@ -232,11 +200,18 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 					if len(data) < 6 {
 						return fmt.Errorf("error ReadBytesRawDisplay (len < 6): %s", data)
 					}
+					fmt.Printf("driverCode: %s\n", data)
+					driverCodeInt, err := strconv.Atoi(strings.TrimSpace(data))
+					if err != nil {
+						return fmt.Errorf("error driver: %s", err)
+					}
+					fmt.Printf("driverCode: %d\n", driverCodeInt)
+					a.driver = driverCodeInt
 					if err := a.uix.Driver(fmt.Sprintf(" %s", data)); err != nil {
 						return fmt.Errorf("error Driver: %s", err)
 					}
 				}
-			case STEP_ENABLE:
+			case AddrSwitchStep:
 				if v, ok := evt.Value.(bool); ok {
 					if !v {
 						fmt.Println("/////////// step enable: true ////////////")
@@ -288,8 +263,7 @@ func (a *App) Buttons() func(evt *buttons.InputEvent) {
 						}
 					}
 				}
-
-			case STEP_APPLY:
+			case AddrSendStep:
 				// release button
 				if v, ok := evt.Value.(bool); !ok || v {
 					break

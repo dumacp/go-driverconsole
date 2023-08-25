@@ -22,6 +22,7 @@ type ui struct {
 
 type UI interface {
 	Init() error
+	Shutdown() error
 	MainScreen() error
 	TextWarning(text ...string) error
 	TextConfirmation(text ...string) error
@@ -58,6 +59,7 @@ type UI interface {
 	ServiceCurrentState(state int, prompt string) error
 	InputHandler(inputs actor.Actor, callback func(evt *buttons.InputEvent)) error
 	ReadBytesRawDisplay(label int) ([]byte, error)
+	SetLed(label int, state bool) error
 	// Events() chan *Event
 }
 
@@ -90,6 +92,13 @@ func (u *ui) Init() error {
 	}
 	return fmt.Errorf("init with response form display")
 
+}
+
+func (u *ui) Shutdown() error {
+	if err := u.rootctx.PoisonFuture(u.pid).Wait(); err != nil {
+		return err
+	}
+	return nil
 }
 
 // func (u *ui) Events() chan *Event {
@@ -386,6 +395,19 @@ func (u *ui) Keyboard(ctx context.Context, prompt string) (chan string, error) {
 
 func (u *ui) Doors(state ...bool) error {
 	panic("not implemented") // TODO: Implement
+}
+
+func (u *ui) SetLed(label int, state bool) error {
+	res, err := u.rootctx.RequestFuture(u.pid, &LedMsg{Label: label, State: state}, 1*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("led without response from display")
 }
 
 func (u *ui) Gps(state bool) error {

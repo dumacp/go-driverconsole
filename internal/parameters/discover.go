@@ -49,5 +49,9 @@ func (a *DiscoveryActor) Receive(ctx actor.Context) {
 		if ctx.Parent() != nil {
 			ctx.Send(ctx.Parent(), msg)
 		}
+	case error:
+		fmt.Printf("error message: %s (%s)\n", msg, ctx.Self().GetId())
+	default:
+		fmt.Printf("unhandled message type: %T (%s)\n", msg, ctx.Self().GetId())
 	}
 }

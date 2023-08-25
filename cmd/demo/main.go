@@ -129,7 +129,7 @@ func main() {
 				log.Fatalf("app-actor error: %s", err)
 			}
 
-			if err := uii.InputHandler(buttons.NewActor(confButtons), appinstance.Buttons()); err != nil {
+			if err := uii.InputHandler(buttons.NewActor(confButtons), app.ButtonsPi(appinstance)); err != nil {
 				log.Fatalf("inputHandler error: %s", err)
 			}
 

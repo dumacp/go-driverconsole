@@ -187,7 +187,7 @@ func (m *gtt50Display) Reset() error {
 	if err := m.dev.Reset(); err != nil {
 		return err
 	}
-	time.Sleep(3 * time.Second)
+	time.Sleep(1 * time.Second)
 	return nil
 }
 

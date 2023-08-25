@@ -86,5 +86,7 @@ func (a *Actor) Receive(ctx actor.Context) {
 			break
 		}
 		subscribe(ctx, a.evts)
+	case error:
+		fmt.Printf("error device actor: %s\n", msg)
 	}
 }

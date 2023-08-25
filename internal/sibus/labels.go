@@ -227,6 +227,24 @@ func Label2DisplayRegister(label int) display.Register {
 			Gap:    0,
 			Toogle: 0,
 		}
+	case AddrEnterRuta:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrEnterRuta,
+			Len:    0,
+			Size:   0,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrEnterDriver:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrEnterDriver,
+			Len:    0,
+			Size:   0,
+			Gap:    0,
+			Toogle: 0,
+		}
 	}
 	return display.Register{}
 }

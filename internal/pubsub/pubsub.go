@@ -1,6 +1,7 @@
 package pubsub
 
 import (
+	"crypto/rand"
 	"fmt"
 	"sync"
 	"time"
@@ -11,7 +12,7 @@ import (
 )
 
 const (
-	clientID = "driverconcole"
+	clientID = "driverconsole"
 )
 
 type pubsubActor struct {
@@ -124,7 +125,7 @@ func (ps *pubsubActor) Receive(ctx actor.Context) {
 	case *publishMSG:
 		// fmt.Printf("publish msg: %s", msg.msg)
 		logs.LogBuild.Printf("publish msg: %s", msg.msg)
-		tk := ps.client.Publish(msg.topic, 0, false, msg.msg)
+		tk := ps.client.Publish(msg.topic, 1, true, msg.msg)
 		if !tk.WaitTimeout(3 * time.Second) {
 			if tk.Error() != nil {
 				logs.LogError.Printf("end error: %s, with messages -> %v", tk.Error(), msg)
@@ -139,13 +140,17 @@ func (ps *pubsubActor) Receive(ctx actor.Context) {
 		logs.LogError.Println("Stopped, actor and its children are stopped")
 	case *actor.Restarting:
 		logs.LogError.Println("Restarting, actor is about to restart")
+	case error:
+		fmt.Printf("error pubsub actor: %s\n", msg)
 	}
 }
 
 func client() mqtt.Client {
 	opt := mqtt.NewClientOptions().AddBroker("tcp://127.0.0.1:1883")
 	opt.SetAutoReconnect(true)
-	opt.SetClientID(fmt.Sprintf("%s-%d", clientID, time.Now().Unix()))
+	buff := make([]byte, 4)
+	rand.Read(buff)
+	opt.SetClientID(fmt.Sprintf("%s-%X", clientID, buff))
 	opt.SetKeepAlive(30 * time.Second)
 	opt.SetConnectRetryInterval(10 * time.Second)
 	client := mqtt.NewClient(opt)

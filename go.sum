@@ -10,15 +10,13 @@ github.com/cespare/xxhash/v2 v2.1.2 h1:YRXhKfTDauu4ajMg1TPgFO5jnlC2HCbmLXMcTG5cb
 github.com/cespare/xxhash/v2 v2.1.2/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
+github.com/dumacp/go-ignition v0.0.0-20230824145936-0bdddd08a7a4 h1:kRoDRR0x7aPFkWktNtwJpB2ranUHYQZgbbzlr/uL9ro=
+github.com/dumacp/go-ignition v0.0.0-20230824145936-0bdddd08a7a4/go.mod h1:RLe3xfv7gg/TAqxvi0lRZAfx1MV53FXWiKBg+1PBLso=
 github.com/dumacp/go-logs v0.0.0-20211122205852-dfcc5685457f/go.mod h1:dr8qC0qs36jLZFMZH/sRp3fc980yzZDCb/MkR/rHOSA=
 github.com/dumacp/go-logs v0.0.1 h1:X6pBagK6lCgNyz+MluT1V3cvoHnJsZCSIz5pjYe9YBc=
 github.com/dumacp/go-logs v0.0.1/go.mod h1:nxB2d1DaPSLGnz+0zuR29N/YRq7THIVwQLDHf0jBSRc=
 github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52 h1:2lzgBwOrKsWZcmqaCk1OgNcMAsHuUor4vc3WaEfYzVE=
 github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52/go.mod h1:ZVDQY1pOKAVSjiLXPmvcPfQJkKDyREXJuW411QwP5D0=
-github.com/dumacp/matrixorbital v0.0.0-20230815161426-7644ffd40353 h1:VmTSMAZJvgEYyBF607T1F00H5+qcWF01ZZZTjensKOY=
-github.com/dumacp/matrixorbital v0.0.0-20230815161426-7644ffd40353/go.mod h1:NMkGxr2nF1byuggonXDXD0sfFKayWK5gOVpX5MI0XhU=
-github.com/dumacp/matrixorbital v0.0.0-20230818142648-d37611aecca5 h1:Eg/QCLeP/uUMtVGEbpHAl0LCBa5YWmFTslpPp0qdUTs=
-github.com/dumacp/matrixorbital v0.0.0-20230818142648-d37611aecca5/go.mod h1:NMkGxr2nF1byuggonXDXD0sfFKayWK5gOVpX5MI0XhU=
 github.com/dumacp/pubsub v0.0.0-20200115200904-f16f29d84ee0 h1:5GOnGA5BlfSxREoT5lRHmShjHV/XXsZrns+MZwgV24s=
 github.com/dumacp/pubsub v0.0.0-20200115200904-f16f29d84ee0/go.mod h1:0LjaLgrAKTmrHiGUjyCMNm940lHXikO0TMMViTem5iI=
 github.com/eclipse/paho.mqtt.golang v1.4.2 h1:66wOzfUHSSI1zamx7jR6yMEI5EuHnT1G6rNA5PM12m4=

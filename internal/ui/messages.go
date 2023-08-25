@@ -134,6 +134,12 @@ type NetworkMsg struct {
 	State bool
 }
 
+// LedMsg is a message for displaying the network state.
+type LedMsg struct {
+	Label int
+	State bool
+}
+
 // AddNotificationsMsg is a message for adding notifications.
 type AddNotificationsMsg struct {
 	Add string

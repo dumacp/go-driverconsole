@@ -178,9 +178,16 @@ func ButtonsGtt50(a *App) func(evt *buttons.InputEvent) {
 				// a.ctx.Send(a.ctx.Self(), &MsgSetRoute{Route: rutaCodeInt})
 				a.routeCode = ""
 				a.route = rutaCodeInt
-				if len(a.routes) > 0 {
-					a.routeString = a.routes[int32(rutaCodeInt)]
+				if a.routes != nil {
+					if routeString, ok := a.routes[int32(rutaCodeInt)]; ok {
+						a.routeString = routeString
+					} else {
+						a.routeString = fmt.Sprintf("%d", rutaCodeInt)
+					}
 				}
+				a.ctx.Send(a.ctx.Self(), &MsgSetRoute{
+					Route: rutaCodeInt,
+				})
 				a.ctx.Send(a.ctx.Self(), &MsgMainScreen{})
 			case AddrGttButtonDriver:
 				if v, ok := evt.Value.(bool); !ok || v {
@@ -287,11 +294,7 @@ func ButtonsGtt50(a *App) func(evt *buttons.InputEvent) {
 				if err := a.uix.Brightness(a.brightness); err != nil {
 					return fmt.Errorf("event SCREEN error: %s", err)
 				}
-				if len(a.notif) > 0 {
-					if err := a.uix.ShowNotifications(a.notif...); err != nil {
-						return fmt.Errorf("event ShowNotifications error: %s", err)
-					}
-				}
+
 			case AddrGttSubBright:
 				// release button
 				if v, ok := evt.Value.(bool); !ok || v {
@@ -305,11 +308,7 @@ func ButtonsGtt50(a *App) func(evt *buttons.InputEvent) {
 				if err := a.uix.Brightness(a.brightness); err != nil {
 					return fmt.Errorf("event SCREEN error: %s", err)
 				}
-				if len(a.notif) > 0 {
-					if err := a.uix.ShowNotifications(a.notif...); err != nil {
-						return fmt.Errorf("event ShowNotifications error: %s", err)
-					}
-				}
+
 			case AddrGttButtonRoute_0:
 				if v, ok := evt.Value.(bool); !ok || v {
 					break
@@ -372,9 +371,7 @@ func ButtonsGtt50(a *App) func(evt *buttons.InputEvent) {
 					break
 				}
 				a.routeCode = ""
-				if err := a.uix.Screen(int(ui.MAIN_SCREEN), switchScreen); err != nil {
-					return fmt.Errorf("event SCREEN error: %s", err)
-				}
+				a.ctx.Send(a.ctx.Self(), &MsgMainScreen{})
 			case AddrGttButtonDriver_0:
 				if v, ok := evt.Value.(bool); !ok || v {
 					break
@@ -437,9 +434,7 @@ func ButtonsGtt50(a *App) func(evt *buttons.InputEvent) {
 					break
 				}
 				a.driverCode = ""
-				if err := a.uix.Screen(int(ui.MAIN_SCREEN), switchScreen); err != nil {
-					return fmt.Errorf("event SCREEN error: %s", err)
-				}
+				a.ctx.Send(a.ctx.Self(), &MsgMainScreen{})
 			}
 
 			return nil

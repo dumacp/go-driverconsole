@@ -89,6 +89,10 @@ func (a *groundActor) Receive(ctx actor.Context) {
 				}
 			}
 		}
+	case error:
+		fmt.Printf("error message: %s (%s)\n", msg, ctx.Self().GetId())
+	default:
+		fmt.Printf("unhandled message type: %T (%s)\n", msg, ctx.Self().GetId())
 	}
 }
 

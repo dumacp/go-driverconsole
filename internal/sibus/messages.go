@@ -51,7 +51,7 @@ type MsgRoute struct {
 	Route string
 }
 type MsgSetRoute struct {
-	Route string
+	Route int
 }
 type MsgDriver struct {
 	Driver string

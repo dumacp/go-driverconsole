@@ -6,7 +6,7 @@ const (
 	AddrGttScreenVeh           = 9
 	AddrGttScreenDriver        = 6
 	AddrGttScreenStats         = 8
-	AddrGttScreenAlarm         = 5
+	AddrGttScreenAlarm         = 7
 	AddrGttScreenKeyRoute      = 2
 	AddrGttScreenKeyDriver     = 3
 	AddrGttScreenWarn          = 5

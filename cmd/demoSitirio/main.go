@@ -279,18 +279,18 @@ func main() {
 			tick3 := time.Tick(300 * time.Second)
 			tick4 := time.Tick(330 * time.Second)
 
-			toggle := false
+			// toggle := false
 			for {
 				select {
 				case <-tick0:
-					toggle = !toggle
-					if toggle {
-						root.Request(pidApp, &messages.MsgGpsErr{})
-						root.Request(pidApp, &messages.MsgGroundErr{})
-					} else {
-						root.Request(pidApp, &messages.MsgGpsOk{})
-						root.Request(pidApp, &messages.MsgGroundOk{})
-					}
+					// toggle = !toggle
+					// if toggle {
+					// 	root.Request(pidApp, &messages.MsgGpsErr{})
+					// 	root.Request(pidApp, &messages.MsgGroundErr{})
+					// } else {
+					// 	root.Request(pidApp, &messages.MsgGpsOk{})
+					// 	root.Request(pidApp, &messages.MsgGroundOk{})
+					// }
 					// root.Send(pidApp, &counterpass.CounterMap{Inputs0: 20, Outputs1: 21})
 				// case <-tick1:
 				// root.Send(pidApp, &messages.MsgAppPaso{Value: 1})
@@ -303,14 +303,14 @@ func main() {
 
 				case <-tick3:
 
-					root.Send(pidApp, &messages.MsgAppPaso{
-						Value: 1,
-						Code:  messages.MsgAppPaso_ELECTRONIC,
-					})
+					// root.Send(pidApp, &messages.MsgAppPaso{
+					// 	Value: 1,
+					// 	Code:  messages.MsgAppPaso_ELECTRONIC,
+					// })
 				case <-tick4:
-					root.Send(pidApp, &messages.MsgAppError{
-						Error: "entrada invalida",
-					})
+					// root.Send(pidApp, &messages.MsgAppError{
+					// 	Error: "entrada invalida",
+					// })
 
 				}
 			}

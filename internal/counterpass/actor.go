@@ -192,7 +192,8 @@ func (a *Actor) Receive(ctx actor.Context) {
 		}
 		ctx.Respond(&MsgStatus{State: true})
 	case error:
-		err := msg.Error()
-		logs.LogWarn.Println(err)
+		fmt.Printf("error message: %s (%s)\n", msg, ctx.Self().GetId())
+	default:
+		fmt.Printf("unhandled message type: %T (%s)\n", msg, ctx.Self().GetId())
 	}
 }

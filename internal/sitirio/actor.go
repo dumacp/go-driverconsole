@@ -14,7 +14,6 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/buttons"
 	"github.com/dumacp/go-driverconsole/internal/constant"
 	"github.com/dumacp/go-driverconsole/internal/counterpass"
-	"github.com/dumacp/go-driverconsole/internal/gps"
 	"github.com/dumacp/go-driverconsole/internal/pubsub"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	msgdriverterminal "github.com/dumacp/go-driverconsole/pkg/messages"
@@ -161,7 +160,7 @@ func (a *App) Receive(ctx actor.Context) {
 			if err := a.uix.Init(); err != nil {
 				logs.LogWarn.Printf("init error: %s", err)
 			}
-			time.Sleep(4 * time.Second)
+			time.Sleep(1 * time.Second)
 		}
 
 		fmt.Printf("********* /////////// subscribe to %q topic\n", constant.DISCOVERY_TOPIC)
@@ -241,9 +240,9 @@ func (a *App) Receive(ctx actor.Context) {
 			if err := a.uix.Driver(fmt.Sprintf("%d", a.driver)); err != nil {
 				return fmt.Errorf("driver error: %s", err)
 			}
-			if len(a.routes) > 0 {
+			if len(a.routeString) > 0 {
 				if err := a.uix.Route(a.routeString); err != nil {
-					return fmt.Errorf("driver error: %s", err)
+					return fmt.Errorf("route error: %s", err)
 				}
 			}
 			return nil
@@ -251,18 +250,38 @@ func (a *App) Receive(ctx actor.Context) {
 			logs.LogWarn.Println(err)
 		}
 	case *MsgSetDriver:
-		a.driver = msg.Driver
-		if err := a.uix.Driver(fmt.Sprintf("%d", msg.Driver)); err != nil {
-			logs.LogWarn.Printf("driver error: %s", err)
-		}
-	case *MsgSetRoute:
-		if len(a.routes) <= 0 {
+	// a.driver = msg.Driver
+	// if err := a.uix.Driver(fmt.Sprintf("%d", msg.Driver)); err != nil {
+	// 	logs.LogWarn.Printf("driver error: %s", err)
+	// }
+	case *messages.MsgRoute:
+		fmt.Printf("message -> \"%v\"\n", msg)
+		v := msg.GetItineraryName()
+		a.route = int(msg.GetItineraryCode())
+		if a.routeString == v {
 			break
 		}
-		a.route = msg.Route
-		a.routeString = a.routes[int32(msg.Route)]
+		a.routeString = v
+		if a.uix.GetScreen() != ui.MAIN_SCREEN {
+			break
+		}
 		if err := a.uix.Route(a.routeString); err != nil {
 			logs.LogWarn.Printf("route error: %s", err)
+		}
+	case *MsgSetRoute:
+		// if len(a.routes) <= 0 {
+		// 	break
+		// }
+		// a.route = msg.Route
+		// a.routeString = a.routes[int32(msg.Route)]
+		// if err := a.uix.Route(a.routeString); err != nil {
+		// 	logs.LogWarn.Printf("route error: %s", err)
+		// }
+		if a.pidApp != nil {
+			mss := &messages.MsgSetRoute{
+				Code: int32(a.route),
+			}
+			ctx.Request(a.pidApp, mss)
 		}
 	case *msgdriverterminal.Discovery:
 		if len(msg.GetAddress()) <= 0 || len(msg.GetId()) <= 0 {
@@ -335,6 +354,11 @@ func (a *App) Receive(ctx actor.Context) {
 						}
 					}()
 
+				}
+				if !strings.EqualFold(GTT50, a.displayVendor) {
+					if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+						logs.LogWarn.Printf("inputs error: %s", err)
+					}
 				}
 			}
 		}
@@ -478,6 +502,12 @@ func (a *App) Receive(ctx actor.Context) {
 			if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
 				logs.LogWarn.Printf("outputs error: %s", err)
 			}
+			if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+				logs.LogWarn.Printf("countInput error: %s", err)
+			}
+			if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+				logs.LogWarn.Printf("countOutput error: %s", err)
+			}
 		}
 
 	case *MsgDoors:
@@ -516,7 +546,11 @@ func (a *App) Receive(ctx actor.Context) {
 	// 		a.evts.Unsubscribe(s)
 	// 	}
 	// 	a.subs[ctx.Sender().GetId()] = subscribeExternal(ctx, a.evts)
+	case *messages.MsgAppMapRoute:
+		fmt.Printf("message -> \"%v\"\n", msg)
+		a.routes = msg.Routes
 	case *MsgSetRoutes:
+		fmt.Printf("message -> \"%v\"\n", msg)
 		a.routes = msg.Routes
 	case *MsgConfirmationText:
 		if err := a.uix.TextConfirmation(string(msg.Text)); err != nil {
@@ -737,7 +771,7 @@ func (a *App) Receive(ctx actor.Context) {
 		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
 			break
 		}
-		if err := a.uix.Gps(true); err != nil {
+		if err := a.uix.Gps(false); err != nil {
 			logs.LogWarn.Printf("gps error: %s", err)
 		}
 	case *messages.MsgGpsErr:
@@ -745,7 +779,7 @@ func (a *App) Receive(ctx actor.Context) {
 		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
 			break
 		}
-		if err := a.uix.Gps(false); err != nil {
+		if err := a.uix.Gps(true); err != nil {
 			logs.LogWarn.Printf("gps error: %s", err)
 		}
 	case *messages.MsgGroundOk:
@@ -753,7 +787,7 @@ func (a *App) Receive(ctx actor.Context) {
 		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
 			break
 		}
-		if err := a.uix.Network(true); err != nil {
+		if err := a.uix.Network(false); err != nil {
 			logs.LogWarn.Printf("network error: %s", err)
 		}
 	case *messages.MsgGroundErr:
@@ -761,25 +795,9 @@ func (a *App) Receive(ctx actor.Context) {
 		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
 			break
 		}
-		if err := a.uix.Network(false); err != nil {
+		if err := a.uix.Network(true); err != nil {
 			logs.LogWarn.Printf("network error: %s", err)
 		}
-	case *gps.MsgGpsStatus:
-		fmt.Printf("******** %v **********", msg)
-		a.gps = msg.State
-		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
-			break
-		}
-		if !msg.State && a.gps {
-			if err := a.uix.Gps(true); err != nil {
-				logs.LogWarn.Printf("network error: %s", err)
-			}
-		} else if msg.State && !a.gps {
-			if err := a.uix.Gps(false); err != nil {
-				logs.LogWarn.Printf("network error: %s", err)
-			}
-		}
-
 	case *MsgUpdateTime:
 		tNow := time.Now()
 		if a.updateTime.Minute() == tNow.Minute() && a.updateTime.Hour() == tNow.Hour() {
@@ -792,6 +810,10 @@ func (a *App) Receive(ctx actor.Context) {
 		if err := a.uix.DateWithFormat(tNow, "2006/01/02 15:04"); err != nil {
 			logs.LogWarn.Printf("date error: %s", err)
 		}
+	case error:
+		fmt.Printf("error message: %s (%s)\n", msg, ctx.Self().GetId())
+	default:
+		fmt.Printf("unhandled message type: %T (%s)\n", msg, ctx.Self().GetId())
 	}
 }
 

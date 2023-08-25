@@ -343,6 +343,19 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: result})
 		}
+	case *LedMsg:
+		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.LedMsg{
+			State: func() int {
+				if msg.State {
+					return 0
+				}
+				return 1
+			}(),
+			Label: msg.Label,
+		}, 1*time.Second))
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: result})
+		}
 
 	case *AddNotificationsMsg:
 
@@ -487,8 +500,9 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}(); err != nil {
 			logs.LogWarn.Println(err)
 		}
-
+	case error:
+		fmt.Printf("error message: %s (%s)\n", msg, ctx.Self().GetId())
 	default:
-		ctx.Respond(fmt.Errorf("unhandled message type: %T", msg))
+		fmt.Printf("unhandled message type: %T (%s)\n", msg, ctx.Self().GetId())
 	}
 }
