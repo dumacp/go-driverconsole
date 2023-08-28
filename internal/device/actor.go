@@ -18,6 +18,7 @@ type Actor struct {
 	evts      *eventstream.EventStream
 	dev       Device
 	contxt    context.Context
+	lastError time.Time
 }
 
 func NewActor(dev Device) actor.Actor {
@@ -66,10 +67,15 @@ func (a *Actor) Receive(ctx actor.Context) {
 		a.fmachinae.Event(a.contxt, eError)
 	case *StartDevice:
 		if err := a.fmachinae.Event(a.contxt, eStarted); err != nil {
-			logs.LogError.Printf("open device error: %s", err)
+			if time.Since(a.lastError) > 3*time.Minute {
+				a.lastError = time.Now()
+				logs.LogError.Printf("open device error: %s", err)
+			}
 			time.Sleep(3 * time.Second)
 			ctx.Send(ctx.Self(), &StartDevice{})
+			break
 		}
+		a.lastError = time.Time{}
 		fmt.Printf("open device successfully\n")
 	case *MsgDevice:
 		a.fmachinae.Event(a.contxt, eOpenned)

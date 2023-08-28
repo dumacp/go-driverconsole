@@ -488,6 +488,8 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: result})
 		}
+	case *buttons.StartButtons:
+
 	case *buttons.InputEvent:
 
 		fmt.Printf("arrive event: %+v\n", msg)

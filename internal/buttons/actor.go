@@ -77,14 +77,25 @@ func (a *Actor) Receive(ctx actor.Context) {
 			break
 		}
 
+		if ctx.Parent() != nil {
+			ctx.Send(ctx.Parent(), &StopButtons{})
+		}
 		go func(ctx actor.Context) {
 			rootctx := ctx.ActorSystem().Root
 			self := ctx.Self()
 
 			for v := range ch {
-				rootctx.Send(self, v)
+				if v.Error != nil {
+					logs.LogError.Println(err)
+				} else {
+					rootctx.Send(self, v)
+				}
 			}
 			logs.LogError.Printf("listenButtons close")
+			if ctx.Parent() != nil {
+				rootctx.Send(self, &StopButtons{})
+			}
+			// rootctx.PoisonFuture(self)
 		}(ctx)
 
 		// a.pidDevice = ctx.Sender()

@@ -24,6 +24,7 @@ const (
 	AddrBeep  = 23
 	// AddrAddBright        = 21
 	// AddrSubBright        = 22
+	ERROR_MAX = 5
 )
 
 type pi3070g struct {
@@ -81,7 +82,7 @@ func (p *pi3070g) ListenButtons(contxt context.Context) (<-chan *InputEvent, err
 	if p.dev == nil {
 		return nil, fmt.Errorf("device is not iniatilize")
 	}
-	ch := p.dev.ListenButtonsWithContext(contxt)
+	ch, chErr := p.dev.ListenButtonsWithContext2(contxt)
 	chEvt := make(chan *InputEvent, 1)
 
 	go func() {
@@ -108,6 +109,18 @@ func (p *pi3070g) ListenButtons(contxt context.Context) (<-chan *InputEvent, err
 			// 			fmt.Println(err)
 			// 		}
 			// 	}
+			case err, ok := <-chErr:
+				if !ok {
+					break
+				}
+				fmt.Println(err)
+				evt := &InputEvent{
+					Error: fmt.Errorf("error listeButtons: %s", err),
+				}
+				select {
+				case chEvt <- evt:
+				case <-time.After(1000 * time.Millisecond):
+				}
 			case button, ok := <-ch:
 				// if button.Value == 0 {
 				// 	break

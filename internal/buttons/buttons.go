@@ -53,3 +53,6 @@ const (
 	ResetCounter
 	ResetRecorrido
 )
+
+type StopButtons struct{}
+type StartButtons struct{}
