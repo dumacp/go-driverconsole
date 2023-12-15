@@ -19,7 +19,6 @@ import (
 	app "github.com/dumacp/go-driverconsole/internal/sitirio"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-driverconsole/internal/utils"
-	"github.com/dumacp/go-fareCollection/pkg/messages"
 
 	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/display"
@@ -40,8 +39,8 @@ func init() {
 	flag.StringVar(&vendor, "vendor", "gtt50", "device display vendor")
 	flag.StringVar(&id, "id", "", "device ID")
 	flag.StringVar(&port, "port", "/dev/ttyUSB0", "path to port serial in OS")
-	flag.IntVar(&baud, "baud", 19200, "serial port speed in baudios")
-	flag.BoolVar(&standalone, "standalone", false, "standalone running (without appfare supervision)")
+	flag.IntVar(&baud, "baud", 38400, "serial port speed in baudios")
+	flag.BoolVar(&standalone, "standalone", false, "standalone running (without appfare supervision) (DEPRECATED)")
 	flag.BoolVar(&debug, "debug", false, "debug")
 	flag.BoolVar(&logStd, "logStd", false, "send logs to stdout")
 
@@ -180,18 +179,12 @@ func main() {
 
 	var pidMain *actor.PID
 
-	if !standalone {
-		r.Register("driverconsole", props)
-		r.Start()
-		log.Printf("kinds: %v", r.GetKnownKinds())
-	} else {
-		var err error
-		pidMain, err = sys.Root.SpawnNamed(props, " driverconsole")
-		if err != nil {
-			log.Fatalln(err)
-		}
-		r.Start()
+	var err error
+	pidMain, err = sys.Root.SpawnNamed(props, " driverconsole")
+	if err != nil {
+		log.Fatalln(err)
 	}
+	r.Start()
 
 	// log.Printf("kind: %s", remote.NewKind("driverconsole", props).Kind)
 
@@ -201,9 +194,11 @@ func main() {
 	signal.Notify(finish, os.Interrupt)
 
 	tickStart := time.NewTicker(1 * time.Second)
-	timerStart := time.NewTicker(5 * time.Second)
-	defer timerStart.Stop()
+
+	timerStart := time.NewTimer(10 * time.Second)
 	func() {
+		defer timerStart.Stop()
+		defer tickStart.Stop()
 		for {
 			select {
 			case <-tickStart.C:
@@ -245,90 +240,83 @@ func main() {
 	// root.RequestWithCustomSender(pidApp, &messages.MsgSubscribeConsole{}, pidPaso)
 
 	if pidApp != nil {
-		go func() {
+		// routes := map[int32]string{
+		// 	10: "RUTA CARAJILLO",
+		// 	20: "RUTA ORIENTAL",
+		// 	30: "RUTA OCCIDENTAL",
+		// 	40: "RUTA NORTE",
+		// 	50: "RUTA SUR",
+		// }
 
-			routes := map[int32]string{
-				10: "RUTA CARAJILLO",
-				20: "RUTA ORIENTAL",
-				30: "RUTA OCCIDENTAL",
-				40: "RUTA NORTE",
-				50: "RUTA SUR",
+		// pidFare, _ := root.SpawnNamed(actor.PropsFromFunc(func(ctx actor.Context) {
+		// 	switch ctx.Message().(type) {
+		// 	case *messages.MsgDriverPaso:
+		// 		if ctx.Sender() == nil {
+		// 			break
+		// 		}
+		// 		ctx.Respond(&messages.MsgAppPaso{
+		// 			Code:  messages.MsgAppPaso_CASH,
+		// 			Value: 1,
+		// 		})
+		// 	}
+		// }), "appFareTest")
+
+		// root.RequestWithCustomSender(pidApp, &messages.MsgSubscribeConsole{}, pidFare)
+
+		// root.Request(pidApp, &app.MsgSetRoutes{
+		// 	Routes: routes,
+		// })
+		tick0 := time.Tick(5 * time.Second)
+		// tick1 := time.Tick(30 * time.Second)
+		tick2 := time.Tick(3 * time.Second)
+		tick3 := time.Tick(300 * time.Second)
+		tick4 := time.Tick(330 * time.Second)
+
+		// toggle := false
+		for {
+			select {
+			case <-tick0:
+				// toggle = !toggle
+				// if toggle {
+				// 	root.Request(pidApp, &messages.MsgGpsErr{})
+				// 	root.Request(pidApp, &messages.MsgGroundErr{})
+				// } else {
+				// 	root.Request(pidApp, &messages.MsgGpsOk{})
+				// 	root.Request(pidApp, &messages.MsgGroundOk{})
+				// }
+				// root.Send(pidApp, &counterpass.CounterMap{Inputs0: 20, Outputs1: 21})
+			// case <-tick1:
+			// root.Send(pidApp, &messages.MsgAppPaso{Value: 1})
+			case <-tick2:
+				// root.Send(pidApp, &messages.MsgAddAlarm{Alarm: fmt.Sprintf("%s: notif (( %d ))", time.Now().Format("2006-01-02 15:04"), countAlarm)})
+				// countAlarm++
+
+				root.Send(pidApp, &app.MsgUpdateTime{})
+				// root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 1})
+
+			case <-tick3:
+
+				// root.Send(pidApp, &messages.MsgAppPaso{
+				// 	Value: 1,
+				// 	Code:  messages.MsgAppPaso_ELECTRONIC,
+				// })
+			case <-tick4:
+			// root.Send(pidApp, &messages.MsgAppError{
+			// 	Error: "entrada invalida",
+			// })
+			case <-finish:
+				// TODO:
+				sys.Root.PoisonFuture(pidMain).Wait()
+				time.Sleep(400 * time.Millisecond)
+				log.Print("Finish")
+
+				// root.Poison(pidButtons)
+				// root.Poison(pidDevice)
+				// time.Sleep(300 * time.Millisecond)
+				log.Print("finish")
+				return
+
 			}
-
-			pidFare, _ := root.SpawnNamed(actor.PropsFromFunc(func(ctx actor.Context) {
-				switch ctx.Message().(type) {
-				case *messages.MsgDriverPaso:
-					if ctx.Sender() == nil {
-						break
-					}
-					ctx.Respond(&messages.MsgAppPaso{
-						Code:  messages.MsgAppPaso_CASH,
-						Value: 1,
-					})
-				}
-			}), "appFareTest")
-
-			root.RequestWithCustomSender(pidApp, &messages.MsgSubscribeConsole{}, pidFare)
-
-			root.Request(pidApp, &app.MsgSetRoutes{
-				Routes: routes,
-			})
-			tick0 := time.Tick(5 * time.Second)
-			// tick1 := time.Tick(30 * time.Second)
-			tick2 := time.Tick(3 * time.Second)
-			tick3 := time.Tick(300 * time.Second)
-			tick4 := time.Tick(330 * time.Second)
-
-			// toggle := false
-			for {
-				select {
-				case <-tick0:
-					// toggle = !toggle
-					// if toggle {
-					// 	root.Request(pidApp, &messages.MsgGpsErr{})
-					// 	root.Request(pidApp, &messages.MsgGroundErr{})
-					// } else {
-					// 	root.Request(pidApp, &messages.MsgGpsOk{})
-					// 	root.Request(pidApp, &messages.MsgGroundOk{})
-					// }
-					// root.Send(pidApp, &counterpass.CounterMap{Inputs0: 20, Outputs1: 21})
-				// case <-tick1:
-				// root.Send(pidApp, &messages.MsgAppPaso{Value: 1})
-				case <-tick2:
-					// root.Send(pidApp, &messages.MsgAddAlarm{Alarm: fmt.Sprintf("%s: notif (( %d ))", time.Now().Format("2006-01-02 15:04"), countAlarm)})
-					// countAlarm++
-
-					root.Send(pidApp, &app.MsgUpdateTime{})
-					// root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 1})
-
-				case <-tick3:
-
-					// root.Send(pidApp, &messages.MsgAppPaso{
-					// 	Value: 1,
-					// 	Code:  messages.MsgAppPaso_ELECTRONIC,
-					// })
-				case <-tick4:
-					// root.Send(pidApp, &messages.MsgAppError{
-					// 	Error: "entrada invalida",
-					// })
-
-				}
-			}
-
-		}()
-	}
-
-	for range finish {
-		// TODO:
-		if standalone {
-			sys.Root.PoisonFuture(pidMain).Wait()
-			time.Sleep(400 * time.Millisecond)
-			log.Print("Finish")
 		}
-		// root.Poison(pidButtons)
-		// root.Poison(pidDevice)
-		// time.Sleep(300 * time.Millisecond)
-		log.Print("finish")
-		return
 	}
 }

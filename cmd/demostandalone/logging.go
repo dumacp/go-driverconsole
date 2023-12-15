@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"log/syslog"
 
 	"github.com/dumacp/go-logs/pkg/logs"
@@ -21,10 +20,10 @@ func initLogs(debug, logStd bool) {
 	if logStd {
 		return
 	}
-	newLog(logs.LogInfo, "[ info ] ", log.LstdFlags, 6)
-	newLog(logs.LogWarn, "[ warn ] ", log.LstdFlags, 4)
-	newLog(logs.LogError, "[ error ] ", log.LstdFlags, 3)
-	newLog(logs.LogBuild, "[ build ] ", log.LstdFlags, 7)
+	newLog(logs.LogInfo, "[ info ] ", 0, 6)
+	newLog(logs.LogWarn, "[ warn ] ", 0, 4)
+	newLog(logs.LogError, "[ error ] ", 0, 3)
+	newLog(logs.LogBuild, "[ build ] ", 0, 7)
 	if !debug {
 		logs.LogBuild.Disable()
 	}

@@ -81,6 +81,11 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		if result == nil {
 			a.screen = MAIN_SCREEN
 		}
+	case *VerifyDisplayMsg:
+		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.VerifyMsg{}, time.Second*1))
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: result})
+		}
 	case *TextWarningMsg:
 		fmt.Printf("screen: %d\n", a.screen)
 		if a.screen != WARN_SCREEN {
@@ -144,7 +149,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *TextWarningPopupCloseMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.PopupCloseMsg{
-			Label: POPUP_TEXT,
+			Label: POPUP_WARN_TEXT,
 		}, 1*time.Second))
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: result})

@@ -25,6 +25,9 @@ type MsgAppPercentRecorrido struct {
 	Data int
 }
 type MsgMainScreen struct{}
+type MsgMainScreenForce struct {
+	Force bool
+}
 type MsgScreen struct {
 	ID     int
 	Switch bool

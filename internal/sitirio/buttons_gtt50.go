@@ -207,6 +207,9 @@ func ButtonsGtt50(a *App) func(evt *buttons.InputEvent) {
 				a.driver = driverCodeInt
 				// a.ctx.Send(a.ctx.Self(), &MsgSetDriver{Driver: driverCodeInt})
 				a.driverCode = ""
+				a.ctx.Send(a.ctx.Self(), &MsgSetDriver{
+					Driver: driverCodeInt,
+				})
 				a.ctx.Send(a.ctx.Self(), &MsgMainScreen{})
 			case AddrGttSwitchStep:
 				if v, ok := evt.Value.(bool); ok {

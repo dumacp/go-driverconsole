@@ -1,6 +1,7 @@
 package display
 
 import (
+	"context"
 	"time"
 )
 
@@ -13,6 +14,7 @@ type Display interface {
 	Popup(label int, text ...string) error
 	PopupClose(label int) error
 	Beep(repeat, duty int, period time.Duration) error
+	BeepWithContext(ctx context.Context, repeat, duty int, period time.Duration) error
 	Verify() error
 	Screen() (int, error)
 	Reset() error

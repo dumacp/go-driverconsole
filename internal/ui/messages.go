@@ -13,6 +13,9 @@ type InitUIMsg struct{}
 // MainScreenMsg is a message for displaying the main screen.
 type MainScreenMsg struct{}
 
+// VerifyDisplayMsg is a message for displaying the main screen.
+type VerifyDisplayMsg struct{}
+
 // TextWarningMsg is a message for displaying a warning text.
 type TextWarningMsg struct {
 	Text []string

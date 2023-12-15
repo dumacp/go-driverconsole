@@ -1,7 +1,9 @@
 package display
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
@@ -13,6 +15,7 @@ type gtt50Display struct {
 	dev          gtt43a.Display
 	screenActual int
 	label2addr   func(label int) Register
+	enable       bool
 }
 
 func NewGtt50Display(label2addr func(label int) Register) Display {
@@ -151,7 +154,7 @@ func (m *gtt50Display) PopupClose(label int) error {
 	return nil
 }
 
-func (m *gtt50Display) Beep(repeat, duty int, period time.Duration) error {
+func (m *gtt50Display) BeepWithContext(contxt context.Context, repeat, duty int, period time.Duration) error {
 	// Implementación de Beep
 	go func() {
 		for range make([]int, repeat) {
@@ -164,15 +167,47 @@ func (m *gtt50Display) Beep(repeat, duty int, period time.Duration) error {
 			if err := m.dev.BuzzerActive(1000, dutyDuration); err != nil {
 				fmt.Println(err)
 			}
-			<-tsleep.C
+			select {
+			case <-tsleep.C:
+			case <-contxt.Done():
+				return
+			}
 			fmt.Printf("(%d, %d, %s) millisecons = %s\n", repeat, duty, period, time.Since(t0))
 		}
 	}()
 	return nil
 }
 
+func (m *gtt50Display) Beep(repeat, duty int, period time.Duration) error {
+	return m.BeepWithContext(context.TODO(), repeat, duty, period)
+}
+
+var resetScratch = []byte{0, 1, 2, 3, 4, 5, 6, 0xA}
+
 func (m *gtt50Display) Verify() error {
 	// Implementación de Verify
+	if !m.enable {
+		if err := m.dev.WriteScratch(1, resetScratch); err != nil {
+			return err
+		}
+	}
+	scratchpad, err := m.dev.ReadScratch(1, len(resetScratch))
+	if err != nil {
+		m.enable = false
+		return err
+	}
+	log.Printf("//////////// now scratchData: [% X]\n", scratchpad)
+	if len(scratchpad) < len(resetScratch) {
+		m.enable = false
+		return fmt.Errorf("scartchpad is not the same")
+	}
+	for i, b := range scratchpad {
+		if b != resetScratch[i] {
+			m.enable = false
+			return fmt.Errorf("scartchpad is not the same")
+		}
+	}
+	m.enable = true
 	return nil
 }
 

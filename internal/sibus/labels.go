@@ -245,6 +245,52 @@ func Label2DisplayRegister(label int) display.Register {
 			Gap:    0,
 			Toogle: 0,
 		}
+	case AddrScreenSwitch:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrScreenSwitch,
+			Len:    0,
+			Size:   0,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrScreenProgDriver:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrScreenProgDriver,
+			Len:    0,
+			Size:   0,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrScreenProgVeh:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrScreenProgVeh,
+			Len:    0,
+			Size:   0,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrScreenAlarms:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrScreenAlarms,
+			Len:    0,
+			Size:   0,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrScreenMore:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrScreenMore,
+			Len:    0,
+			Size:   0,
+			Gap:    0,
+			Toogle: 0,
+		}
+
 	}
 	return display.Register{}
 }

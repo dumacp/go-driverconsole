@@ -18,6 +18,9 @@ type SelectPaso struct{}
 type StepMsg struct{}
 type TestStepMsg struct{}
 type ResetCounter struct{}
+type ErrorDisplay struct {
+	Error error
+}
 
 type MsgAppPaso struct {
 	Value int
@@ -54,7 +57,10 @@ type MsgSetRoute struct {
 	Route int
 }
 type MsgDriver struct {
-	Driver string
+	Driver int
+}
+type MsgSetDriver struct {
+	Driver int
 }
 
 type MsgSetRoutes struct {
@@ -102,3 +108,5 @@ type MsgItinirary struct {
 }
 
 type MsgUpdateTime struct{}
+
+type MsgShowCounters struct{}

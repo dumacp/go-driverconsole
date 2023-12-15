@@ -32,41 +32,43 @@ const (
 )
 
 type App struct {
-	updateTime time.Time
-
-	totalCountInput  int32
-	totalCountOutput int32
-	countInput       int32
-	countOutput      int32
-	cashInput        int32
-	electInput       int32
-	timeLapse        int
-	driver           int
-	route            int
-	brightness       int
-	routeString      string
-	routeCode        string
-	driverCode       string
-	displayVendor    string
-	evts             *eventstream.EventStream
-	subs             map[string]*eventstream.Subscription
-	routes           map[int32]string
-	shcservices      map[string]*services.ScheduleService
-	notif            []string
+	updateTime           time.Time
+	lastErrVerifyDisplay errorDisplay
+	lastErrButtons       errorDisplay
+	totalCountInput      int32
+	totalCountOutput     int32
+	countInput           int32
+	countOutput          int32
+	cashInput            int32
+	electInput           int32
+	timeLapse            int
+	driver               int
+	route                int
+	brightness           int
+	routeString          string
+	routeCode            string
+	driverCode           string
+	displayVendor        string
+	evts                 *eventstream.EventStream
+	subs                 map[string]*eventstream.Subscription
+	routes               map[int32]string
+	shcservices          map[string]*services.ScheduleService
+	notif                []string
 	// evt2evtApp       map[buttons.KeyCode]EventLabel
-	uix          ui.UI
-	ctx          actor.Context
-	db           *actor.PID
-	pidApp       *actor.PID
-	contxt       context.Context
-	buttonDevice buttons.ButtonDevice
-	cancel       func()
-	cancelStep   func()
-	renewStep    func()
-	cancelPop    func()
-	gps          bool
-	network      bool
-	enableStep   bool
+	uix             ui.UI
+	ctx             actor.Context
+	db              *actor.PID
+	pidApp          *actor.PID
+	contxt          context.Context
+	buttonDevice    buttons.ButtonDevice
+	cancel          func()
+	cancelStep      func()
+	renewStep       func()
+	cancelPop       func()
+	gps             bool
+	network         bool
+	enableStep      bool
+	isDisplayEnable bool
 }
 
 func NewApp(uix ui.UI, displayVendor string) *App {
@@ -160,7 +162,7 @@ func (a *App) Receive(ctx actor.Context) {
 			if err := a.uix.Init(); err != nil {
 				logs.LogWarn.Printf("init error: %s", err)
 			}
-			time.Sleep(1 * time.Second)
+			time.Sleep(3 * time.Second)
 		}
 
 		fmt.Printf("********* /////////// subscribe to %q topic\n", constant.DISCOVERY_TOPIC)
@@ -177,6 +179,10 @@ func (a *App) Receive(ctx actor.Context) {
 		contxt, cancel := context.WithCancel(context.Background())
 		a.cancel = cancel
 		go tick(contxt, ctx, TIMEOUT)
+
+		a.isDisplayEnable = true
+		a.uix.Gps(a.gps)
+		a.uix.Network(a.network)
 
 	case *actor.Stopping:
 		if a.cancel != nil {
@@ -213,9 +219,11 @@ func (a *App) Receive(ctx actor.Context) {
 		if a.cancelStep != nil {
 			a.cancelStep()
 		}
-	case *MsgMainScreen:
+	case MsgMainScreen:
+		ctx.Send(ctx.Self(), MsgMainScreenForce{})
+	case *MsgMainScreenForce:
 		fmt.Printf("**** screen: %d\n", a.uix.GetScreen())
-		if a.uix.GetScreen() == ui.MAIN_SCREEN {
+		if !msg.Force && a.uix.GetScreen() == ui.MAIN_SCREEN {
 			break
 		}
 		if err := func() error {
@@ -250,10 +258,12 @@ func (a *App) Receive(ctx actor.Context) {
 			logs.LogWarn.Println(err)
 		}
 	case *MsgSetDriver:
-	// a.driver = msg.Driver
-	// if err := a.uix.Driver(fmt.Sprintf("%d", msg.Driver)); err != nil {
-	// 	logs.LogWarn.Printf("driver error: %s", err)
-	// }
+		if a.pidApp != nil {
+			mss := &messages.MsgSetDriver{
+				Code: int32(msg.Driver),
+			}
+			ctx.Request(a.pidApp, mss)
+		}
 	case *messages.MsgRoute:
 		fmt.Printf("message -> \"%v\"\n", msg)
 		v := msg.GetItineraryName()
@@ -262,6 +272,7 @@ func (a *App) Receive(ctx actor.Context) {
 			break
 		}
 		a.routeString = v
+		a.uix.Beep(3, 50, 600*time.Millisecond)
 		if a.uix.GetScreen() != ui.MAIN_SCREEN {
 			break
 		}
@@ -277,6 +288,7 @@ func (a *App) Receive(ctx actor.Context) {
 		// if err := a.uix.Route(a.routeString); err != nil {
 		// 	logs.LogWarn.Printf("route error: %s", err)
 		// }
+		a.uix.Beep(3, 50, 600*time.Millisecond)
 		if a.pidApp != nil {
 			mss := &messages.MsgSetRoute{
 				Code: int32(a.route),
@@ -334,22 +346,22 @@ func (a *App) Receive(ctx actor.Context) {
 						select {
 						case <-contxt.Done():
 						case <-time.After(4 * time.Second):
-							if err := a.uix.TextConfirmationPopupclose(); err != nil {
-								logs.LogWarn.Printf("textConfirmation error: %s", err)
+						}
+						if err := a.uix.TextConfirmationPopupclose(); err != nil {
+							logs.LogWarn.Printf("textConfirmation error: %s", err)
+						}
+						if strings.EqualFold(GTT50, a.displayVendor) {
+							if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+								logs.LogWarn.Printf("electInput error: %s", err)
 							}
-							if strings.EqualFold(GTT50, a.displayVendor) {
-								if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
-									logs.LogWarn.Printf("electInput error: %s", err)
-								}
-								if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
-									logs.LogWarn.Printf("cashInput error: %s", err)
-								}
-								if err := a.uix.Inputs(int32(a.countInput)); err != nil {
-									logs.LogWarn.Printf("countInput error: %s", err)
-								}
-								if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
-									logs.LogWarn.Printf("countOutput error: %s", err)
-								}
+							if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
+								logs.LogWarn.Printf("cashInput error: %s", err)
+							}
+							if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+								logs.LogWarn.Printf("countInput error: %s", err)
+							}
+							if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+								logs.LogWarn.Printf("countOutput error: %s", err)
 							}
 						}
 					}()
@@ -388,22 +400,22 @@ func (a *App) Receive(ctx actor.Context) {
 					select {
 					case <-contxt.Done():
 					case <-time.After(4 * time.Second):
-						if err := a.uix.TextWarningPopupClose(); err != nil {
-							logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+					}
+					if err := a.uix.TextWarningPopupClose(); err != nil {
+						logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+					}
+					if strings.EqualFold(a.displayVendor, GTT50) {
+						if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+							logs.LogWarn.Printf("electInput error: %s", err)
 						}
-						if strings.EqualFold(a.displayVendor, GTT50) {
-							if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
-								logs.LogWarn.Printf("electInput error: %s", err)
-							}
-							if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
-								logs.LogWarn.Printf("cashInput error: %s", err)
-							}
-							if err := a.uix.Inputs(int32(a.countInput)); err != nil {
-								logs.LogWarn.Printf("countInput error: %s", err)
-							}
-							if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
-								logs.LogWarn.Printf("countOutput error: %s", err)
-							}
+						if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
+							logs.LogWarn.Printf("cashInput error: %s", err)
+						}
+						if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+							logs.LogWarn.Printf("countInput error: %s", err)
+						}
+						if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+							logs.LogWarn.Printf("countOutput error: %s", err)
 						}
 					}
 				}()
@@ -767,7 +779,7 @@ func (a *App) Receive(ctx actor.Context) {
 		}
 		a.totalCountOutput = totalCountOutput
 	case *messages.MsgGpsOk:
-		a.gps = true
+		a.gps = false
 		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
 			break
 		}
@@ -775,7 +787,7 @@ func (a *App) Receive(ctx actor.Context) {
 			logs.LogWarn.Printf("gps error: %s", err)
 		}
 	case *messages.MsgGpsErr:
-		a.gps = false
+		a.gps = true
 		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
 			break
 		}
@@ -783,7 +795,7 @@ func (a *App) Receive(ctx actor.Context) {
 			logs.LogWarn.Printf("gps error: %s", err)
 		}
 	case *messages.MsgGroundOk:
-		a.network = true
+		a.network = false
 		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
 			break
 		}
@@ -791,7 +803,7 @@ func (a *App) Receive(ctx actor.Context) {
 			logs.LogWarn.Printf("network error: %s", err)
 		}
 	case *messages.MsgGroundErr:
-		a.network = false
+		a.network = true
 		if a.uix.GetScreen() != ui.MAIN_SCREEN && strings.EqualFold(a.displayVendor, GTT50) {
 			break
 		}
@@ -810,6 +822,28 @@ func (a *App) Receive(ctx actor.Context) {
 		if err := a.uix.DateWithFormat(tNow, "2006/01/02 15:04"); err != nil {
 			logs.LogWarn.Printf("date error: %s", err)
 		}
+	case *tickMsg:
+		if a.uix == nil {
+			break
+		}
+		if err := a.uix.VerifyDisplay(); err != nil {
+			if time.Since(a.lastErrVerifyDisplay.Timestamp) > 3*time.Minute ||
+				a.lastErrVerifyDisplay.Error.Error() != err.Error() {
+				a.lastErrVerifyDisplay = errorDisplay{
+					Timestamp: time.Now(),
+					Error:     err,
+				}
+				logs.LogWarn.Printf("error display: %s", err)
+			}
+			if a.isDisplayEnable {
+				fmt.Printf("///////////////////// false\n")
+				a.isDisplayEnable = false
+			}
+		} else if !a.isDisplayEnable {
+			fmt.Printf("///////////////////// true\n")
+			a.isDisplayEnable = true
+			ctx.Send(ctx.Self(), &MsgMainScreenForce{Force: true})
+		}
 	case error:
 		fmt.Printf("error message: %s (%s)\n", msg, ctx.Self().GetId())
 	default:
@@ -818,6 +852,7 @@ func (a *App) Receive(ctx actor.Context) {
 }
 
 type tickResetCountersMsg struct{}
+type tickMsg struct{}
 
 // TODO: comment out for test
 // var tRefg time.Time
@@ -839,13 +874,18 @@ func tick(contxt context.Context, ctx actor.Context, timeout time.Duration) {
 		// } else {
 		// 	until = time.Until(tRefg)
 		// }
+		t2 := time.NewTicker(timeout)
+		defer t2.Stop()
 		t1 := time.NewTimer(until)
 		defer t1.Stop()
 		for {
 			select {
 			case <-contxt.Done():
+				return
 			case <-t1.C:
 				ctxroot.Send(self, &tickResetCountersMsg{})
+			case <-t2.C:
+				ctxroot.Send(self, &tickMsg{})
 			}
 		}
 	}()

@@ -60,6 +60,7 @@ type UI interface {
 	InputHandler(inputs actor.Actor, callback func(evt *buttons.InputEvent)) error
 	ReadBytesRawDisplay(label int) ([]byte, error)
 	SetLed(label int, state bool) error
+	VerifyDisplay() error
 	// Events() chan *Event
 }
 
@@ -92,6 +93,19 @@ func (u *ui) Init() error {
 	}
 	return fmt.Errorf("init with response form display")
 
+}
+
+func (u *ui) VerifyDisplay() error {
+	res, err := u.rootctx.RequestFuture(u.pid, &VerifyDisplayMsg{}, 1*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("init with response from display")
 }
 
 func (u *ui) Shutdown() error {

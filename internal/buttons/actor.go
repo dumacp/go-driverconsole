@@ -83,13 +83,8 @@ func (a *Actor) Receive(ctx actor.Context) {
 		go func(ctx actor.Context) {
 			rootctx := ctx.ActorSystem().Root
 			self := ctx.Self()
-
 			for v := range ch {
-				if v.Error != nil {
-					logs.LogError.Println(err)
-				} else {
-					rootctx.Send(self, v)
-				}
+				rootctx.Send(self, v)
 			}
 			logs.LogError.Printf("listenButtons close")
 			if ctx.Parent() != nil {

@@ -31,32 +31,35 @@ const (
 )
 
 type App struct {
-	updateTime  time.Time
-	countInput  int32
-	countOutput int32
-	cashInput   int32
-	electInput  int32
-	timeLapse   int
-	driver      int
-	route       int
-	routeString string
-	evts        *eventstream.EventStream
-	subs        map[string]*eventstream.Subscription
-	routes      map[int32]string
-	shcservices map[string]*services.ScheduleService
-	notif       []string
+	updateTime           time.Time
+	lastErrVerifyDisplay errorDisplay
+	lastErrButtons       errorDisplay
+	countInput           int32
+	countOutput          int32
+	cashInput            int32
+	electInput           int32
+	timeLapse            int
+	driver               int
+	route                int
+	routeString          string
+	evts                 *eventstream.EventStream
+	subs                 map[string]*eventstream.Subscription
+	routes               map[int32]string
+	shcservices          map[string]*services.ScheduleService
+	notif                []string
 	// evt2evtApp       map[buttons.KeyCode]EventLabel
-	uix        ui.UI
-	ctx        actor.Context
-	db         *actor.PID
-	pidApp     *actor.PID
-	cancel     func()
-	cancelStep func()
-	renewStep  func()
-	cancelPop  func()
-	gps        bool
-	network    bool
-	enableStep bool
+	uix             ui.UI
+	ctx             actor.Context
+	db              *actor.PID
+	pidApp          *actor.PID
+	cancel          func()
+	cancelStep      func()
+	renewStep       func()
+	cancelPop       func()
+	gps             bool
+	network         bool
+	enableStep      bool
+	isDisplayEnable bool
 }
 
 func NewApp(uix ui.UI) *App {
@@ -114,44 +117,62 @@ func (a *App) Receive(ctx actor.Context) {
 
 	switch msg := ctx.Message().(type) {
 	case *actor.Started:
-		db, err := database.Open(ctx, dbpath)
-		if err != nil {
-			logs.LogWarn.Printf("open database  err: %s\n", err)
-		}
-		if db != nil {
-			fmt.Println("database")
-			a.db = db.PID()
-			ctx.Request(a.db, &database.MsgQueryData{
-				Buckets:  []string{collectionAppData},
-				PrefixID: "",
-				Reverse:  false,
-			})
-			ctx.Request(a.db, &database.MsgQueryData{
-				Buckets:  []string{collectionDriverData},
-				PrefixID: "",
-				Reverse:  false,
-			})
-		}
+		if err := func() error {
+			db, err := database.Open(ctx, dbpath)
+			if err != nil {
+				return fmt.Errorf("open database  err: %s", err)
+			}
+			if db != nil {
+				fmt.Println("database")
+				a.db = db.PID()
+				result, err := ctx.RequestFuture(a.db, &database.MsgGetData{
+					Buckets: []string{collectionDriverData},
+					ID:      "counters",
+				}, 3000*time.Millisecond).Result()
+				if err != nil {
+					return fmt.Errorf("open database  err: %s", err)
+				}
+				switch v := result.(type) {
+				case *database.MsgAckGetData:
+					data := make([]byte, len(v.Data))
+					copy(data, v.Data)
+					res := &ValidationData{}
+					if err := json.Unmarshal(data, res); err != nil {
+						return fmt.Errorf("open database  err: %s", err)
+					}
+					fmt.Printf("recover database data: %+v\n", res)
+					logs.LogInfo.Printf("recover database data: %s", res)
 
-		// if err := a.uix.Inputs(int64(a.countInput)); err != nil {
-		// 	logs.LogWarn.Printf("inputs error: %s", err)
-		// }
-		// if err := a.uix.Outputs(int64(a.countOutput)); err != nil {
-		// 	logs.LogWarn.Printf("outputs error: %s", err)
-		// }
-		// if err := a.uix.DeviationInputs(int64(0)); err != nil {
-		// 	logs.LogWarn.Printf("devitation error: %s", err)
-		// }
-		ctx.Send(ctx.Self(), &ValidationData{})
-
+					if time.UnixMilli(res.Time).Day() != time.Now().Day() {
+						a.countInput = 0
+						a.countOutput = 0
+						a.cashInput = 0
+						a.electInput = 0
+						logs.LogInfo.Printf("restart data: %v", &ValidationData{
+							CountInputs: a.countInput, CashInputs: a.cashInput, CountOutputs: a.countOutput, ElectInputs: a.electInput})
+					} else {
+						a.countInput += res.CountInputs
+						a.countOutput += res.CountOutputs
+						a.cashInput += res.CashInputs
+						a.electInput += res.ElectInputs
+					}
+					ctx.Send(ctx.Self(), &MsgShowCounters{})
+				}
+			}
+			return nil
+		}(); err != nil {
+			logs.LogWarn.Println(err)
+			ctx.Send(ctx.Self(), &ValidationData{})
+		}
 		if a.uix != nil {
 			time.Sleep(1 * time.Second)
 			if err := a.uix.Init(); err != nil {
-				logs.LogWarn.Printf("init error: %s", err)
+				// logs.LogWarn.Printf("init error: %s", err)
+				time.Sleep(6 * time.Second)
+				panic(fmt.Sprintf("init uix error: %s", err))
 			}
-			time.Sleep(4 * time.Second)
+			time.Sleep(3 * time.Second)
 		}
-
 		fmt.Printf("********* /////////// subscribe to %q topic\n", constant.DISCOVERY_TOPIC)
 		pubsub.Subscribe(constant.DISCOVERY_TOPIC, ctx.Self(), func(b []byte) interface{} {
 			fmt.Printf("********* /////////// message arrive %q topic, msg: %s\n", constant.DISCOVERY_TOPIC, b)
@@ -167,15 +188,18 @@ func (a *App) Receive(ctx actor.Context) {
 		a.cancel = cancel
 		go tick(contxt, ctx, TIMEOUT)
 
+		a.isDisplayEnable = true
+
+		a.uix.Gps(a.gps)
+		a.uix.Network(a.network)
+
 	case *actor.Stopping:
-		fmt.Printf("backup database data: %d\n", a.cashInput)
 		if a.cancel != nil {
 			a.cancel()
 		}
 		if a.cancelPop != nil {
 			a.cancelPop()
 		}
-		fmt.Printf("backup database data: %d\n", a.cashInput)
 		if a.db != nil {
 			data, err := json.Marshal(&ValidationData{
 				CountInputs:  a.countInput,
@@ -188,13 +212,13 @@ func (a *App) Receive(ctx actor.Context) {
 				logs.LogWarn.Printf("database persistence error: %s", err)
 				break
 			}
-			fmt.Printf("backup 0 database data: %s\n", data)
 			ctx.RequestFuture(a.db, &database.MsgUpdateData{
 				ID:      "counters",
 				Buckets: []string{collectionDriverData},
 				Data:    data,
-			}, time.Millisecond*100).Wait()
-			fmt.Printf("backup 1 database data: %s\n", data)
+			}, time.Millisecond*3000).Wait()
+			logs.LogInfo.Printf("backup database data: %s", data)
+			fmt.Printf("backup database data: %s\n", data)
 		}
 		if a.db != nil {
 			ctx.RequestFuture(a.db, &database.MsgCloseDB{}, 100*time.Millisecond).Wait()
@@ -212,6 +236,38 @@ func (a *App) Receive(ctx actor.Context) {
 		}
 		pid := actor.NewPID(msg.GetAddress(), msg.GetId())
 		ctx.Request(pid, &msgdriverterminal.DiscoveryResponse{})
+	case *MsgMainScreen:
+		if err := func() error {
+			if err := a.uix.MainScreen(); err != nil {
+				return fmt.Errorf("main screen error: %s", err)
+			}
+			if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+				return fmt.Errorf("electInput error: %s", err)
+			}
+			if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
+				return fmt.Errorf("cashInput error: %s", err)
+			}
+			if err := a.uix.DateWithFormat(a.updateTime, "2006/01/02 15:04"); err != nil {
+				return fmt.Errorf("date error: %s", err)
+			}
+			if err := a.uix.Driver(fmt.Sprintf("%d", a.driver)); err != nil {
+				return fmt.Errorf("driver error: %s", err)
+			}
+			if err := a.uix.Gps(a.gps); err != nil {
+				return fmt.Errorf("gps error: %s", err)
+			}
+			if err := a.uix.Network(a.network); err != nil {
+				return fmt.Errorf("network error: %s", err)
+			}
+			if len(a.routeString) > 0 {
+				if err := a.uix.Route(a.routeString); err != nil {
+					return fmt.Errorf("route error: %s", err)
+				}
+			}
+			return nil
+		}(); err != nil {
+			logs.LogWarn.Println(err)
+		}
 	case *StepMsg:
 		if a.pidApp == nil && ctx.Parent() == nil {
 			break
@@ -260,9 +316,9 @@ func (a *App) Receive(ctx actor.Context) {
 						select {
 						case <-contxt.Done():
 						case <-time.After(4 * time.Second):
-							if err := a.uix.TextConfirmationPopupclose(); err != nil {
-								logs.LogWarn.Printf("textConfirmation error: %s", err)
-							}
+						}
+						if err := a.uix.TextConfirmationPopupclose(); err != nil {
+							logs.LogWarn.Printf("textConfirmation error: %s", err)
 						}
 					}()
 
@@ -297,92 +353,28 @@ func (a *App) Receive(ctx actor.Context) {
 					select {
 					case <-contxt.Done():
 					case <-time.After(4 * time.Second):
-						if err := a.uix.TextWarningPopupClose(); err != nil {
-							logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
-						}
+					}
+					if err := a.uix.TextWarningPopupClose(); err != nil {
+						logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
 					}
 				}()
 			}
+			fmt.Printf("screen in warn: %v\n", a.uix.GetScreen())
 		}
 	case *tickResetCountersMsg:
-		if a.db != nil {
-			if err := func() error {
-				a.countInput = 0
-				a.countOutput = 0
-				data, err := json.Marshal(&ValidationData{
-					CountInputs:  0,
-					CountOutputs: 0,
-					CashInputs:   0,
-					ElectInputs:  0,
-					Time:         time.Now().UnixMilli(),
-				})
-				if err != nil {
-					return fmt.Errorf("database persistence error: %s", err)
-				}
-				ctx.RequestFuture(a.db, &database.MsgUpdateData{
-					ID:      "counters",
-					Buckets: []string{collectionDriverData},
-					Data:    data,
-				}, time.Millisecond*100).Wait()
-				fmt.Printf("backup database data: %s\n", data)
-				return nil
-			}(); err != nil {
-				logs.LogWarn.Printf("error updating data from database: %s", err)
+		a.countInput = 0
+		a.countOutput = 0
+		a.cashInput = 0
+		a.electInput = 0
+		ctx.Send(ctx.Self(), &MsgShowCounters{})
+	case *MsgShowCounters:
+		if a.uix != nil {
+			if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
+				logs.LogWarn.Printf("inputs error: %s", err)
 			}
-		}
-	case *database.MsgQueryResponse:
-		fmt.Printf("form database: %q\n", msg)
-		if err := func() error {
-			if ctx.Sender() != nil {
-				ctx.Send(ctx.Sender(), &database.MsgQueryNext{})
+			if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+				logs.LogWarn.Printf("outputs error: %s", err)
 			}
-			if len(msg.Data) <= 0 {
-				return nil
-			}
-			if len(msg.Buckets) < 1 {
-				return nil
-			}
-			data := make([]byte, len(msg.Data))
-			copy(data, msg.Data)
-			fmt.Printf("form database: %q\n", data)
-			coll := msg.Buckets[len(msg.Buckets)-1]
-			switch coll {
-			case collectionAppData:
-			case collectionDriverData:
-				fmt.Printf("***** data (%s) restore: %s\n", msg.ID, data)
-				res := &ValidationData{}
-				if err := json.Unmarshal(data, res); err != nil {
-					return err
-				}
-				if time.UnixMilli(res.Time).Day() != time.Now().Day() {
-					if a.db != nil {
-						data, err := json.Marshal(&ValidationData{
-							CountInputs:  a.countInput,
-							CountOutputs: a.countOutput,
-							CashInputs:   a.cashInput,
-							ElectInputs:  a.electInput,
-							Time:         time.Now().UnixMilli(),
-						})
-						if err != nil {
-							return fmt.Errorf("database persistence error: %s", err)
-						}
-						ctx.RequestFuture(a.db, &database.MsgUpdateData{
-							ID:      "counters",
-							Buckets: []string{collectionDriverData},
-							Data:    data,
-						}, time.Millisecond*100).Wait()
-						fmt.Printf("backup database data: %s\n", data)
-					}
-					break
-				}
-				fmt.Printf("recover database data: %v\n", res)
-
-				ctx.Send(ctx.Self(), res)
-
-			}
-			return nil
-		}(); err != nil {
-			logs.LogWarn.Printf("error updating data from database: %s", err)
 		}
 	case *ValidationData:
 		a.countInput += msg.CountInputs
@@ -435,13 +427,22 @@ func (a *App) Receive(ctx actor.Context) {
 			break
 		}
 		a.routeString = v
+		a.uix.Beep(3, 50, 600*time.Millisecond)
 		if err := a.uix.Route(a.routeString); err != nil {
 			logs.LogWarn.Printf("route error: %s", err)
 		}
 	case *MsgSetRoute:
+		a.uix.Beep(3, 50, 600*time.Millisecond)
 		if a.pidApp != nil {
 			mss := &messages.MsgSetRoute{
 				Code: int32(a.route),
+			}
+			ctx.Request(a.pidApp, mss)
+		}
+	case *MsgSetDriver:
+		if a.pidApp != nil {
+			mss := &messages.MsgSetDriver{
+				Code: int32(a.driver),
 			}
 			ctx.Request(a.pidApp, mss)
 		}
@@ -475,6 +476,7 @@ func (a *App) Receive(ctx actor.Context) {
 					}
 				}()
 			}
+			fmt.Printf("screen in text: %v\n", a.uix.GetScreen())
 		}
 	case *MsgWarningText:
 		if err := a.uix.TextWarning(string(msg.Text)); err != nil {
@@ -596,22 +598,22 @@ func (a *App) Receive(ctx actor.Context) {
 	case *counterpass.CounterMap:
 
 	case *messages.MsgGpsOk:
-		a.gps = true
+		a.gps = false
 		if err := a.uix.Gps(false); err != nil {
 			logs.LogWarn.Printf("gps error: %s", err)
 		}
 	case *messages.MsgGpsErr:
-		a.gps = false
+		a.gps = true
 		if err := a.uix.Gps(true); err != nil {
 			logs.LogWarn.Printf("gps error: %s", err)
 		}
 	case *messages.MsgGroundOk:
-		a.network = true
+		a.network = false
 		if err := a.uix.Network(false); err != nil {
 			logs.LogWarn.Printf("network error: %s", err)
 		}
 	case *messages.MsgGroundErr:
-		a.network = false
+		a.network = true
 		if err := a.uix.Network(true); err != nil {
 			logs.LogWarn.Printf("network error: %s", err)
 		}
@@ -624,6 +626,45 @@ func (a *App) Receive(ctx actor.Context) {
 		if err := a.uix.Date(tNow); err != nil {
 			logs.LogWarn.Printf("date error: %s", err)
 		}
+	case *ErrorDisplay:
+		if msg.Error == nil {
+			break
+		}
+		if time.Since(a.lastErrButtons.Timestamp) > 3*time.Minute ||
+			a.lastErrButtons.Error.Error() != msg.Error.Error() {
+			a.lastErrButtons = errorDisplay{
+				Timestamp: time.Now(),
+				Error:     msg.Error,
+			}
+			logs.LogWarn.Printf("error display: %s", msg.Error)
+
+		}
+		if a.isDisplayEnable {
+			a.isDisplayEnable = false
+		}
+		fmt.Println(msg.Error)
+	case *tickMsg:
+		if a.uix == nil {
+			break
+		}
+		if err := a.uix.VerifyDisplay(); err != nil {
+			if time.Since(a.lastErrVerifyDisplay.Timestamp) > 3*time.Minute ||
+				a.lastErrVerifyDisplay.Error.Error() != err.Error() {
+				a.lastErrVerifyDisplay = errorDisplay{
+					Timestamp: time.Now(),
+					Error:     err,
+				}
+				logs.LogWarn.Printf("error display: %s", err)
+			}
+			if a.isDisplayEnable {
+				fmt.Printf("///////////////////// false")
+				a.isDisplayEnable = false
+			}
+		} else if !a.isDisplayEnable {
+			fmt.Printf("///////////////////// true")
+			a.isDisplayEnable = true
+			ctx.Send(ctx.Self(), &MsgMainScreen{})
+		}
 	case error:
 		fmt.Printf("error message: %s (%s)\n", msg, ctx.Self().GetId())
 	default:
@@ -632,6 +673,7 @@ func (a *App) Receive(ctx actor.Context) {
 }
 
 type tickResetCountersMsg struct{}
+type tickMsg struct{}
 
 // TODO: comment out for test
 // var tRefg time.Time
@@ -648,18 +690,23 @@ func tick(contxt context.Context, ctx actor.Context, timeout time.Duration) {
 		// TODO: comment out for test
 		// fmt.Printf("////////// time: %s\n", tRefg.Sub(time.Time{}))
 		// if tRefg.Sub(time.Time{}) <= 24*time.Hour {
-		t := time.Date(tn.Year(), tn.Month(), tn.Day(), 23, 59, 59, 0, tn.Location())
+		t := time.Date(tn.Year(), tn.Month(), tn.Day(), 00, 01, 59, 0, tn.Location())
 		until = time.Until(t)
 		// } else {
 		// 	until = time.Until(tRefg)
 		// }
+		t2 := time.NewTicker(timeout)
+		defer t2.Stop()
 		t1 := time.NewTimer(until)
 		defer t1.Stop()
 		for {
 			select {
 			case <-contxt.Done():
+				return
 			case <-t1.C:
 				ctxroot.Send(self, &tickResetCountersMsg{})
+			case <-t2.C:
+				ctxroot.Send(self, &tickMsg{})
 			}
 		}
 	}()

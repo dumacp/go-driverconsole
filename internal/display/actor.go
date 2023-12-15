@@ -1,6 +1,7 @@
 package display
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -11,8 +12,9 @@ import (
 type DisplayActor struct {
 	display Display
 	// dev       device.Device
-	pidDevice *actor.PID
-	behavior  actor.Behavior
+	pidDevice    *actor.PID
+	behavior     actor.Behavior
+	cancelButton func()
 }
 
 func NewDisplayActor(disp Display) actor.Actor {
@@ -36,6 +38,10 @@ func (d *DisplayActor) Receive(ctx actor.Context) {
 	}(), ctx.Self().GetId(), ctx.Message(), ctx.Message())
 	switch ctx.Message().(type) {
 	case *actor.Started:
+	case *actor.Stopping:
+		if d.cancelButton != nil {
+			d.cancelButton()
+		}
 	}
 	d.behavior.Receive(ctx)
 
@@ -85,7 +91,6 @@ func (d *DisplayActor) RunState(ctx actor.Context) {
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: err})
 		}
-
 	case *CloseMsg:
 		err := d.display.Close()
 		if ctx.Sender() != nil {
@@ -124,7 +129,12 @@ func (d *DisplayActor) RunState(ctx actor.Context) {
 			ctx.Respond(&AckMsg{Error: err})
 		}
 	case *BeepMsg:
-		err := d.display.Beep(msg.Repeat, msg.Duty, msg.Period)
+		if d.cancelButton != nil {
+			d.cancelButton()
+		}
+		contxt, cancel := context.WithCancel(context.Background())
+		d.cancelButton = cancel
+		err := d.display.BeepWithContext(contxt, msg.Repeat, msg.Duty, msg.Period)
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: err})
 		}
@@ -187,3 +197,22 @@ func (d *DisplayActor) RunState(ctx actor.Context) {
 		logs.LogWarn.Printf("DisplayActor recibió un mensaje desconocido: %v (%T)", msg, msg)
 	}
 }
+
+// type tickMsg struct{}
+
+// func tickFunc(contxt context.Context, ctx actor.Context, timeout time.Duration) {
+// 	rootctx := ctx.ActorSystem().Root
+// 	self := ctx.Self()
+
+// 	tick := time.NewTicker(timeout)
+// 	defer tick.Stop()
+
+// 	for {
+// 		select {
+// 		case <-contxt.Done():
+// 			return
+// 		case <-tick.C:
+// 			rootctx.Send(self, &tickMsg{})
+// 		}
+// 	}
+// }

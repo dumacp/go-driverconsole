@@ -1,6 +1,7 @@
 package display
 
 import (
+	"context"
 	"encoding/binary"
 	"fmt"
 	"time"
@@ -206,7 +207,7 @@ func (m *display) PopupClose(label int) error {
 	return nil
 }
 
-func (m *display) Beep(repeat, duty int, period time.Duration) error {
+func (m *display) BeepWithContext(contxt context.Context, repeat, duty int, period time.Duration) error {
 	go func() {
 		for range make([]int, repeat) {
 			t0 := time.Now()
@@ -217,9 +218,16 @@ func (m *display) Beep(repeat, duty int, period time.Duration) error {
 			if err := m.dev.SetIndicator(buttons.AddrBeep, true); err != nil {
 				fmt.Println(err)
 			}
+			select {
+			case <-contxt.Done():
+				return
+			default:
+			}
 			func() {
 				for {
 					select {
+					case <-contxt.Done():
+						return
 					case <-tdown.C:
 						if err := m.dev.SetIndicator(23, false); err != nil {
 							fmt.Println(err)
@@ -235,7 +243,14 @@ func (m *display) Beep(repeat, duty int, period time.Duration) error {
 	return nil
 }
 
+func (m *display) Beep(repeat, duty int, period time.Duration) error {
+	return m.BeepWithContext(context.TODO(), repeat, duty, period)
+}
+
 func (m *display) Verify() error {
+	if _, err := m.dev.ReadRegister(0, 1); err != nil {
+		return err
+	}
 	return nil
 }
 

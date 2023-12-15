@@ -207,6 +207,9 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 					}
 					fmt.Printf("driverCode: %d\n", driverCodeInt)
 					a.driver = driverCodeInt
+					a.ctx.Send(a.ctx.Self(), &MsgSetDriver{
+						Driver: driverCodeInt,
+					})
 					if err := a.uix.Driver(fmt.Sprintf(" %s", data)); err != nil {
 						return fmt.Errorf("error Driver: %s", err)
 					}
