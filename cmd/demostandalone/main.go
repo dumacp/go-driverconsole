@@ -35,7 +35,7 @@ var debug bool
 var logStd bool
 var showversion bool
 
-const version = "1.1.4_sibus"
+const version = "1.1.5_sibus"
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")

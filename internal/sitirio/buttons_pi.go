@@ -181,7 +181,13 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 					a.ctx.Send(a.ctx.Self(), &MsgSetRoute{
 						Route: rutaCodeInt,
 					})
-					if err := a.uix.Route(fmt.Sprintf(" %s", a.routeString)); err != nil {
+					routeS := func() string {
+						if len(a.routeString) > 32 {
+							return a.routeString[:32]
+						}
+						return a.routeString
+					}()
+					if err := a.uix.Route(fmt.Sprintf(" %s", routeS)); err != nil {
 						return fmt.Errorf("error Route: %s", err)
 					}
 				}

@@ -91,7 +91,7 @@ func (u *ui) Init() error {
 	} else if ok {
 		return nil
 	}
-	return fmt.Errorf("init with response form display")
+	return fmt.Errorf("init with response from display")
 
 }
 

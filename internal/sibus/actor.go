@@ -47,19 +47,19 @@ type App struct {
 	routes               map[int32]string
 	shcservices          map[string]*services.ScheduleService
 	notif                []string
-	// evt2evtApp       map[buttons.KeyCode]EventLabel
-	uix             ui.UI
-	ctx             actor.Context
-	db              *actor.PID
-	pidApp          *actor.PID
-	cancel          func()
-	cancelStep      func()
-	renewStep       func()
-	cancelPop       func()
-	gps             bool
-	network         bool
-	enableStep      bool
-	isDisplayEnable bool
+	uix                  ui.UI
+	ctx                  actor.Context
+	db                   *actor.PID
+	pidApp               *actor.PID
+	cancel               func()
+	cancelStep           func()
+	renewStep            func()
+	cancelPop            func()
+	behavior             actor.Behavior
+	gps                  bool
+	network              bool
+	enableStep           bool
+	isDisplayEnable      bool
 }
 
 func NewApp(uix ui.UI) *App {
@@ -70,7 +70,8 @@ func NewApp(uix ui.UI) *App {
 	a.evts = eventstream.NewEventStream()
 	a.routes = make(map[int32]string)
 	a.shcservices = make(map[string]*services.ScheduleService)
-	// a.evt2evtApp = button2buttonApp
+	a.behavior = actor.NewBehavior()
+	a.behavior.Become(a.Starting)
 	return a
 }
 
@@ -86,27 +87,53 @@ func subscribe(ctx actor.Context, evs *eventstream.EventStream) *eventstream.Sub
 	return evs.Subscribe(fn)
 }
 
-func subscribeExternal(ctx actor.Context, evs *eventstream.EventStream) *eventstream.Subscription {
-	rootctx := ctx.ActorSystem().Root
-	pid := ctx.Sender()
-	self := ctx.Self()
-
-	fn := func(evt interface{}) {
-		rootctx.RequestWithCustomSender(pid, evt, self)
-	}
-	return evs.SubscribeWithPredicate(fn, func(evt interface{}) bool {
-		// switch evt.(type) {
-		// case *messages.MsgSetRoute, *messages.MsgDriverPaso, *messages.MsgGetParams:
-		// 	return true
-		// }
-		// return false
-		return true
-	})
+func (a *App) Receive(ctx actor.Context) {
+	a.ctx = ctx
+	a.behavior.Receive(ctx)
 }
 
-func (a *App) Receive(ctx actor.Context) {
+func (a *App) Starting(ctx actor.Context) {
+	fmt.Printf("message: %q --> %q, %T\n", func() string {
+		if ctx.Sender() == nil {
+			return ""
+		} else {
+			return ctx.Sender().GetId()
+		}
+	}(), ctx.Self().GetId(), ctx.Message())
 
-	a.ctx = ctx
+	switch ctx.Message().(type) {
+
+	case *actor.Started:
+		if a.cancel != nil {
+			a.cancel()
+		}
+
+		contxt, cancel := context.WithCancel(context.Background())
+		a.cancel = cancel
+		go tick(contxt, ctx, TIMEOUT)
+		ctx.Send(ctx.Self(), &tickMsg{})
+	case *tickMsg:
+		if a.uix != nil {
+			time.Sleep(3 * time.Second)
+			if err := a.uix.Init(); err != nil {
+				logs.LogWarn.Printf("init error: %s", err)
+				break
+			}
+		}
+		a.behavior.Become(a.Runstate)
+		ctx.Send(ctx.Self(), &startMsg{})
+
+	case *actor.Stopping:
+		if a.cancel != nil {
+			a.cancel()
+		}
+		if a.cancelPop != nil {
+			a.cancelPop()
+		}
+	}
+}
+
+func (a *App) Runstate(ctx actor.Context) {
 	fmt.Printf("message: %q --> %q, %T\n", func() string {
 		if ctx.Sender() == nil {
 			return ""
@@ -116,7 +143,7 @@ func (a *App) Receive(ctx actor.Context) {
 	}(), ctx.Self().GetId(), ctx.Message())
 
 	switch msg := ctx.Message().(type) {
-	case *actor.Started:
+	case *startMsg:
 		if err := func() error {
 			db, err := database.Open(ctx, dbpath)
 			if err != nil {
@@ -163,15 +190,6 @@ func (a *App) Receive(ctx actor.Context) {
 		}(); err != nil {
 			logs.LogWarn.Println(err)
 			ctx.Send(ctx.Self(), &ValidationData{})
-		}
-		if a.uix != nil {
-			time.Sleep(1 * time.Second)
-			if err := a.uix.Init(); err != nil {
-				// logs.LogWarn.Printf("init error: %s", err)
-				time.Sleep(6 * time.Second)
-				panic(fmt.Sprintf("init uix error: %s", err))
-			}
-			time.Sleep(3 * time.Second)
 		}
 		fmt.Printf("********* /////////// subscribe to %q topic\n", constant.DISCOVERY_TOPIC)
 		pubsub.Subscribe(constant.DISCOVERY_TOPIC, ctx.Self(), func(b []byte) interface{} {
@@ -674,6 +692,7 @@ func (a *App) Receive(ctx actor.Context) {
 
 type tickResetCountersMsg struct{}
 type tickMsg struct{}
+type startMsg struct{}
 
 // TODO: comment out for test
 // var tRefg time.Time
