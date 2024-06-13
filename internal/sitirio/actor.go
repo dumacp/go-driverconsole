@@ -249,7 +249,13 @@ func (a *App) Receive(ctx actor.Context) {
 				return fmt.Errorf("driver error: %s", err)
 			}
 			if len(a.routeString) > 0 {
-				if err := a.uix.Route(a.routeString); err != nil {
+				routeS := func() string {
+					if len(a.routeString) > 32 {
+						return a.routeString[:32]
+					}
+					return a.routeString
+				}()
+				if err := a.uix.Route(routeS); err != nil {
 					return fmt.Errorf("route error: %s", err)
 				}
 			}
@@ -276,7 +282,14 @@ func (a *App) Receive(ctx actor.Context) {
 		if a.uix.GetScreen() != ui.MAIN_SCREEN {
 			break
 		}
-		if err := a.uix.Route(a.routeString); err != nil {
+		routeS := func() string {
+			if len(a.routeString) > 32 {
+				return a.routeString[:32]
+			}
+			return a.routeString
+		}()
+
+		if err := a.uix.Route(routeS); err != nil {
 			logs.LogWarn.Printf("route error: %s", err)
 		}
 	case *MsgSetRoute:

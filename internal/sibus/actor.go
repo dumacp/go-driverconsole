@@ -277,8 +277,15 @@ func (a *App) Runstate(ctx actor.Context) {
 			if err := a.uix.Network(a.network); err != nil {
 				return fmt.Errorf("network error: %s", err)
 			}
+
 			if len(a.routeString) > 0 {
-				if err := a.uix.Route(a.routeString); err != nil {
+				routeS := func() string {
+					if len(a.routeString) > 32 {
+						return a.routeString[:32]
+					}
+					return a.routeString
+				}()
+				if err := a.uix.Route(routeS); err != nil {
 					return fmt.Errorf("route error: %s", err)
 				}
 			}
@@ -446,7 +453,15 @@ func (a *App) Runstate(ctx actor.Context) {
 		}
 		a.routeString = v
 		a.uix.Beep(3, 50, 600*time.Millisecond)
-		if err := a.uix.Route(a.routeString); err != nil {
+
+		routeS := func() string {
+			if len(a.routeString) > 32 {
+				return a.routeString[:32]
+			}
+			return a.routeString
+		}()
+
+		if err := a.uix.Route(routeS); err != nil {
 			logs.LogWarn.Printf("route error: %s", err)
 		}
 	case *MsgSetRoute:
