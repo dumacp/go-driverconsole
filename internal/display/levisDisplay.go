@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/dumacp/go-driverconsole/internal/buttons"
@@ -82,33 +83,42 @@ func (m *display) writeText(addr, length, size, gap int, text ...string) error {
 			}
 		}
 		if size < len(string(textBytes)) {
-			return fmt.Errorf("len text in greather that register (%d > %d) %s, %v", len(string(textBytes)), size, textBytes, textBytes)
+			// return fmt.Errorf("len text is greather that register (%d > %d) %s, %v", len(string(textBytes)), size, textBytes, textBytes)
+			textBytes = textBytes[:size]
 		}
-		if err := m.dev.WriteRegister(addr, make([]uint16, size/2)); err != nil {
-			return fmt.Errorf("error writeRegister: %s", err)
+		// if err := m.dev.WriteRegister(addr, make([]uint16, size/2)); err != nil {
+		// 	return fmt.Errorf("error writeRegister: %s", err)
+		// }
+		// out := textBytes
+		if size > len(textBytes) {
+			textBytes = append(textBytes, strings.Repeat(" ", size-len(textBytes))...)
 		}
 		data := levis.EncodeFromChars(textBytes[:])
 		if err := m.dev.WriteRegister(addr, data); err != nil {
 			return err
 		}
 	} else {
+		// for i, v := range text {
+		// 	if i > length {
+		// 		break
+		// 	}
+		// 	if size < len(v) {
+		// 		return fmt.Errorf("len text is greather that register (%d > %d)", len(v), size)
+		// 	}
+		// 	if err := m.dev.WriteRegister(addr+(i*gap), make([]uint16, size/2)); err != nil {
+		// 		return fmt.Errorf("error writeRegister: %s", err)
+		// 	}
+		// }
 		for i, v := range text {
 			if i > length {
 				break
 			}
-			if size < len(v) {
-				return fmt.Errorf("len text in greather that register (%d > %d)", len(v), size)
-			}
-			if err := m.dev.WriteRegister(addr+(i*gap), make([]uint16, size/2)); err != nil {
-				return fmt.Errorf("error writeRegister: %s", err)
-			}
-		}
-		for i, v := range text {
-			if i > length {
-				break
+			out := v
+			if size > len(v) {
+				out = fmt.Sprintf("%s%s", v, strings.Repeat(" ", size-len(v)))
 			}
 			if err := m.dev.WriteRegister(addr+(i*gap),
-				levis.EncodeFromChars([]byte(v))); err != nil {
+				levis.EncodeFromChars([]byte(out))); err != nil {
 				return fmt.Errorf("error writeRegister: %s", err)
 			}
 		}
@@ -120,11 +130,14 @@ func (m *display) WriteText(label int, text ...string) error {
 	reg := m.label2addr(label)
 	fmt.Printf("reg: %+v\n", reg)
 	if reg.Type != INPUT_TEXT {
+		// fmt.Println("invalid data input")
 		return fmt.Errorf("invalid data input")
 	}
 	if err := m.writeText(reg.Addr, reg.Len, reg.Size, reg.Gap, text...); err != nil {
+		// fmt.Printf("error writeText: %s\n", err)
 		return fmt.Errorf("reg: %v, text: %v, %w", reg, text, err)
 	}
+	// fmt.Printf("**** reg: %+v\n", reg)
 	return nil
 }
 
@@ -155,7 +168,7 @@ func (m *display) WriteNumber(label int, num int64) error {
 	if reg.Type != INPUT_NUM {
 		return fmt.Errorf("invalid data input")
 	}
-	fmt.Printf("***** reg: %v, num: %d\n", reg, num)
+	fmt.Printf("reg: %v, num: %d\n", reg, num)
 	numBytes := make([]byte, reg.Size)
 	switch reg.Size {
 	case 2:
@@ -229,7 +242,7 @@ func (m *display) BeepWithContext(contxt context.Context, repeat, duty int, peri
 					case <-contxt.Done():
 						return
 					case <-tdown.C:
-						if err := m.dev.SetIndicator(23, false); err != nil {
+						if err := m.dev.SetIndicator(buttons.AddrBeep, false); err != nil {
 							fmt.Println(err)
 						}
 					case <-tsleep.C:
@@ -293,7 +306,7 @@ func (m *display) ReadBytes(label int) ([]byte, error) {
 		return nil, err
 	}
 
-	fmt.Printf("debug read bytes: %v\n", res)
+	// fmt.Printf("debug read bytes: %v\n", res)
 
 	if len(res) <= 0 {
 		return nil, fmt.Errorf("response is empty")

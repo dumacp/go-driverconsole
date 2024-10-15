@@ -101,3 +101,5 @@ type MsgItinirary struct {
 }
 
 type MsgUpdateTime struct{}
+
+type MsgShowCounters struct{}

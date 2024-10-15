@@ -109,35 +109,51 @@ func (a *App) Receive(ctx actor.Context) {
 
 	switch msg := ctx.Message().(type) {
 	case *actor.Started:
-		db, err := database.Open(ctx, dbpath)
-		if err != nil {
-			logs.LogWarn.Printf("open database  err: %s\n", err)
+		if err := func() error {
+			db, err := database.Open(ctx, dbpath)
+			if err != nil {
+				return fmt.Errorf("open database  err: %s", err)
+			}
+			if db != nil {
+				fmt.Println("database")
+				a.db = db.PID()
+				result, err := ctx.RequestFuture(a.db, &database.MsgGetData{
+					Buckets: []string{collectionDriverData},
+					ID:      "counters",
+				}, 3*time.Second).Result()
+				if err != nil {
+					return fmt.Errorf("error getting data from database: %s", err)
+				}
+				switch resp := result.(type) {
+				case *database.MsgAckGetData:
+					if len(resp.Data) <= 0 {
+						return fmt.Errorf("no data in database")
+					}
+					data := make([]byte, len(resp.Data))
+					copy(data, resp.Data)
+					fmt.Printf("form database: %q\n", data)
+					res := &ValidationData{}
+					if err := json.Unmarshal(data, res); err != nil {
+						return fmt.Errorf("error getting data from database: %s", err)
+					}
+					fmt.Printf("recover database data: %v\n", res)
+					if time.UnixMilli(res.Time).Day() != time.Now().Day() {
+						a.countInput = 0
+						a.countOutput = 0
+						logs.LogInfo.Printf("restart data: %v", &ValidationData{
+							CountInputs: a.countInput, CountOutputs: a.countOutput})
+					} else {
+						a.countInput += res.CountInputs
+						a.countOutput += res.CountOutputs
+					}
+					ctx.Send(ctx.Self(), &MsgShowCounters{})
+				}
+			}
+			return nil
+		}(); err != nil {
+			logs.LogWarn.Println(err)
+			ctx.Send(ctx.Self(), &ValidationData{})
 		}
-		if db != nil {
-			fmt.Println("database")
-			a.db = db.PID()
-			ctx.Request(a.db, &database.MsgQueryData{
-				Buckets:  []string{collectionAppData},
-				PrefixID: "",
-				Reverse:  false,
-			})
-			ctx.Request(a.db, &database.MsgQueryData{
-				Buckets:  []string{collectionDriverData},
-				PrefixID: "",
-				Reverse:  false,
-			})
-		}
-
-		// if err := a.uix.Inputs(int64(a.countInput)); err != nil {
-		// 	logs.LogWarn.Printf("inputs error: %s", err)
-		// }
-		// if err := a.uix.Outputs(int64(a.countOutput)); err != nil {
-		// 	logs.LogWarn.Printf("outputs error: %s", err)
-		// }
-		// if err := a.uix.DeviationInputs(int64(0)); err != nil {
-		// 	logs.LogWarn.Printf("devitation error: %s", err)
-		// }
-		ctx.Send(ctx.Self(), &ValidationData{})
 
 		if a.uix != nil {
 			time.Sleep(1 * time.Second)
@@ -147,7 +163,7 @@ func (a *App) Receive(ctx actor.Context) {
 			time.Sleep(4 * time.Second)
 		}
 
-		contxt, cancel := context.WithCancel(context.TODO())
+		contxt, cancel := context.WithCancel(context.Background())
 		a.cancel = cancel
 		go tick(contxt, ctx, TIMEOUT)
 
@@ -172,39 +188,42 @@ func (a *App) Receive(ctx actor.Context) {
 				ID:      "counters",
 				Buckets: []string{collectionDriverData},
 				Data:    data,
-			}, time.Millisecond*100).Wait()
-			fmt.Printf("backup database data: %s\n", data)
+			}, time.Millisecond*3000).Wait()
+			logs.LogInfo.Printf("backup database data: %s", data)
 		}
 		if a.db != nil {
-			ctx.Send(a.db, &database.MsgCloseDB{})
+			ctx.RequestFuture(a.db, &database.MsgCloseDB{}, 100*time.Millisecond).Wait()
 		}
 		if a.cancel != nil {
 			a.cancel()
 		}
 	case *tickResetCountersMsg:
-		if a.db != nil {
-			if err := func() error {
-				a.countInput = 0
-				a.countOutput = 0
-				data, err := json.Marshal(&ValidationData{
-					CountInputs:  0,
-					CountOutputs: 0,
-					Time:         time.Now().UnixMilli(),
-				})
-				if err != nil {
-					return fmt.Errorf("database persistence error: %s", err)
-				}
-				ctx.RequestFuture(a.db, &database.MsgUpdateData{
-					ID:      "counters",
-					Buckets: []string{collectionDriverData},
-					Data:    data,
-				}, time.Millisecond*100).Wait()
-				fmt.Printf("backup database data: %s\n", data)
-				return nil
-			}(); err != nil {
-				logs.LogWarn.Printf("error updating data from database: %s", err)
-			}
-		}
+		// if a.db != nil {
+		// 	if err := func() error {
+		// 		a.countInput = 0
+		// 		a.countOutput = 0
+		// 		data, err := json.Marshal(&ValidationData{
+		// 			CountInputs:  0,
+		// 			CountOutputs: 0,
+		// 			Time:         time.Now().UnixMilli(),
+		// 		})
+		// 		if err != nil {
+		// 			return fmt.Errorf("database persistence error: %s", err)
+		// 		}
+		// 		ctx.RequestFuture(a.db, &database.MsgUpdateData{
+		// 			ID:      "counters",
+		// 			Buckets: []string{collectionDriverData},
+		// 			Data:    data,
+		// 		}, time.Millisecond*100).Wait()
+		// 		fmt.Printf("backup database data: %s\n", data)
+		// 		return nil
+		// 	}(); err != nil {
+		// 		logs.LogWarn.Printf("error updating data from database: %s", err)
+		// 	}
+		// }
+		a.countInput = 0
+		a.countOutput = 0
+		ctx.Send(ctx.Self(), &MsgShowCounters{})
 	case *database.MsgQueryResponse:
 		fmt.Printf("form database: %q\n", msg)
 		if err := func() error {
@@ -257,6 +276,15 @@ func (a *App) Receive(ctx actor.Context) {
 		}(); err != nil {
 			logs.LogWarn.Printf("error updating data from database: %s", err)
 		}
+	case *MsgShowCounters:
+		if a.uix != nil {
+			if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+				logs.LogWarn.Printf("inputs error: %s", err)
+			}
+			if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+				logs.LogWarn.Printf("outputs error: %s", err)
+			}
+		}
 	case *ValidationData:
 		a.countInput += msg.CountInputs
 		a.countOutput += msg.CountOutputs
@@ -292,22 +320,7 @@ func (a *App) Receive(ctx actor.Context) {
 			a.evts.Unsubscribe(s)
 		}
 		a.subs[ctx.Sender().GetId()] = subscribe(ctx, a.evts)
-	// case *messages.MsgSubscribeConsole:
 
-	// 	if ctx.Sender() == nil {
-	// 		break
-	// 	}
-	// 	if a.evts == nil {
-	// 		a.evts = eventstream.NewEventStream()
-	// 	}
-	// 	fmt.Printf("sender = %s\n", ctx.Sender())
-	// 	if a.subs == nil {
-	// 		a.subs = make(map[string]*eventstream.Subscription)
-	// 	}
-	// 	if s, ok := a.subs[ctx.Sender().GetId()]; ok {
-	// 		a.evts.Unsubscribe(s)
-	// 	}
-	// 	a.subs[ctx.Sender().GetId()] = subscribeExternal(ctx, a.evts)
 	case *MsgSetRoutes:
 		a.routes = msg.Routes
 	case *MsgConfirmationText:
@@ -480,26 +493,7 @@ func (a *App) Receive(ctx actor.Context) {
 			}()
 		}
 	case *counterpass.CounterMap:
-		// if msg.Inputs0+msg.Inputs1 > a.countInput {
-		// 	a.countInput = msg.Inputs0 + msg.Inputs1
-		// 	if err := a.uix.Inputs(int64(a.countInput)); err != nil {
-		// 		logs.LogWarn.Printf("inputs error: %s", err)
-		// 	}
-		// }
 
-		// if msg.Outputs0+msg.Outputs1 > a.countOutput {
-		// 	a.countOutput = msg.Outputs0 + msg.Outputs1
-		// 	if err := a.uix.Outputs(int64(a.countOutput)); err != nil {
-		// 		logs.LogWarn.Printf("outputs error: %s", err)
-		// 	}
-		// }
-
-		// if a.countOutput != a.countInput {
-		// 	dev := a.countOutput - a.countInput
-		// 	if err := a.uix.DeviationInputs(int64(dev)); err != nil {
-		// 		logs.LogWarn.Printf("devitation error: %s", err)
-		// 	}
-		// }
 	case *gps.MsgGpsStatus:
 		fmt.Printf("******** %v **********", msg)
 		if !msg.State && a.gps {
@@ -541,7 +535,7 @@ func tick(contxt context.Context, ctx actor.Context, timeout time.Duration) {
 		// TODO: comment out for test
 		// fmt.Printf("////////// time: %s\n", tRefg.Sub(time.Time{}))
 		// if tRefg.Sub(time.Time{}) <= 24*time.Hour {
-		t := time.Date(tn.Year(), tn.Month(), tn.Day(), 23, 59, 59, 0, tn.Location())
+		t := time.Date(tn.Year(), tn.Month(), tn.Day(), 00, 01, 59, 0, tn.Location())
 		until = time.Until(t)
 		// } else {
 		// 	until = time.Until(tRefg)

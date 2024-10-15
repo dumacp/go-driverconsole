@@ -48,12 +48,13 @@ func ButtonsGtt50(a *App) func(evt *buttons.InputEvent) {
 						ss = append(ss, v)
 					}
 					sort.SliceStable(ss, func(i, j int) bool {
-						return ss[i].GetScheduleDateTime() > ss[j].GetScheduleDateTime()
+						return ss[i].GetScheduleDateTime() < ss[j].GetScheduleDateTime()
 					})
 				}
 				reverseSlice := make([]string, 0)
 				// reverseSlice = append(reverseSlice, "")
-				for _, v := range ss {
+				for i := range ss {
+					v := ss[len(ss)-1-i]
 					if v.GetItinenary() == nil || v.GetDriver() == nil {
 						continue
 					}
@@ -70,7 +71,7 @@ func ButtonsGtt50(a *App) func(evt *buttons.InputEvent) {
 					}
 
 					data := fmt.Sprintf(" %s: (%d) %s", ts.Format("01/02 15:04"),
-						v.GetItinenary().GetId(), capitalize(strings.ToLower(v.GetDriver().GetFullname())))
+						v.GetItinenary().GetId(), capitalize(strings.ToLower(v.GetDriver().GetFullName())))
 					fmt.Printf("servicio: %v\n", v)
 					fmt.Printf("data: %s\n", data)
 					reverseSlice = append(reverseSlice, data)
@@ -104,13 +105,13 @@ func ButtonsGtt50(a *App) func(evt *buttons.InputEvent) {
 						ss = append(ss, v)
 					}
 					sort.SliceStable(ss, func(i, j int) bool {
-						return ss[i].GetScheduleDateTime() > ss[j].GetScheduleDateTime()
+						return ss[i].GetScheduleDateTime() < ss[j].GetScheduleDateTime()
 					})
-
 				}
 				reverseSlice := make([]string, 0)
 				// reverseSlice = append(reverseSlice, "")
-				for _, v := range ss {
+				for i := range ss {
+					v := ss[len(ss)-1-i]
 					if v.GetItinenary() == nil || v.GetRoute() == nil {
 						continue
 					}

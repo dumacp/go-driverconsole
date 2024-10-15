@@ -695,7 +695,7 @@ func (a *App) Receive(ctx actor.Context) {
 		for k, _ := range a.shcservices {
 			arr = append(arr, k)
 		}
-		fmt.Printf("//////////////// services (ori: %d): %v\n", len(msg.GetUpdates()), arr)
+		fmt.Printf("/////////////// services (ori: %d): %v\n", len(msg.GetUpdates()), arr)
 	case *services.RemoveServiceMsg:
 		svc := msg.GetUpdate()
 		if svc.GetCheckpointTimingState() != nil && len(svc.GetCheckpointTimingState().GetState()) > 0 {
@@ -849,11 +849,11 @@ func (a *App) Receive(ctx actor.Context) {
 				logs.LogWarn.Printf("error display: %s", err)
 			}
 			if a.isDisplayEnable {
-				fmt.Printf("///////////////////// false\n")
+				fmt.Printf("/////////////// false\n")
 				a.isDisplayEnable = false
 			}
 		} else if !a.isDisplayEnable {
-			fmt.Printf("///////////////////// true\n")
+			fmt.Printf("/////////////// true\n")
 			a.isDisplayEnable = true
 			ctx.Send(ctx.Self(), &MsgMainScreenForce{Force: true})
 		}

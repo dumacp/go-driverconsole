@@ -112,12 +112,12 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *TextConfirmationPopupMsg:
 		fmt.Printf("screen: %d\n", a.screen)
-		if a.screen != MAIN_SCREEN {
-			if ctx.Sender() != nil {
-				ctx.Respond(&AckMsg{Error: nil})
-			}
-			break
-		}
+		// if a.screen != MAIN_SCREEN {
+		// 	if ctx.Sender() != nil {
+		// 		ctx.Respond(&AckMsg{Error: nil})
+		// 	}
+		// 	break
+		// }
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.PopupMsg{
 			Label: POPUP_TEXT,
 			Text:  msg.Text,
@@ -134,12 +134,12 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *TextWarningPopupMsg:
 		fmt.Printf("screen: %d\n", a.screen)
-		if a.screen != MAIN_SCREEN {
-			if ctx.Sender() != nil {
-				ctx.Respond(&AckMsg{Error: nil})
-			}
-			break
-		}
+		// if a.screen != MAIN_SCREEN {
+		// 	if ctx.Sender() != nil {
+		// 		ctx.Respond(&AckMsg{Error: nil})
+		// 	}
+		// 	break
+		// }
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.PopupMsg{
 			Label: POPUP_WARN_TEXT,
 			Text:  msg.Text,
@@ -388,6 +388,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			ctx.Respond(&AckMsg{Error: result})
 		}
 	case *ShowProgVehMsg:
+		fmt.Printf("screen: %d\n", a.screen)
 		if a.screen != PROGRAMATION_VEH_SCREEN {
 			if ctx.Sender() != nil {
 				ctx.Respond(&AckMsg{Error: nil})
@@ -478,7 +479,27 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 			}
 			ctx.Respond(&ReadBytesRawResponseMsg{Label: v.Label, Value: v.Value})
 		} else {
-			ctx.Respond(&ReadBytesRawResponseMsg{Label: v.Label, Error: fmt.Errorf("unkown error")})
+			ctx.Respond(&ReadBytesRawResponseMsg{Label: msg.Label, Error: fmt.Errorf("unkown error")})
+		}
+	case *WriteTextRawMsg:
+		if ctx.Sender() == nil {
+			break
+		}
+		res, err := ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{Label: msg.Label, Text: msg.Text}, 1*time.Second).Result()
+		if err != nil {
+			logs.LogWarn.Printf("readBytesRawMsg error: %s", err)
+			break
+		}
+		if v, ok := res.(*display.AckMsg); ok {
+			if v.Error != nil {
+				ctx.Respond(&AckMsg{
+					Error: v.Error,
+				})
+				break
+			}
+			ctx.Respond(&AckMsg{Error: nil})
+		} else {
+			ctx.Respond(&AckMsg{Error: fmt.Errorf("unkown error (%T)", res)})
 		}
 	case *StepEnableMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.LedMsg{

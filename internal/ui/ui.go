@@ -59,6 +59,7 @@ type UI interface {
 	ServiceCurrentState(state int, prompt string) error
 	InputHandler(inputs actor.Actor, callback func(evt *buttons.InputEvent)) error
 	ReadBytesRawDisplay(label int) ([]byte, error)
+	WriteTextRawDisplay(label int, data []string) error
 	SetLed(label int, state bool) error
 	VerifyDisplay() error
 	// Events() chan *Event
@@ -544,6 +545,32 @@ func (u *ui) ReadBytesRawDisplay(label int) ([]byte, error) {
 		return data, nil
 	}
 	return nil, fmt.Errorf("textWarning with response form display")
+}
+
+func (u *ui) WriteTextRawDisplay(label int, data []string) error {
+	res, err := u.rootctx.RequestFuture(u.pid, &WriteTextRawMsg{Label: label, Text: data}, 2*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("WriteBytesRawDisplay with response from display")
+}
+
+func (u *ui) WriteNumRawDisplay(label int, data interface{}) error {
+	res, err := u.rootctx.RequestFuture(u.pid, &WriteNumRawMsg{Label: label, Data: data}, 2*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*WriteTextRawResponseMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("WriteBytesRawDisplay with response from display")
 }
 
 func (u *ui) StepEnable(state bool) error {

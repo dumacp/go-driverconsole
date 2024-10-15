@@ -87,13 +87,15 @@ func (p *pi3070g) ListenButtons(contxt context.Context) (<-chan *InputEvent, err
 
 	go func() {
 		defer close(chEvt)
+		quit, cancel := context.WithCancel(contxt)
+		defer cancel()
 		// lastStep := time.Now()
 		// enableStep := time.NewTimer(5 * time.Second)
 		// activeStep := false
 
 		for {
 			select {
-			case <-contxt.Done():
+			case <-quit.Done():
 				logs.LogWarn.Println("ListenButtons context is closed")
 				return
 			// case <-enableStep.C:

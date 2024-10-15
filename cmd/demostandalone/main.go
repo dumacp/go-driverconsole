@@ -35,7 +35,7 @@ var debug bool
 var logStd bool
 var showversion bool
 
-const version = "1.1.5_sibus"
+const version = "1.1.6_sibus"
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")
@@ -325,7 +325,7 @@ func main() {
 		tick0 := time.Tick(5 * time.Second)
 		// tick1 := time.Tick(30 * time.Second)
 		tick2 := time.Tick(3 * time.Second)
-		tick3 := time.Tick(300 * time.Second)
+		tick3 := time.Tick(30 * time.Second)
 		tick4 := time.Tick(330 * time.Second)
 
 		// toggle := false
@@ -354,6 +354,13 @@ func main() {
 
 			case <-tick3:
 
+				// root.Send(pidApp, &app.TestTextProgDriver{
+				// 	Text: []string{
+				// 		`2024/10/23 10:23:01 | Ruta: 255_D1 | Iti: Circular sin fin a ninguna parte`,
+				// 		`2024/10/23 10:23:02 | Ruta: 255_D2 | Iti: Circular sin fin a ninguna parte`,
+				// 		`2024/10/23 10:23:03 | Ruta: 255_D3 | Iti: Circular sin fin a ninguna parte`,
+				// 	},
+				// })
 				// root.Send(pidApp, &messages.MsgAppPaso{
 				// 	Value: 1,
 				// 	Code:  messages.MsgAppPaso_ELECTRONIC,

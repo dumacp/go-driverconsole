@@ -191,9 +191,24 @@ type ReadBytesRawMsg struct {
 	Label int
 }
 
+type WriteTextRawMsg struct {
+	Label int
+	Text  []string
+}
+
+type WriteNumRawMsg struct {
+	Label int
+	Data  interface{}
+}
+
 type ReadBytesRawResponseMsg struct {
 	Label int
 	Value []byte
+	Error error
+}
+
+type WriteTextRawResponseMsg struct {
+	Label int
 	Error error
 }
 

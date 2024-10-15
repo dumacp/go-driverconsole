@@ -59,7 +59,7 @@ func (a *Actor) Receive(ctx actor.Context) {
 		}
 		subscribe(ctx, a.evts)
 	case *device.MsgDevice:
-		contxt, cancel := context.WithCancel(context.TODO())
+		contxt, cancel := context.WithCancel(context.Background())
 		a.cancel = cancel
 
 		fmt.Println("///////////////////////")

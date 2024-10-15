@@ -15,9 +15,10 @@ import (
 
 // Actor actor to listen events
 type Actor struct {
-	ctx            actor.Context
-	evs            *eventstream.EventStream
-	lastCounterMap *CounterMap
+	ctx                    actor.Context
+	evs                    *eventstream.EventStream
+	lastCounterMap         *CounterMap
+	lastTurnstileRegisters *TurnstileRegisters
 }
 
 func NewActor() actor.Actor {
@@ -29,6 +30,17 @@ func parseCounters(msg []byte) interface{} {
 	event := new(CounterMap)
 	if err := json.Unmarshal(msg, event); err != nil {
 		fmt.Printf("error parseEvents = %s\n", err)
+		return err
+	}
+
+	return event
+}
+
+func parseCountersTurnstile(msg []byte) interface{} {
+
+	event := new(TurnstileRegisters)
+	if err := json.Unmarshal(msg, event); err != nil {
+		fmt.Printf("error parseCountersTurnstile = %s\n", err)
 		return err
 	}
 
@@ -148,12 +160,24 @@ func (a *Actor) Receive(ctx actor.Context) {
 			time.Sleep(3 * time.Second)
 			logs.LogError.Panic(err)
 		}
+		if err := pubsub.Subscribe("TURNSTILENE", ctx.Self(), parseCountersTurnstile); err != nil {
+			time.Sleep(3 * time.Second)
+			logs.LogError.Panic(err)
+		}
 	case *actor.Stopping:
 		logs.LogWarn.Printf("\"%s\" - Stopped actor, reason -> %v", ctx.Self(), msg)
 	case *actor.Restarting:
 		logs.LogWarn.Printf("\"%s\" - Restarting actor, reason -> %v", ctx.Self(), msg)
 	case *actor.Terminated:
 		logs.LogWarn.Printf("\"%s\" - Terminated actor, reason -> %v", ctx.Self(), msg)
+	case *TurnstileRegisters:
+		a.lastTurnstileRegisters = msg
+		if a.evs != nil {
+			a.evs.Publish(msg)
+		}
+		if ctx.Parent() != nil {
+			ctx.Send(ctx.Parent(), msg)
+		}
 	case *CounterMap:
 		a.lastCounterMap = msg
 		if a.evs != nil {
@@ -184,6 +208,11 @@ func (a *Actor) Receive(ctx actor.Context) {
 		if a.lastCounterMap != nil {
 			counters := new(CounterMap)
 			*counters = *a.lastCounterMap
+			ctx.Respond(counters)
+		}
+		if a.lastTurnstileRegisters != nil {
+			counters := new(TurnstileRegisters)
+			*counters = *a.lastTurnstileRegisters
 			ctx.Respond(counters)
 		}
 	case *MsgRequestStatus:

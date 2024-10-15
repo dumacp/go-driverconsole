@@ -659,6 +659,10 @@ func (a *App) Runstate(ctx actor.Context) {
 		if err := a.uix.Date(tNow); err != nil {
 			logs.LogWarn.Printf("date error: %s", err)
 		}
+	case *TestTextProgDriver:
+		if err := a.uix.ShowProgDriver(msg.Text...); err != nil {
+			logs.LogWarn.Printf("textProgVehicle error: %s", err)
+		}
 	case *ErrorDisplay:
 		if msg.Error == nil {
 			break
@@ -690,11 +694,11 @@ func (a *App) Runstate(ctx actor.Context) {
 				logs.LogWarn.Printf("error display: %s", err)
 			}
 			if a.isDisplayEnable {
-				fmt.Printf("///////////////////// false")
+				fmt.Printf("/////////////// false")
 				a.isDisplayEnable = false
 			}
 		} else if !a.isDisplayEnable {
-			fmt.Printf("///////////////////// true")
+			fmt.Printf("/////////////// true")
 			a.isDisplayEnable = true
 			ctx.Send(ctx.Self(), &MsgMainScreen{})
 		}

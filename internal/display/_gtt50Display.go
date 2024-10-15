@@ -636,7 +636,7 @@ func (m *display) addnotification(msg string) error {
 	} else {
 		m.notifications = append(m.notifications, msg)
 	}
-	fmt.Printf("notifs: %v\n", m.notifications)
+	// fmt.Printf("notifs: %v\n", m.notifications)
 	return nil
 }
 

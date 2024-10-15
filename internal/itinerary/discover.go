@@ -1,5 +1,7 @@
 package itinerary
 
+/**
+
 import (
 	"encoding/json"
 	"fmt"
@@ -55,3 +57,4 @@ func (a *DiscoveryActor) Receive(ctx actor.Context) {
 		fmt.Printf("unhandled message type: %T (%s)\n", msg, ctx.Self().GetId())
 	}
 }
+/**/

@@ -26,3 +26,6 @@ type MsgRequestStatus struct {
 type MsgStatus struct {
 	State bool
 }
+type TurnstileRegisters struct {
+	Registers []uint32 `json:"registers"`
+}

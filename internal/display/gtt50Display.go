@@ -274,7 +274,7 @@ func (m *gtt50Display) ReadBytes(label int) ([]byte, error) {
 		return nil, err
 	}
 
-	fmt.Printf("debug read bytes: %v\n", res)
+	// fmt.Printf("debug read bytes: %v\n", res)
 
 	if len(res) <= 0 {
 		return nil, fmt.Errorf("response is empty")

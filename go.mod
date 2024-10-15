@@ -1,6 +1,6 @@
 module github.com/dumacp/go-driverconsole
 
-go 1.21
+go 1.21.0
 
 toolchain go1.22.0
 
@@ -45,10 +45,10 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/klauspost/compress v1.17.8 // indirect
+	github.com/klauspost/compress v1.17.9 // indirect
 	github.com/lithammer/shortuuid/v4 v4.0.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
-	github.com/nats-io/nats.go v1.35.0 // indirect
+	github.com/nats-io/nats.go v1.36.0 // indirect
 	github.com/nats-io/nkeys v0.4.7 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/orcaman/concurrent-map v1.0.0 // indirect
@@ -65,13 +65,13 @@ require (
 	go.opentelemetry.io/otel/sdk v1.21.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.21.0 // indirect
 	go.opentelemetry.io/otel/trace v1.21.0 // indirect
-	golang.org/x/crypto v0.23.0 // indirect
+	golang.org/x/crypto v0.27.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	golang.org/x/net v0.21.0 // indirect
 	golang.org/x/oauth2 v0.13.0 // indirect
-	golang.org/x/sync v0.5.0 // indirect
-	golang.org/x/sys v0.20.0 // indirect
-	golang.org/x/text v0.15.0 // indirect
+	golang.org/x/sync v0.8.0 // indirect
+	golang.org/x/sys v0.25.0 // indirect
+	golang.org/x/text v0.18.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231002182017-d307bd883b97 // indirect
 	google.golang.org/grpc v1.60.1 // indirect
@@ -95,3 +95,7 @@ replace github.com/dumacp/go-actors => ../go-actors
 replace github.com/dumacp/matrixorbital => ../matrixorbital
 
 replace github.com/asynkron/protoactor-go => ../../asynkron/protoactor-go
+
+replace github.com/nats-io/nats.go => ../../nats-io/nats.go
+
+replace github.com/dumacp/go-logs => ../go-logs

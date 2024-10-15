@@ -109,9 +109,11 @@ func (p *gtt50dev) ListenButtons(contxt context.Context) (<-chan *InputEvent, er
 
 	go func() {
 		defer close(chEvt)
+		quit, cancel := context.WithCancel(contxt)
+		defer cancel()
 		for {
 			select {
-			case <-contxt.Done():
+			case <-quit.Done():
 				logs.LogWarn.Println("ListenButtons context is closed")
 				return
 
@@ -128,7 +130,6 @@ func (p *gtt50dev) ListenButtons(contxt context.Context) (<-chan *InputEvent, er
 					return
 				}
 				if len(button.Value) <= 0 {
-					fmt.Printf("value in event (%d) is invalid: %v\n", button.ObjId, button.Value)
 					logs.LogWarn.Printf("value in event (%d) is invalid: %v", button.ObjId, button.Value)
 					break
 				}
