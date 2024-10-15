@@ -728,7 +728,7 @@ func tick(contxt context.Context, ctx actor.Context, timeout time.Duration) {
 		// TODO: comment out for test
 		// fmt.Printf("////////// time: %s\n", tRefg.Sub(time.Time{}))
 		// if tRefg.Sub(time.Time{}) <= 24*time.Hour {
-		t := time.Date(tn.Year(), tn.Month(), tn.Day(), 00, 01, 59, 0, tn.Location())
+		t := time.Date(tn.Year(), tn.Month(), tn.Day(), 23, 59, 59, 0, tn.Location())
 		until = time.Until(t)
 		// } else {
 		// 	until = time.Until(tRefg)

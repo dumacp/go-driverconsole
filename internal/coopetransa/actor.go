@@ -131,7 +131,7 @@ func (a *App) Receive(ctx actor.Context) {
 					}
 					data := make([]byte, len(resp.Data))
 					copy(data, resp.Data)
-					fmt.Printf("form database: %q\n", data)
+					fmt.Printf("from database: %q\n", data)
 					res := &ValidationData{}
 					if err := json.Unmarshal(data, res); err != nil {
 						return fmt.Errorf("error getting data from database: %s", err)
@@ -535,7 +535,7 @@ func tick(contxt context.Context, ctx actor.Context, timeout time.Duration) {
 		// TODO: comment out for test
 		// fmt.Printf("////////// time: %s\n", tRefg.Sub(time.Time{}))
 		// if tRefg.Sub(time.Time{}) <= 24*time.Hour {
-		t := time.Date(tn.Year(), tn.Month(), tn.Day(), 00, 01, 59, 0, tn.Location())
+		t := time.Date(tn.Year(), tn.Month(), tn.Day(), 23, 59, 59, 0, tn.Location())
 		until = time.Until(t)
 		// } else {
 		// 	until = time.Until(tRefg)
