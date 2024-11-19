@@ -9,8 +9,14 @@ func (a *App) mainScreen() error {
 	// if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
 	// 	return fmt.Errorf("electInput error: %s", err)
 	// }
-	if err := a.uix.CashInputs(int32(a.cashInput + a.electInput)); err != nil {
+	if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
 		return fmt.Errorf("cashInput error: %s", err)
+	}
+	if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+		return fmt.Errorf("countInput error: %s", err)
+	}
+	if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+		return fmt.Errorf("countOutput error: %s", err)
 	}
 	if err := a.uix.DateWithFormat(a.updateTime, "2006/01/02 15:04"); err != nil {
 		return fmt.Errorf("date error: %s", err)

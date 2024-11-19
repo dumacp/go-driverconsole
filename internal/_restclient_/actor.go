@@ -21,7 +21,7 @@ const (
 	defaultUsername          = "dev.nebulae"
 	filterHttpQuery          = "?deviceId=%s&scheduledServices=%v&liveExecutedServices=%v"
 	filterItineraryHttpQuery = "?page=%d&count=%d&active=true"
-	defaultPassword          = "uno.2.tres"
+	defaultPassword          = ""
 )
 
 const TIMEOUT = 3 * time.Minute

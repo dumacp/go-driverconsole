@@ -20,7 +20,7 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/itinerary"
 	"github.com/dumacp/go-driverconsole/internal/parameters"
 	"github.com/dumacp/go-driverconsole/internal/service"
-	app "github.com/dumacp/go-driverconsole/internal/transmetro"
+	app "github.com/dumacp/go-driverconsole/internal/trsc"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-driverconsole/internal/utils"
 
@@ -39,7 +39,7 @@ var logStd bool
 var showversion bool
 var url string
 
-const version = "1.1.6_transmetro"
+const version = "1.1.6_trsc"
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")
@@ -181,7 +181,7 @@ func main() {
 				app.AddrEnterDriver, app.AddrEnterRuta,
 				app.AddrScreenAlarms, app.AddrScreenMore,
 				app.AddrScreenProgDriver, app.AddrScreenProgVeh, app.AddrScreenSwitch,
-
+				app.AddrSwitchStep, app.AddrSendStep,
 				app.AddrShowSelectProgVeh, app.AddrSelectItinerary,
 
 				app.AddrEnterService,

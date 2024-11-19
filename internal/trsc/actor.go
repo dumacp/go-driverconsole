@@ -69,10 +69,12 @@ type App struct {
 	cancel                 func()
 	cancelStep             func()
 	cancelPop              func()
+	renewStep              func()
 	behavior               actor.Behavior
 	gps                    bool
 	network                bool
 	isDisplayEnable        bool
+	enableStep             bool
 }
 
 func NewApp(uix ui.UI) *App {
@@ -317,38 +319,34 @@ func (a *App) Runstate(ctx actor.Context) {
 		if msg.GetCode() == messages.MsgAppPaso_CASH {
 			a.cashInput += 1
 			if a.uix != nil {
-				if err := a.uix.CashInputs(int32(a.cashInput + a.electInput)); err != nil {
+				if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
 					logs.LogWarn.Printf("inputs error: %s", err)
 				}
 			}
 		} else {
-			a.electInput += 1
 			if a.uix != nil {
 				a.uix.Beep(3, 50, 600*time.Millisecond)
 				if a.cancelPop != nil {
 					a.cancelPop()
 				}
-				// if a.uix.GetScreen() == ui.MAIN_SCREEN {
-				contxt, cancel := context.WithCancel(context.TODO())
-				a.cancelPop = cancel
-				if err := a.uix.TextConfirmationPopup(
-					"entrada confirmada"); err != nil {
-					logs.LogWarn.Printf("textConfirmation error: %s", err)
-				}
-				go func() {
-					defer cancel()
-					select {
-					case <-contxt.Done():
-					case <-time.After(4 * time.Second):
-					}
-					if err := a.uix.TextConfirmationPopupclose(); err != nil {
+				if a.uix.GetScreen() == ui.MAIN_SCREEN {
+					contxt, cancel := context.WithCancel(context.TODO())
+					a.cancelPop = cancel
+					if err := a.uix.TextConfirmationPopup(
+						"entrada confirmada\n"); err != nil {
 						logs.LogWarn.Printf("textConfirmation error: %s", err)
 					}
-				}()
+					go func() {
+						defer cancel()
+						select {
+						case <-contxt.Done():
+						case <-time.After(4 * time.Second):
+						}
+						if err := a.uix.TextConfirmationPopupclose(); err != nil {
+							logs.LogWarn.Printf("textConfirmation error: %s", err)
+						}
+					}()
 
-				// }
-				if err := a.uix.CashInputs(int32(a.electInput + a.cashInput)); err != nil {
-					logs.LogWarn.Printf("inputs error: %s", err)
 				}
 			}
 		}
@@ -401,9 +399,8 @@ func (a *App) Runstate(ctx actor.Context) {
 		a.countInput += msg.CountInputs
 		a.countOutput += msg.CountOutputs
 		a.cashInput += msg.CashInputs
-		a.electInput += msg.ElectInputs
 		if a.uix != nil {
-			if err := a.uix.CashInputs(int32(a.cashInput + a.electInput)); err != nil {
+			if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
 				logs.LogWarn.Printf("inputs error: %s", err)
 			}
 		}

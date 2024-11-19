@@ -34,6 +34,7 @@ var standalone bool
 var id string
 var debug bool
 var logStd bool
+var url string
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")
@@ -42,6 +43,7 @@ func init() {
 	flag.BoolVar(&standalone, "standalone", false, "standalone running (without appfare supervision)")
 	flag.BoolVar(&debug, "debug", false, "debug")
 	flag.BoolVar(&logStd, "logStd", false, "send logs to stdout")
+	flag.StringVar(&url, "url", "", fmt.Sprintf("example: %q, rest url", url_))
 
 }
 
@@ -91,7 +93,7 @@ func main() {
 			// 	log.Fatalf("iti actor error: %s", err)
 			// }
 
-			_, err = ctx.SpawnNamed(actor.PropsFromFunc(service.NewActor(id).Receive), "service-actor")
+			_, err = ctx.SpawnNamed(actor.PropsFromFunc(service.NewActor(id, url).Receive), "service-actor")
 			if err != nil {
 				log.Fatalf("service actor error: %s", err)
 			}

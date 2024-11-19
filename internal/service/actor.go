@@ -7,8 +7,8 @@ import (
 	"github.com/dumacp/go-schservices/pkg/services"
 )
 
-func NewActor(id string) actor.Actor {
-	return services.Actor(id, services.NatsActor(id, gwiot.NewDiscoveryActor(services.TOPIC_REPLY,
+func NewActor(id, url string) actor.Actor {
+	return services.Actor(id, url, services.NatsActor(id, gwiot.NewDiscoveryActor(services.TOPIC_REPLY,
 		pubsub.Subscribe,
 		pubsub.Publish)))
 }

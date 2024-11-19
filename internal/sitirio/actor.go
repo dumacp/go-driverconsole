@@ -853,7 +853,7 @@ func (a *App) Receive(ctx actor.Context) {
 				a.isDisplayEnable = false
 			}
 		} else if !a.isDisplayEnable {
-			fmt.Printf("/////////////// true\n")
+			// fmt.Printf("/////////////// true\n")
 			a.isDisplayEnable = true
 			ctx.Send(ctx.Self(), &MsgMainScreenForce{Force: true})
 		}
