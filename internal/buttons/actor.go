@@ -1,8 +1,8 @@
 package buttons
 
 import (
+	"context"
 	"fmt"
-	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
 	"github.com/asynkron/protoactor-go/eventstream"
@@ -11,17 +11,19 @@ import (
 )
 
 type Actor struct {
-	quit      chan int
-	evts      *eventstream.EventStream
-	device    interface{}
-	mem       chan *MsgMemory
+	evts   *eventstream.EventStream
+	dev    device.Device
+	device ButtonDevice
+	// mem       chan *MsgMemory
 	pidDevice *actor.PID
+	cancel    func()
 }
 
-func NewActor() actor.Actor {
+func NewActor(dev ButtonDevice) actor.Actor {
 	a := &Actor{}
 	a.evts = eventstream.NewEventStream()
-	a.mem = make(chan *MsgMemory)
+	a.device = dev
+	// a.mem = make(chan *MsgMemory)
 	return a
 }
 
@@ -46,12 +48,8 @@ func (a *Actor) Receive(ctx actor.Context) {
 	}(), ctx.Self().GetId(), ctx.Message())
 	switch msg := ctx.Message().(type) {
 	case *actor.Stopping:
-		if a.quit != nil {
-			select {
-			case <-a.quit:
-			default:
-				close(a.quit)
-			}
+		if a.cancel != nil {
+			a.cancel()
 		}
 	case *actor.Started:
 		logs.LogInfo.Printf("started \"%s\", %v", ctx.Self().GetId(), ctx.Self())
@@ -61,84 +59,50 @@ func (a *Actor) Receive(ctx actor.Context) {
 		}
 		subscribe(ctx, a.evts)
 	case *device.MsgDevice:
-		if a.quit != nil {
-			select {
-			case <-a.quit:
-			default:
-				close(a.quit)
-			}
-			time.Sleep(300 * time.Millisecond)
+		contxt, cancel := context.WithCancel(context.Background())
+		a.cancel = cancel
+
+		fmt.Println("///////////////////////")
+
+		if a.device == nil {
+			break
 		}
-
-		a.quit = make(chan int)
-
-		if err := ListenButtons(msg.Device, ctx, a.mem, a.quit); err != nil {
+		if err := a.device.Init(msg.Device); err != nil {
 			logs.LogError.Printf("listenButtons error = %s", err)
 			break
 		}
-		a.device = msg.Device
-		a.pidDevice = ctx.Sender()
+		ch, err := a.device.ListenButtons(contxt)
+		if err != nil {
+			logs.LogError.Printf("listenButtons error = %s", err)
+			break
+		}
 
-	case *MsgInitRecorrido, *MsgStopRecorrido:
+		if ctx.Parent() != nil {
+			ctx.Send(ctx.Parent(), &StopButtons{})
+		}
+		go func(ctx actor.Context) {
+			rootctx := ctx.ActorSystem().Root
+			self := ctx.Self()
+			for v := range ch {
+				rootctx.Send(self, v)
+			}
+			logs.LogError.Printf("listenButtons close")
+			if ctx.Parent() != nil {
+				rootctx.Send(self, &StopButtons{})
+			}
+			// rootctx.PoisonFuture(self)
+		}(ctx)
 
-		a.evts.Publish(msg)
-	case *MsgChangeRuta:
-		if a.evts == nil {
-			break
+		// a.pidDevice = ctx.Sender()
+	case *InputEvent:
+		newmsg := *msg
+		a.evts.Publish(&newmsg)
+		if ctx.Parent() != nil {
+			ctx.Send(ctx.Parent(), &newmsg)
 		}
-		a.evts.Publish(msg)
-	case *MsgChangeDriver:
-		if a.evts == nil {
-			break
-		}
-		a.evts.Publish(msg)
-	case *MsgMainScreen, *MsgConfirmation, *MsgWarning, *MsgReturnFromAlarms, *MsgReturnFromVehicle:
-		if a.evts == nil {
-			break
-		}
-		a.evts.Publish(msg)
-	case *MsgEnterRuta:
-		fmt.Printf("message -> \"%v\"\n", msg)
-		if a.evts == nil {
-			break
-		}
-		a.evts.Publish(msg)
-	case *MsgEnterDriver:
-		fmt.Printf("message -> \"%v\"\n", msg)
-		if a.evts == nil {
-			break
-		}
-		a.evts.Publish(msg)
-	case *MsgSelectPaso:
-	case *MsgEnterPaso:
-		if a.evts == nil {
-			break
-		}
-		a.evts.Publish(msg)
-	case *MsgEnableEnterPaso:
-	case *MsgFatal:
-		ctx.Poison(ctx.Self())
-	case *MsgDeviceError:
-		if a.pidDevice != nil {
-			ctx.Request(a.pidDevice, &device.StopDevice{})
-			ctx.Request(a.pidDevice, &device.StartDevice{})
-		}
-	case *MsgMemory:
-		select {
-		case a.mem <- msg:
-		case <-time.After(60 * time.Millisecond):
-		}
-	case *MsgShowAlarms:
-		if a.evts != nil {
-			a.evts.Publish(msg)
-		}
-	case *MsgBrightnessMinus:
-		if a.evts != nil {
-			a.evts.Publish(msg)
-		}
-	case *MsgBrightnessPlus:
-		if a.evts != nil {
-			a.evts.Publish(msg)
-		}
+	case error:
+		fmt.Printf("error message: %s (%s)\n", msg, ctx.Self().GetId())
+	default:
+		fmt.Printf("unhandled message type: %T (%s)\n", msg, ctx.Self().GetId())
 	}
 }

@@ -1,0 +1,66 @@
+package app
+
+const (
+	AddrSelectPaso             int = 0
+	AddrEnterPaso                  = 1
+	AddrEnterRuta                  = 2
+	AddrEnterDriver                = 3
+	AddrScreenSwitch               = 4
+	AddrTogglePopup                = 5
+	AddrToggleWarnPopup            = 6
+	AddrScreenAlarms               = 7
+	AddrScreenProgVeh              = 8
+	AddrScreenProgDriver           = 9
+	AddrScreenMore                 = 10
+	AddrLedGsp                     = 12
+	AddrLedNetwork                 = 11
+	AddrEnterService               = 13
+	AddrEnterSelectProgDriver      = 14
+	AddrEnterSelectProgVeh         = 15
+	AddrLedReset                   = 20
+	AddrBitSelectProgDriver_1      = 21
+	AddrBitSelectProgDriver_2      = 22
+	AddrBitSelectProgDriver_3      = 23
+	AddrBitSelectProgDriver_4      = 24
+	AddrBitSelectProgDriver_5      = 25
+	AddrBitSelectProgDriver_6      = 26
+	AddrBitSelectProgDriver_7      = 27
+	AddrBitSelectProgDriver_8      = 28
+	AddrBitSelectProgDriver_9      = 29
+	AddrBitSelectProgDriver_10     = 30
+	AddrBitSelectProgVeh_1         = 31
+	AddrBitSelectProgVeh_2         = 32
+	AddrBitSelectProgVeh_3         = 33
+	AddrBitSelectProgVeh_4         = 34
+	AddrBitSelectProgVeh_5         = 35
+	AddrBitSelectProgVeh_6         = 36
+	AddrBitSelectProgVeh_7         = 37
+	AddrBitSelectProgVeh_8         = 38
+	AddrBitSelectProgVeh_9         = 39
+	AddrBitSelectProgVeh_10        = 40
+	AddrTextDate                   = 60
+	AddrTextRoute                  = 100
+	AddrNumRoute                   = 120
+	AddrTextDriver                 = 140
+	AddrNumDriver                  = 160
+	AddrNumCashInputs              = 80
+	AddrNumElectonicInputs         = 84
+	AddrNumDeviation               = 88
+	AddrTextCurrentService         = 180
+	AddrLedCurrentService          = 200
+	AddrTextWarnPopup              = 300
+	AddrTextPopup                  = 400
+	AddrTextWarning                = 500
+	AddrTextConfirmation           = 600
+	AddrSelectProgDriver           = 700
+	AddrSelectProgVeh              = 701
+	AddrTextProgDriver             = 1000
+	AddrTextProgVeh                = 2000
+	AddrTextNotiAlarm              = 3000
+
+	// AddrAddBright              = 21
+	// AddrSubBright              = 22
+	// AddrLedBeep                = 23
+	// AddrSwitchStep             = 25
+	// AddrSendStep               = 24
+)

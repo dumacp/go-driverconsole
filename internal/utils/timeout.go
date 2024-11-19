@@ -26,3 +26,23 @@ func Timeout(ti time.Time, seq []time.Duration) func() bool {
 		return result
 	}
 }
+
+func TimeoutFun(seq []time.Duration) func() bool {
+	mem := time.Now().Add(-30 * time.Minute)
+	idx := 0
+	return func() bool {
+		if len(seq) == 0 {
+			return true
+		}
+		if idx >= len(seq) {
+			idx = len(seq) - 1
+		}
+		duration := seq[idx]
+		if time.Since(mem) > duration {
+			mem = time.Now()
+			idx++
+			return true
+		}
+		return false
+	}
+}

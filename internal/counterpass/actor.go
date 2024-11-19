@@ -3,6 +3,7 @@ package counterpass
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
@@ -12,11 +13,12 @@ import (
 	psub "github.com/dumacp/pubsub"
 )
 
-//Actor actor to listen events
+// Actor actor to listen events
 type Actor struct {
-	ctx            actor.Context
-	evs            *eventstream.EventStream
-	lastCounterMap *CounterMap
+	ctx                    actor.Context
+	evs                    *eventstream.EventStream
+	lastCounterMap         *CounterMap
+	lastTurnstileRegisters *TurnstileRegisters
 }
 
 func NewActor() actor.Actor {
@@ -34,11 +36,61 @@ func parseCounters(msg []byte) interface{} {
 	return event
 }
 
+func parseCountersTurnstile(msg []byte) interface{} {
+
+	event := new(TurnstileRegisters)
+	if err := json.Unmarshal(msg, event); err != nil {
+		fmt.Printf("error parseCountersTurnstile = %s\n", err)
+		return err
+	}
+
+	return event
+}
+
 func parseEvents(msg []byte) interface{} {
 
 	message := &psub.Message{
-		Timestamp: float64(time.Now().UnixNano()) / 1000000000,
-		Type:      "COUNTERSDOOR",
+		// Timestamp: float64(time.Now().UnixNano()) / 1000000000,
+		// Type:      "COUNTERSDOOR",
+	}
+
+	// fmt.Printf("********* event msg: %s\n", msg)
+
+	val := struct {
+		// Coord    string  `json:"coord"`
+		ID       int32   `json:"id"`
+		State    uint    `json:"state"`
+		Counters []int64 `json:"counters"`
+		Type     string  `json:"type,omitempty"`
+	}{}
+	message.Value = &val
+
+	if err := json.Unmarshal(msg, message); err != nil {
+		fmt.Printf("error parseEvents = %s\n", err)
+		return err
+	}
+
+	// fmt.Printf("********* parse event: %v, value: %v\n", message, message.Value)
+
+	if !strings.Contains(message.Type, "COUNTERSDOOR") {
+		return fmt.Errorf("extraEvent not configured, type: %s, value: %q", message.Type, message.Value)
+	}
+
+	event := new(CounterEvent)
+
+	if val.Counters != nil && len(val.Counters) > 1 {
+		event.Inputs = int(val.Counters[0])
+		event.Outputs = int(val.Counters[1])
+	}
+
+	return event
+}
+
+func parseExtraEvents(msg []byte) interface{} {
+
+	message := &psub.Message{
+		// Timestamp: float64(time.Now().UnixNano()) / 1000000000,
+		// Type:      "TAMPERING",
 	}
 
 	val := struct {
@@ -51,16 +103,16 @@ func parseEvents(msg []byte) interface{} {
 	message.Value = val
 
 	if err := json.Unmarshal(msg, message); err != nil {
-		fmt.Printf("error parseEvents = %s\n", err)
+		fmt.Printf("error parseExtraEvents = %s\n", err)
 		return err
 	}
 
-	event := new(CounterEvent)
-
-	if val.Counters != nil && len(val.Counters) > 1 {
-		event.Inputs = int(val.Counters[0])
-		event.Outputs = int(val.Counters[1])
+	if !strings.Contains(message.Type, "TAMPERING") {
+		return fmt.Errorf("extraEvent not configured, type: %s", message.Type)
 	}
+
+	event := new(CounterExtraEvent)
+	event.Text = []byte(fmt.Sprintf("Evento: %s", message.Type))
 
 	return event
 }
@@ -82,7 +134,7 @@ func subscribe(ctx actor.Context, evs *eventstream.EventStream) {
 	})
 }
 
-//Receive func Receive in actor
+// Receive func Receive in actor
 func (a *Actor) Receive(ctx actor.Context) {
 	fmt.Printf("message: %q --> %q, %T\n", func() string {
 		if ctx.Sender() == nil {
@@ -104,12 +156,28 @@ func (a *Actor) Receive(ctx actor.Context) {
 			time.Sleep(3 * time.Second)
 			logs.LogError.Panic(err)
 		}
+		if err := pubsub.Subscribe("EVENTS/counterevents", ctx.Self(), parseExtraEvents); err != nil {
+			time.Sleep(3 * time.Second)
+			logs.LogError.Panic(err)
+		}
+		if err := pubsub.Subscribe("TURNSTILENE", ctx.Self(), parseCountersTurnstile); err != nil {
+			time.Sleep(3 * time.Second)
+			logs.LogError.Panic(err)
+		}
 	case *actor.Stopping:
 		logs.LogWarn.Printf("\"%s\" - Stopped actor, reason -> %v", ctx.Self(), msg)
 	case *actor.Restarting:
 		logs.LogWarn.Printf("\"%s\" - Restarting actor, reason -> %v", ctx.Self(), msg)
 	case *actor.Terminated:
 		logs.LogWarn.Printf("\"%s\" - Terminated actor, reason -> %v", ctx.Self(), msg)
+	case *TurnstileRegisters:
+		a.lastTurnstileRegisters = msg
+		if a.evs != nil {
+			a.evs.Publish(msg)
+		}
+		if ctx.Parent() != nil {
+			ctx.Send(ctx.Parent(), msg)
+		}
 	case *CounterMap:
 		a.lastCounterMap = msg
 		if a.evs != nil {
@@ -119,7 +187,16 @@ func (a *Actor) Receive(ctx actor.Context) {
 		if a.evs != nil {
 			a.evs.Publish(msg)
 		}
-
+		if ctx.Parent() != nil {
+			ctx.Send(ctx.Parent(), msg)
+		}
+	case *CounterExtraEvent:
+		if a.evs != nil {
+			a.evs.Publish(msg)
+		}
+		if ctx.Parent() != nil {
+			ctx.Send(ctx.Parent(), msg)
+		}
 	case *MsgSubscribe:
 		if ctx.Sender() == nil {
 			break
@@ -133,11 +210,19 @@ func (a *Actor) Receive(ctx actor.Context) {
 			*counters = *a.lastCounterMap
 			ctx.Respond(counters)
 		}
-
+		if a.lastTurnstileRegisters != nil {
+			counters := new(TurnstileRegisters)
+			*counters = *a.lastTurnstileRegisters
+			ctx.Respond(counters)
+		}
 	case *MsgRequestStatus:
 		if ctx.Sender() != nil {
 			break
 		}
 		ctx.Respond(&MsgStatus{State: true})
+	case error:
+		fmt.Printf("error message: %s (%s)\n", msg, ctx.Self().GetId())
+	default:
+		fmt.Printf("unhandled message type: %T (%s)\n", msg, ctx.Self().GetId())
 	}
 }

@@ -1,6 +1,7 @@
 package device
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -11,19 +12,20 @@ import (
 )
 
 type Actor struct {
-	ctx        actor.Context
-	portSerial string
-	speedBaud  int
-	fmachinae  *fsm.FSM
-	evts       *eventstream.EventStream
+	// TODO: ctx???
+	ctx       actor.Context
+	fmachinae *fsm.FSM
+	evts      *eventstream.EventStream
+	dev       Device
+	contxt    context.Context
+	lastError time.Time
 }
 
-func NewActor(port string, speed int, readTimeout time.Duration) actor.Actor {
+func NewActor(dev Device) actor.Actor {
 
-	a := &Actor{
-		portSerial: port,
-		speedBaud:  speed,
-	}
+	a := &Actor{}
+	a.contxt = context.TODO()
+	a.dev = dev
 	a.evts = &eventstream.EventStream{}
 	a.Fsm()
 	return a
@@ -62,25 +64,35 @@ func (a *Actor) Receive(ctx actor.Context) {
 	case *actor.Started:
 		ctx.Send(ctx.Self(), &StartDevice{})
 	case *actor.Stopping:
-		a.fmachinae.Event(eError)
+		a.fmachinae.Event(a.contxt, eError)
 	case *StartDevice:
-		if err := a.fmachinae.Event(eStarted); err != nil {
-			logs.LogError.Printf("open device error: %s", err)
+		if err := a.fmachinae.Event(a.contxt, eStarted); err != nil {
+			if time.Since(a.lastError) > 3*time.Minute {
+				a.lastError = time.Now()
+				logs.LogError.Printf("open device error: %s", err)
+			}
 			time.Sleep(3 * time.Second)
 			ctx.Send(ctx.Self(), &StartDevice{})
+			break
 		}
+		a.lastError = time.Time{}
 		fmt.Printf("open device successfully\n")
 	case *MsgDevice:
-		a.fmachinae.Event(eOpenned)
+		a.fmachinae.Event(a.contxt, eOpenned)
 		a.evts.Publish(msg)
+		if ctx.Parent() != nil {
+			ctx.Request(ctx.Parent(), msg)
+		}
 
 	case *StopDevice:
-		a.fmachinae.Event(eClosed)
-		a.fmachinae.Event(eStop)
+		a.fmachinae.Event(a.contxt, eClosed)
+		a.fmachinae.Event(a.contxt, eStop)
 	case *Subscribe:
 		if ctx.Sender() == nil {
 			break
 		}
 		subscribe(ctx, a.evts)
+	case error:
+		fmt.Printf("error device actor: %s\n", msg)
 	}
 }
