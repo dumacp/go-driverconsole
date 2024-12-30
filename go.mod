@@ -6,7 +6,7 @@ toolchain go1.22.0
 
 //github.com/AsynkronIT/protoactor-go v0.0.0-20220121183416-233df622d732
 require (
-	github.com/dumacp/go-logs v0.0.1
+	github.com/dumacp/go-logs v0.0.2-0.20241119230451-ac5d49be15ce
 	github.com/dumacp/matrixorbital v0.0.0-20230818142648-d37611aecca5
 	github.com/dumacp/pubsub v0.0.0-20200115200904-f16f29d84ee0
 	github.com/eclipse/paho.mqtt.golang v1.4.3
@@ -19,12 +19,12 @@ require (
 	github.com/asynkron/protoactor-go v0.0.0-20240413045429-76c172a71a16
 	github.com/dumacp/go-actors v0.0.0-20240613144007-fcb38ee7b9b1
 	github.com/dumacp/go-fareCollection v0.0.0-00010101000000-000000000000
-	github.com/dumacp/go-gwiot v0.0.0-20230301184410-367f90defccc
-	github.com/dumacp/go-ignition v0.0.0-20230825141105-a4e64474c5fa
-	github.com/dumacp/go-itinerary v0.0.0-20230427203726-7dd05dd6a3b5
-	github.com/dumacp/go-levis v0.0.0-20230825141727-ae87918ddcbd
-	github.com/dumacp/go-params v0.0.0-00010101000000-000000000000
-	github.com/dumacp/go-schservices v0.0.1
+	github.com/dumacp/go-gwiot v0.0.0-20241118181849-c27018076aaa
+	github.com/dumacp/go-ignition v0.0.0-20240301165217-62b8949edaf7
+	github.com/dumacp/go-itinerary v0.0.0-20241119182954-5f9b9a2761ee
+	github.com/dumacp/go-levis v0.0.0-20241119224207-a91cacdf55e3
+	github.com/dumacp/go-params v0.0.0-20241119183133-475f069b6076
+	github.com/dumacp/go-schservices v0.0.4-0.20241230152104-e056b0ddfe97
 	github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
 	google.golang.org/protobuf v1.34.1
@@ -80,22 +80,22 @@ require (
 
 replace github.com/dumacp/go-fareCollection => ../go-fareCollection
 
-replace github.com/dumacp/go-levis => ../go-levis
+//replace github.com/dumacp/go-levis => ../go-levis
 
-replace github.com/dumacp/go-params => ../go-params
+//replace github.com/dumacp/go-params => ../go-params
 
-replace github.com/dumacp/go-itinerary => ../go-itinerary
+//replace github.com/dumacp/go-itinerary => ../go-itinerary
 
-replace github.com/dumacp/go-gwiot => ../go-gwiot
+//replace github.com/dumacp/go-gwiot => ../go-gwiot
 
-replace github.com/dumacp/go-schservices => ../go-schservices
+//replace github.com/dumacp/go-schservices => ../go-schservices
 
-replace github.com/dumacp/go-actors => ../go-actors
+//replace github.com/dumacp/go-actors => ../go-actors
 
-replace github.com/dumacp/matrixorbital => ../matrixorbital
+//replace github.com/dumacp/matrixorbital => ../matrixorbital
 
 replace github.com/asynkron/protoactor-go => ../../asynkron/protoactor-go
 
 replace github.com/nats-io/nats.go => ../../nats-io/nats.go
 
-replace github.com/dumacp/go-logs => ../go-logs
+//replace github.com/dumacp/go-logs => ../go-logs

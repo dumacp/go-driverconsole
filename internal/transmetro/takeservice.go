@@ -48,10 +48,12 @@ func (a *App) takeservice() error {
 		if resSvc, ok := res.(*services.TakeServiceResponseMsg); ok {
 
 			if len(resSvc.GetError()) > 0 {
-				return fmt.Errorf("error request service: %s", resSvc.GetError())
+				logs.LogWarn.Printf("error request service: %s", err)
+				return fmt.Errorf(resSvc.GetError())
 			}
 			if resSvc.DataCode != 200 {
-				return fmt.Errorf("error request service: %d, %s", resSvc.DataCode, resSvc.DataMsg)
+				logs.LogWarn.Printf("error request service: %s", err)
+				return fmt.Errorf(resSvc.DataMsg)
 			}
 			// a.currentService = a.selectedService
 
