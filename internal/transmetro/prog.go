@@ -135,7 +135,7 @@ func (a *App) requestProg(ctx actor.Context, msg *RequestProgVeh) error {
 		RouteId:   int32(msg.Itinerary),
 		State:     services.State_SCHEDULED.String(),
 		CompanyId: a.companyId,
-	}, 3*time.Second).Result()
+	}, 6*time.Second).Result()
 	if err != nil {
 		return fmt.Errorf("request service error: %s", err)
 	}
