@@ -23,7 +23,7 @@ require (
 	github.com/dumacp/go-ignition v0.0.0-20240301165217-62b8949edaf7
 	github.com/dumacp/go-itinerary v0.0.0-20241119182954-5f9b9a2761ee
 	github.com/dumacp/go-levis v0.0.0-20241119224207-a91cacdf55e3
-	github.com/dumacp/go-params v0.0.0-20241119183133-475f069b6076
+	github.com/dumacp/go-params v0.0.0-20250108191046-36f8cb3a96ac
 	github.com/dumacp/go-schservices v0.0.4-0.20241230152104-e056b0ddfe97
 	github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
