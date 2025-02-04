@@ -51,10 +51,10 @@ func (a *App) takeservice() error {
 				logs.LogWarn.Printf("error request service: %s", err)
 				return fmt.Errorf(resSvc.GetError())
 			}
-			if resSvc.DataCode != 200 {
-				logs.LogWarn.Printf("error request service: %s", err)
-				return fmt.Errorf(resSvc.DataMsg)
-			}
+			// if resSvc.DataCode != 200 {
+			// 	logs.LogWarn.Printf("error request service: %s", err)
+			// 	return fmt.Errorf(resSvc.DataMsg)
+			// }
 			// a.currentService = a.selectedService
 
 		} else {
@@ -97,8 +97,8 @@ func (a *App) takeservice() error {
 			return err
 		}
 		a.ctx.Send(a.ctx.Self(), &MsgSetRoute{
-			Route:     int(a.selectedService.GetItinenary().GetId()),
-			RouteName: a.selectedService.GetItinenary().GetName(),
+			Route:     int(a.selectedService.GetItinerary().GetId()),
+			RouteName: a.selectedService.GetItinerary().GetName(),
 		})
 	case a.currentService == nil:
 		return fmt.Errorf("no hay un servicio iniciado")
@@ -164,12 +164,12 @@ func (a *App) showCurrentServiceWithAll(msg *services.ServiceAllMsg) {
 		a.currentService = v
 		ts := time.UnixMilli(v.GetScheduleDateTime())
 		prompt = strings.ToLower(fmt.Sprintf("servicio iniciado:\n%s: %s (%s)", ts.Format("01/02 15:04"),
-			v.GetItinenary().GetName(), v.GetRoute().GetCode()))
+			v.GetItinerary().GetName(), v.GetRoute().GetCode()))
 		if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
 			fmt.Printf("error TextCurrentItinerary: %s\n", err)
 		}
 		fmt.Printf("//////////////// services (ori: %d): %v\n", len(msg.GetUpdates()), arr)
-	} else if idx > 0 {
+	} else if idx > 0 && idx < len(ss) {
 		prompt := ""
 		v := ss[idx]
 		fmt.Printf("************ service: %v\n", v)
@@ -177,22 +177,22 @@ func (a *App) showCurrentServiceWithAll(msg *services.ServiceAllMsg) {
 			a.currentService = v
 			ts := time.UnixMilli(v.GetScheduleDateTime())
 			prompt = strings.ToLower(fmt.Sprintf("servicio iniciado:\n%s: %s (%s)", ts.Format("01/02 15:04"),
-				v.GetItinenary().GetName(), v.GetRoute().GetCode()))
+				v.GetItinerary().GetName(), v.GetRoute().GetCode()))
 		} else if v.GetState() == services.State_READY_TO_START.String() {
 			a.currentService = v
 			ts := time.UnixMilli(v.GetScheduleDateTime())
 			prompt = strings.ToLower(fmt.Sprintf("próximo servicio (listo):\n%s: %s (%s)", ts.Format("01/02 15:04"),
-				v.GetItinenary().GetName(), v.GetRoute().GetCode()))
+				v.GetItinerary().GetName(), v.GetRoute().GetCode()))
 		} else if v.GetState() == services.State_WAITING_TO_ARRIVE_TO_STARTING_POINT.String() {
 			a.currentService = v
 			ts := time.UnixMilli(v.GetScheduleDateTime())
 			prompt = strings.ToLower(fmt.Sprintf("próximo servicio (esperando):\n%s: %s (%s)", ts.Format("01/02 15:04"),
-				v.GetItinenary().GetName(), v.GetRoute().GetCode()))
+				v.GetItinerary().GetName(), v.GetRoute().GetCode()))
 		} else if v.GetState() == services.State_SCHEDULED.String() {
 			// a.currentService = v
 			ts := time.UnixMilli(v.GetScheduleDateTime())
 			prompt = strings.ToLower(fmt.Sprintf("próximo servicio:\n%s: %s (%s)", ts.Format("01/02 15:04"),
-				v.GetItinenary().GetName(), v.GetRoute().GetCode()))
+				v.GetItinerary().GetName(), v.GetRoute().GetCode()))
 		}
 		if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
 			fmt.Printf("error TextCurrentItinerary: %s\n", err)
@@ -222,7 +222,7 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 
 		if !strings.EqualFold(state, svc.GetState()) {
 			data := strings.ToLower(fmt.Sprintf(" %s: (%d) %s (%s)", time.Now().Format("01/02 15:04"),
-				svc.GetItinenary().GetId(), svc.GetItinenary().GetName(), svc.GetState()))
+				svc.GetItinerary().GetId(), svc.GetItinerary().GetName(), svc.GetState()))
 			a.notif = append(a.notif, data)
 			if len(a.notif) > 10 {
 				copy(a.notif, a.notif[1:])
@@ -234,7 +234,12 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 
 	if svc.GetCheckpointTimingState() != nil && len(svc.GetCheckpointTimingState().GetState()) > 0 {
 		state := int(services.TimingState_value[svc.GetCheckpointTimingState().GetState()])
-		promtp := fmt.Sprintf("%s (%d)", svc.GetCheckpointTimingState().GetName(), svc.GetCheckpointTimingState().GetTimeDiff())
+		promtp := ""
+		if len(svc.GetCheckpointTimingState().GetName()) > 24 {
+			promtp = fmt.Sprintf("%s (%d)", svc.GetCheckpointTimingState().GetName()[0:24], svc.GetCheckpointTimingState().GetTimeDiff())
+		} else {
+			promtp = fmt.Sprintf("%s (%d)", svc.GetCheckpointTimingState().GetName(), svc.GetCheckpointTimingState().GetTimeDiff())
+		}
 		fmt.Printf("///// state: %d\n", state)
 		if err := a.uix.ServiceCurrentState(state, promtp); err != nil {
 			logs.LogWarn.Printf("textConfirmation error: %s", err)
@@ -248,35 +253,45 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 		a.currentService = svc
 		ts := time.UnixMilli(svc.GetScheduleDateTime())
 		prompt = strings.ToLower(fmt.Sprintf("servicio iniciado:\n%s: %s (%s)", ts.Format("01/02 15:04"),
-			svc.GetItinenary().GetName(), svc.GetRoute().GetCode()))
+			svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
 	} else if svc.GetState() == services.State_READY_TO_START.String() {
 		a.currentService = svc
 		ts := time.UnixMilli(svc.GetScheduleDateTime())
 		prompt = strings.ToLower(fmt.Sprintf("próximo servicio (listo):\n%s: %s (%s)", ts.Format("01/02 15:04"),
-			svc.GetItinenary().GetName(), svc.GetRoute().GetCode()))
+			svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
 	} else if svc.GetState() == services.State_WAITING_TO_ARRIVE_TO_STARTING_POINT.String() {
 		a.currentService = svc
 		ts := time.UnixMilli(svc.GetScheduleDateTime())
 		prompt = strings.ToLower(fmt.Sprintf("próximo servicio (esperando):\n%s: %s (%s)", ts.Format("01/02 15:04"),
-			svc.GetItinenary().GetName(), svc.GetRoute().GetCode()))
+			svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
 	} else if svc.GetState() == services.State_SCHEDULED.String() {
 		// a.currentService = v
 		ts := time.UnixMilli(svc.GetScheduleDateTime())
 		prompt = strings.ToLower(fmt.Sprintf("próximo servicio:\n%s: %s (%s)", ts.Format("01/02 15:04"),
-			svc.GetItinenary().GetName(), svc.GetRoute().GetCode()))
+			svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
 	} else if svc.GetState() == services.State_ENDED.String() {
 		// a.currentService = v
 		ts := time.UnixMilli(svc.GetScheduleDateTime())
 		prompt = strings.ToLower(fmt.Sprintf("servicio finalizado:\n%s: %s (%s)", ts.Format("01/02 15:04"),
-			svc.GetItinenary().GetName(), svc.GetRoute().GetCode()))
+			svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
 	} else if svc.GetState() == services.State_ABORTED.String() {
 		// a.currentService = v
 		ts := time.UnixMilli(svc.GetScheduleDateTime())
 		prompt = strings.ToLower(fmt.Sprintf("servicio abortado:\n%s: %s (%s)", ts.Format("01/02 15:04"),
-			svc.GetItinenary().GetName(), svc.GetRoute().GetCode()))
+			svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
+	} else if len(svc.GetState()) == 0 {
+		if svc.GetCheckpointTimingState().GetState() == services.TimingState_ON_TIME.String() {
+			if svc.GetId() == a.currentService.GetId() {
+				ts := time.UnixMilli(svc.GetScheduleDateTime())
+				prompt = strings.ToLower(fmt.Sprintf("servicio iniciado:\n%s: %s (%s)", ts.Format("01/02 15:04"),
+					svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
+			}
+		}
 	}
 
-	if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
-		logs.LogWarn.Printf("error TextCurrentItinerary: %s", err)
+	if len(prompt) > 0 {
+		if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
+			logs.LogWarn.Printf("error TextCurrentItinerary: %s", err)
+		}
 	}
 }

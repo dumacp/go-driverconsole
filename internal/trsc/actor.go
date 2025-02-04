@@ -595,10 +595,10 @@ func (a *App) Runstate(ctx actor.Context) {
 		fmt.Printf("******** (%T) %v **********\n", msg, msg)
 		a.showCurrentService(msg.GetUpdate())
 		if a.currentService != nil &&
-			len(a.currentService.GetItinenary().GetName()) > 0 {
-			if !strings.EqualFold(a.currentService.GetItinenary().GetName(), a.routeString) {
-				a.routeString = a.currentService.GetItinenary().GetName()
-				if err := a.uix.Route(a.currentService.GetItinenary().GetName()); err != nil {
+			len(a.currentService.GetItinerary().GetName()) > 0 {
+			if !strings.EqualFold(a.currentService.GetItinerary().GetName(), a.routeString) {
+				a.routeString = a.currentService.GetItinerary().GetName()
+				if err := a.uix.Route(a.currentService.GetItinerary().GetName()); err != nil {
 					logs.LogWarn.Printf("route error: %s", err)
 				}
 			}
@@ -620,9 +620,9 @@ func (a *App) Runstate(ctx actor.Context) {
 		fmt.Printf("******** (%T) %v **********\n", msg, msg)
 		a.showCurrentServiceWithAll(msg)
 		if a.currentService != nil &&
-			len(a.currentService.GetItinenary().GetName()) > 0 {
-			if strings.EqualFold(a.currentService.GetItinenary().GetName(), a.routeString) {
-				if err := a.uix.Route(a.currentService.GetItinenary().GetName()); err != nil {
+			len(a.currentService.GetItinerary().GetName()) > 0 {
+			if strings.EqualFold(a.currentService.GetItinerary().GetName(), a.routeString) {
+				if err := a.uix.Route(a.currentService.GetItinerary().GetName()); err != nil {
 					logs.LogWarn.Printf("route error: %s", err)
 				}
 			}

@@ -39,7 +39,7 @@ var logStd bool
 var showversion bool
 var url string
 
-const version = "1.1.7_transmetro"
+const version = "1.1.10_transmetro"
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")

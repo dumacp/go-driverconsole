@@ -19,12 +19,12 @@ require (
 	github.com/asynkron/protoactor-go v0.0.0-20240413045429-76c172a71a16
 	github.com/dumacp/go-actors v0.0.0-20240613144007-fcb38ee7b9b1
 	github.com/dumacp/go-fareCollection v0.0.0-00010101000000-000000000000
-	github.com/dumacp/go-gwiot v0.0.0-20241118181849-c27018076aaa
+	github.com/dumacp/go-gwiot v0.0.0-20250115140529-82d0b659331a
 	github.com/dumacp/go-ignition v0.0.0-20240301165217-62b8949edaf7
 	github.com/dumacp/go-itinerary v0.0.0-20241119182954-5f9b9a2761ee
 	github.com/dumacp/go-levis v0.0.0-20241119224207-a91cacdf55e3
 	github.com/dumacp/go-params v0.0.0-20250108191046-36f8cb3a96ac
-	github.com/dumacp/go-schservices v0.0.4-0.20241230152104-e056b0ddfe97
+	github.com/dumacp/go-schservices v0.0.4-0.20250115134655-33531cf6227c
 	github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
 	google.golang.org/protobuf v1.34.1
@@ -86,9 +86,9 @@ replace github.com/dumacp/go-fareCollection => ../go-fareCollection
 
 //replace github.com/dumacp/go-itinerary => ../go-itinerary
 
-//replace github.com/dumacp/go-gwiot => ../go-gwiot
+replace github.com/dumacp/go-gwiot => ../go-gwiot
 
-//replace github.com/dumacp/go-schservices => ../go-schservices
+replace github.com/dumacp/go-schservices => ../go-schservices
 
 //replace github.com/dumacp/go-actors => ../go-actors
 

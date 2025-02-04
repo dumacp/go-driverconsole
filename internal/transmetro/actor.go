@@ -54,6 +54,7 @@ type App struct {
 	itineraries          map[int32]*routes.Itinerary
 	shcservices          map[string]*services.ScheduleService
 	companySchServices   map[string]*services.ScheduleService
+	currentSchServices   map[string]*services.ScheduleService
 	// vehicleSchServices   map[string]*services.ScheduleService
 	currentService  *services.ScheduleService
 	selectedService *services.ScheduleService
@@ -550,6 +551,24 @@ func (a *App) Runstate(ctx actor.Context) {
 		}
 	case *ListProgDriver:
 		if err := a.listDriverProg(msg); err != nil {
+			if err := a.uix.TextWarningPopup(fmt.Sprintf("%s\n", err)); err != nil {
+				logs.LogWarn.Printf("textWarningPopup error: %s", err)
+			}
+			if a.cancelPop != nil {
+				a.cancelPop()
+			}
+			contxt, cancel := context.WithCancel(context.TODO())
+			a.cancelPop = cancel
+			go func() {
+				defer cancel()
+				select {
+				case <-contxt.Done():
+				case <-time.After(4 * time.Second):
+				}
+				if err := a.uix.TextWarningPopupClose(); err != nil {
+					logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+				}
+			}()
 			logs.LogWarn.Println("requestProg error: ", err)
 		}
 	case *RequestTakeService:
@@ -596,12 +615,17 @@ func (a *App) Runstate(ctx actor.Context) {
 		}
 	case *services.UpdateServiceMsg:
 		fmt.Printf("******** (%T) %v **********\n", msg, msg)
-		a.showCurrentService(msg.GetUpdate())
+		svc := msg.GetUpdate()
+		a.showCurrentService(svc)
 		if a.currentService != nil &&
-			len(a.currentService.GetItinenary().GetName()) > 0 {
-			if !strings.EqualFold(a.currentService.GetItinenary().GetName(), a.routeString) {
-				a.routeString = a.currentService.GetItinenary().GetName()
-				if err := a.uix.Route(a.currentService.GetItinenary().GetName()); err != nil {
+			len(a.currentService.GetItinerary().GetName()) > 0 {
+			if !strings.EqualFold(a.currentService.GetItinerary().GetName(), a.routeString) {
+				a.ctx.Send(a.ctx.Self(), &MsgSetRoute{
+					Route:     int(a.currentService.GetItinerary().GetId()),
+					RouteName: a.currentService.GetItinerary().GetName(),
+				})
+				a.routeString = a.currentService.GetItinerary().GetName()
+				if err := a.uix.Route(a.currentService.GetItinerary().GetName()); err != nil {
 					logs.LogWarn.Printf("route error: %s", err)
 				}
 			}
@@ -623,9 +647,9 @@ func (a *App) Runstate(ctx actor.Context) {
 		fmt.Printf("******** (%T) %v **********\n", msg, msg)
 		a.showCurrentServiceWithAll(msg)
 		if a.currentService != nil &&
-			len(a.currentService.GetItinenary().GetName()) > 0 {
-			if strings.EqualFold(a.currentService.GetItinenary().GetName(), a.routeString) {
-				if err := a.uix.Route(a.currentService.GetItinenary().GetName()); err != nil {
+			len(a.currentService.GetItinerary().GetName()) > 0 {
+			if strings.EqualFold(a.currentService.GetItinerary().GetName(), a.routeString) {
+				if err := a.uix.Route(a.currentService.GetItinerary().GetName()); err != nil {
 					logs.LogWarn.Printf("route error: %s", err)
 				}
 			}

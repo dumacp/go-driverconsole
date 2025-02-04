@@ -56,19 +56,19 @@ func (a *App) listProg(msg *ListProgVeh) error {
 
 	for _, v := range untilSlice {
 		// v := untilSlice[len(untilSlice)-1-i]
-		if msg.Itinerary > 0 && v.GetItinenary().GetId() != int32(msg.Itinerary) {
+		if msg.Itinerary > 0 && v.GetItinerary().GetId() != int32(msg.Itinerary) {
 			continue
 		}
 		ts := time.UnixMilli(v.GetScheduleDateTime())
 		data := strings.ToLower(fmt.Sprintf(" %s: %s (%s)", ts.Format("01/02 15:04"),
-			v.GetItinenary().GetName(), v.GetRoute().GetCode()))
+			v.GetItinerary().GetName(), v.GetRoute().GetCode()))
 		svc := strings.ToLower(fmt.Sprintf(`  id: %q
   estado: %q
   tiempo de inicio: %s
   itinenario: %q (%d)
   ruta: %q (%d)`,
 			v.GetId(), v.GetState(), time.UnixMilli(v.GetScheduleDateTime()).Format("01/02 15:04:05"),
-			v.GetItinenary().GetName(), v.GetItinenary().GetId(),
+			v.GetItinerary().GetName(), v.GetItinerary().GetId(),
 			v.GetRoute().GetCode(), v.GetRoute().GetId()))
 		fmt.Printf("servicio: %v\n", svc)
 		fmt.Printf("data: %s\n", data)
@@ -135,25 +135,30 @@ func (a *App) requestProg(ctx actor.Context, msg *RequestProgVeh) error {
 		RouteId:   int32(msg.Itinerary),
 		State:     services.State_SCHEDULED.String(),
 		CompanyId: a.companyId,
+		DeviceId:  a.platformId,
 	}, 6*time.Second).Result()
 	if err != nil {
 		return fmt.Errorf("request service error: %s", err)
 	}
 	switch rs := res.(type) {
 	case *services.CompanyProgSvcMsg:
-		cs := make(map[string]*services.ScheduleService, 0)
-		if len(rs.GetScheduledServices()) > 0 {
-			for _, v := range rs.GetScheduledServices() {
-				cs[v.GetId()] = v
+		if len(rs.GetError()) > 0 {
+			return fmt.Errorf(rs.GetError())
+		} else {
+			cs := make(map[string]*services.ScheduleService, 0)
+			if len(rs.GetScheduledServices()) > 0 {
+				for _, v := range rs.GetScheduledServices() {
+					cs[v.GetId()] = v
+				}
+				if len(cs) > 0 {
+					fmt.Printf("services in company (%q): %d\n", a.companyId, len(cs))
+					a.companySchServices = cs
+				}
 			}
-			if len(cs) > 0 {
-				fmt.Printf("services in company (%q): %d\n", a.companyId, len(cs))
-				a.companySchServices = cs
-			}
+			ctx.Send(ctx.Self(), &ListProgVeh{
+				Itinerary: msg.Itinerary,
+			})
 		}
-		ctx.Send(ctx.Self(), &ListProgVeh{
-			Itinerary: msg.Itinerary,
-		})
 	default:
 		return fmt.Errorf("response type error: %T", rs)
 	}
@@ -192,7 +197,7 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 
 	for _, v := range untilSlice {
 
-		if msg.Itinerary > 0 && v.GetItinenary().GetId() != int32(msg.Itinerary) {
+		if msg.Itinerary > 0 && v.GetItinerary().GetId() != int32(msg.Itinerary) {
 			continue
 		}
 		if len(msg.DriverDocument) > 0 && v.GetDriver().GetDocument() != msg.DriverDocument {
@@ -200,14 +205,14 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 		}
 		ts := time.UnixMilli(v.GetScheduleDateTime())
 		data := strings.ToLower(fmt.Sprintf(" %s: %s (%s) %s", ts.Format("01/02 15:04"),
-			v.GetItinenary().GetName(), v.GetRoute().GetCode(), v.GetState()))
+			v.GetItinerary().GetName(), v.GetRoute().GetCode(), v.GetState()))
 		svc := strings.ToLower(fmt.Sprintf(`  id: %q
   estado: %q
   tiempo de inicio: %s
   itinenario: %q (%d)
   ruta: %q (%d)`,
 			v.GetId(), v.GetState(), time.UnixMilli(v.GetScheduleDateTime()).Format("01/02 15:04:05"),
-			v.GetItinenary().GetName(), v.GetItinenary().GetId(),
+			v.GetItinerary().GetName(), v.GetItinerary().GetId(),
 			v.GetRoute().GetCode(), v.GetRoute().GetId()))
 		fmt.Printf("servicio: %v\n", svc)
 		fmt.Printf("data: %s\n", data)

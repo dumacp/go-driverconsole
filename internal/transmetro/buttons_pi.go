@@ -68,7 +68,7 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 						if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
 							logs.LogWarn.Printf("error TextCurrentItinerary: %s", err)
 						}
-						// if err := a.uix.Route(fmt.Sprintf("%d", a.companySchServicesShow[num].Services.Itinenary.Id)); err != nil {
+						// if err := a.uix.Route(fmt.Sprintf("%d", a.companySchServicesShow[num].Services.Itinerary.Id)); err != nil {
 						// 	fmt.Printf("error Route: %s\n", err)
 						// }
 					}
@@ -106,7 +106,10 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 									Itinerary: int(rutaCodeInt),
 								})
 							} else {
-								return fmt.Errorf("no existe el itinerario: %d", rutaCodeInt)
+								//return fmt.Errorf("no existe el itinerario: %d", rutaCodeInt)
+								a.ctx.Send(a.ctx.Self(), &RequestProgVeh{
+									Itinerary: int(0),
+								})
 							}
 						} else {
 							fmt.Printf("routes is nil\n")

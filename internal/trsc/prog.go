@@ -56,19 +56,19 @@ func (a *App) listProg(msg *ListProgVeh) error {
 
 	for _, v := range untilSlice {
 		// v := untilSlice[len(untilSlice)-1-i]
-		if msg.Itinerary > 0 && v.GetItinenary().GetId() != int32(msg.Itinerary) {
+		if msg.Itinerary > 0 && v.GetItinerary().GetId() != int32(msg.Itinerary) {
 			continue
 		}
 		ts := time.UnixMilli(v.GetScheduleDateTime())
 		data := strings.ToLower(fmt.Sprintf(" %s: %s (%s)", ts.Format("01/02 15:04"),
-			v.GetItinenary().GetName(), v.GetRoute().GetCode()))
+			v.GetItinerary().GetName(), v.GetRoute().GetCode()))
 		svc := strings.ToLower(fmt.Sprintf(`  id: %q
   estado: %q
   tiempo de inicio: %s
   itinenario: %q (%d)
   ruta: %q (%d)`,
 			v.GetId(), v.GetState(), time.UnixMilli(v.GetScheduleDateTime()).Format("01/02 15:04:05"),
-			v.GetItinenary().GetName(), v.GetItinenary().GetId(),
+			v.GetItinerary().GetName(), v.GetItinerary().GetId(),
 			v.GetRoute().GetCode(), v.GetRoute().GetId()))
 		fmt.Printf("servicio: %v\n", svc)
 		fmt.Printf("data: %s\n", data)
@@ -192,7 +192,7 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 
 	for _, v := range untilSlice {
 
-		if msg.Itinerary > 0 && v.GetItinenary().GetId() != int32(msg.Itinerary) {
+		if msg.Itinerary > 0 && v.GetItinerary().GetId() != int32(msg.Itinerary) {
 			continue
 		}
 		if len(msg.DriverDocument) > 0 && v.GetDriver().GetDocument() != msg.DriverDocument {
@@ -200,14 +200,14 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 		}
 		ts := time.UnixMilli(v.GetScheduleDateTime())
 		data := strings.ToLower(fmt.Sprintf(" %s: %s (%s) %s", ts.Format("01/02 15:04"),
-			v.GetItinenary().GetName(), v.GetRoute().GetCode(), v.GetState()))
+			v.GetItinerary().GetName(), v.GetRoute().GetCode(), v.GetState()))
 		svc := strings.ToLower(fmt.Sprintf(`  id: %q
   estado: %q
   tiempo de inicio: %s
   itinenario: %q (%d)
   ruta: %q (%d)`,
 			v.GetId(), v.GetState(), time.UnixMilli(v.GetScheduleDateTime()).Format("01/02 15:04:05"),
-			v.GetItinenary().GetName(), v.GetItinenary().GetId(),
+			v.GetItinerary().GetName(), v.GetItinerary().GetId(),
 			v.GetRoute().GetCode(), v.GetRoute().GetId()))
 		fmt.Printf("servicio: %v\n", svc)
 		fmt.Printf("data: %s\n", data)

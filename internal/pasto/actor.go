@@ -539,7 +539,7 @@ func (a *App) Runstate(ctx actor.Context) {
 			}
 			v := a.shcservices[svc.GetId()]
 			data := strings.ToLower(fmt.Sprintf(" %s: (%d) %s (%s)", time.Now().Format("01/02 15:04"),
-				v.GetItinenary().GetId(), v.GetItinenary().GetName(), v.GetState()))
+				v.GetItinerary().GetId(), v.GetItinerary().GetName(), v.GetState()))
 			a.notif = append(a.notif, data)
 			if len(a.notif) > 10 {
 				copy(a.notif, a.notif[1:])

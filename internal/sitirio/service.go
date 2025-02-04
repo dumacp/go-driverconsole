@@ -26,8 +26,8 @@ func UpdateServiceStable(prev, current *services.ScheduleService) *services.Sche
 	if current.DriverIds != nil {
 		prev.DriverIds = current.DriverIds
 	}
-	if current.Itinenary != nil {
-		prev.Itinenary = current.Itinenary
+	if current.Itinerary != nil {
+		prev.Itinerary = current.Itinerary
 	}
 	if current.OrganizationId != "" {
 		prev.OrganizationId = current.OrganizationId

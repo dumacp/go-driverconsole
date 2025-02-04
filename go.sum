@@ -13,8 +13,6 @@ github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c
 github.com/davecgh/go-spew v1.1.1/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/dumacp/go-actors v0.0.0-20240613144007-fcb38ee7b9b1 h1:duubjRYtIXt4fDlpv0AWD+by4tcqZZeSrowsvqbFAqo=
 github.com/dumacp/go-actors v0.0.0-20240613144007-fcb38ee7b9b1/go.mod h1:KYuscaCv5Mr21rdyNuFtleernlyO6X1pcPxoHvRuH5k=
-github.com/dumacp/go-gwiot v0.0.0-20241118181849-c27018076aaa h1:zBYRdwDWjX/DxFvtlyC8Z1ba74Qi8IdXQslPgWXIhzk=
-github.com/dumacp/go-gwiot v0.0.0-20241118181849-c27018076aaa/go.mod h1:V3Q7Xq2YJKHAGUBe9MRQOASQ1ZJrIeXl7bEmV8VDB44=
 github.com/dumacp/go-ignition v0.0.0-20240301165217-62b8949edaf7 h1:EQy8PKXRjR6tmywKj1905D/geuOaivctwOpCdQ3kwYk=
 github.com/dumacp/go-ignition v0.0.0-20240301165217-62b8949edaf7/go.mod h1:w77bVdz3YKKURWxPOOBKswKjk2nCKF6xTVeanHvk5Fc=
 github.com/dumacp/go-itinerary v0.0.0-20241119182954-5f9b9a2761ee h1:EZZ6dDNhaW/AvAkVswc3busXD32W/5ULAcanxSZiv5g=
@@ -26,8 +24,6 @@ github.com/dumacp/go-logs v0.0.2-0.20241119230451-ac5d49be15ce h1:ZIutTKGHeQxk2d
 github.com/dumacp/go-logs v0.0.2-0.20241119230451-ac5d49be15ce/go.mod h1:nxB2d1DaPSLGnz+0zuR29N/YRq7THIVwQLDHf0jBSRc=
 github.com/dumacp/go-params v0.0.0-20250108191046-36f8cb3a96ac h1:J+fMtYnORIWm7WXD5eN3NJr6+JiSzjh+raW0oYG+ddQ=
 github.com/dumacp/go-params v0.0.0-20250108191046-36f8cb3a96ac/go.mod h1:5n+MHcXn7aFyQzQKDYB7qjejvFduD7QQLmapTu4AKPY=
-github.com/dumacp/go-schservices v0.0.4-0.20241230152104-e056b0ddfe97 h1:Xm86xih/U5KoDyZxHtgVA//rsc70XsS1Q2MeIPBLSow=
-github.com/dumacp/go-schservices v0.0.4-0.20241230152104-e056b0ddfe97/go.mod h1:khEIgzI+RMS4Dt4s8BHazJcZLDnzUoH81gmYqLIJIEY=
 github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52 h1:2lzgBwOrKsWZcmqaCk1OgNcMAsHuUor4vc3WaEfYzVE=
 github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52/go.mod h1:ZVDQY1pOKAVSjiLXPmvcPfQJkKDyREXJuW411QwP5D0=
 github.com/dumacp/keycloak v0.0.0-20191212174805-9e9a5c3da24f h1:IkJHAc6mT75yslHcfvtqAr/OD5NH5SD+InzuW+LwFlo=

@@ -47,7 +47,7 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 				// reverseSlice = append(reverseSlice, "")
 				for i := range ss {
 					v := ss[len(ss)-1-i]
-					if v.GetItinenary() == nil || v.GetDriver() == nil {
+					if v.GetItinerary() == nil || v.GetDriver() == nil {
 						continue
 					}
 					ts := time.UnixMilli(v.GetScheduleDateTime())
@@ -63,7 +63,7 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 					}
 
 					data := fmt.Sprintf(" %s: (%d) %s", ts.Format("01/02 15:04"),
-						v.GetItinenary().GetId(), capitalize(strings.ToLower(v.GetDriver().GetFullName())))
+						v.GetItinerary().GetId(), capitalize(strings.ToLower(v.GetDriver().GetFullName())))
 					fmt.Printf("servicio: %v\n", v)
 					fmt.Printf("data: %s\n", data)
 					reverseSlice = append(reverseSlice, data)
@@ -104,13 +104,13 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 				// reverseSlice = append(reverseSlice, "")
 				for i := range ss {
 					v := ss[len(ss)-1-i]
-					if v.GetItinenary() == nil || v.GetRoute() == nil {
+					if v.GetItinerary() == nil || v.GetRoute() == nil {
 						continue
 					}
 					ts := time.UnixMilli(v.GetScheduleDateTime())
 
 					data := strings.ToLower(fmt.Sprintf(" %s: (%d) %s (%s)", ts.Format("01/02 15:04"),
-						v.GetItinenary().GetId(), v.GetItinenary().GetName(), v.GetRoute().GetName()))
+						v.GetItinerary().GetId(), v.GetItinerary().GetName(), v.GetRoute().GetName()))
 					fmt.Printf("servicio: %v\n", v)
 					fmt.Printf("data: %s\n", data)
 					reverseSlice = append(reverseSlice, data)

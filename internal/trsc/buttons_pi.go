@@ -68,7 +68,7 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 						if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
 							logs.LogWarn.Printf("error TextCurrentItinerary: %s", err)
 						}
-						// if err := a.uix.Route(fmt.Sprintf("%d", a.companySchServicesShow[num].Services.Itinenary.Id)); err != nil {
+						// if err := a.uix.Route(fmt.Sprintf("%d", a.companySchServicesShow[num].Services.Itinerary.Id)); err != nil {
 						// 	fmt.Printf("error Route: %s\n", err)
 						// }
 					}
