@@ -1,6 +1,10 @@
 package app
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/dumacp/go-schservices/api/services"
+)
 
 func (a *App) mainScreen() error {
 	if err := a.uix.MainScreen(); err != nil {
@@ -38,7 +42,7 @@ func (a *App) mainScreen() error {
 			return fmt.Errorf("route error: %s", err)
 		}
 	}
-	if a.currentService != nil {
+	if a.currentService != nil && a.currentService.GetState() != services.State_ENDED.String() {
 		a.showCurrentService(a.currentService)
 	}
 	return nil

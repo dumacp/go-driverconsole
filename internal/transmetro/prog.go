@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/asynkron/protoactor-go/actor"
+	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-schservices/api/services"
 )
 
@@ -93,6 +94,14 @@ func (a *App) listProg(msg *ListProgVeh) error {
 	for i := range cs {
 		dataSlice = append(dataSlice, cs[i].ResumeString)
 		a.companySchServicesShow = append(a.companySchServicesShow, cs[i])
+	}
+	if len(dataSlice) < 9 {
+		for i := 0; i <= 9-len(dataSlice); i++ {
+			size := Label2DisplayRegister(ui.PROGRAMATION_VEH_SCREEN).Size
+			// un string de tamaño size de espacios
+			spaces := strings.Repeat(" ", size)
+			dataSlice = append(dataSlice, spaces)
+		}
 	}
 
 	fmt.Printf("dataslice: %v\n", dataSlice)
@@ -231,6 +240,14 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 	for i := range cs {
 		dataSlice = append(dataSlice, cs[len(cs)-i-1].ResumeString)
 		a.vehicleSchServicesShow = append(a.vehicleSchServicesShow, cs[len(cs)-i-1])
+	}
+	if len(dataSlice) < 9 {
+		for i := 0; i <= 9-len(dataSlice); i++ {
+			size := Label2DisplayRegister(ui.PROGRAMATION_VEH_SCREEN).Size
+			// un string de tamaño size de espacios
+			spaces := strings.Repeat(" ", size)
+			dataSlice = append(dataSlice, spaces)
+		}
 	}
 
 	fmt.Printf("dataslice: %v\n", dataSlice)
