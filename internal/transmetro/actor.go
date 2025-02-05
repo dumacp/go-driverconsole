@@ -569,7 +569,7 @@ func (a *App) Runstate(ctx actor.Context) {
 					logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
 				}
 			}()
-			logs.LogWarn.Println("requestProg error: ", err)
+			logs.LogWarn.Println("listProgDriver error: ", err)
 		}
 	case *RequestTakeService:
 		if err := a.takeservice(); err != nil {

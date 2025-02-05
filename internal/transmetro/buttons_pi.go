@@ -166,6 +166,20 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 				if err := a.uix.Screen(int(ui.PROGRAMATION_VEH_SCREEN), switchScreen); err != nil {
 					return fmt.Errorf("event SCREEN error: %s", err)
 				}
+
+				dataSlice := make([]string, 0)
+				for i := 0; i <= 9; i++ {
+					size := Label2DisplayRegister(ui.PROGRAMATION_VEH_SCREEN).Size
+					// un string de tamaño size de espacios
+					spaces := strings.Repeat(" ", size)
+					dataSlice = append(dataSlice, spaces)
+				}
+				if len(dataSlice) > 0 {
+					if err := a.uix.ShowProgVeh(dataSlice...); err != nil {
+						fmt.Printf("clean event ShowProgVeh error: %s", err)
+					}
+				}
+
 				a.ctx.Send(a.ctx.Self(), &RequestProgVeh{})
 
 			case AddrScreenAlarms:
