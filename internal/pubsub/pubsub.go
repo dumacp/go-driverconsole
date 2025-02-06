@@ -19,6 +19,7 @@ type pubsubActor struct {
 	ctx           actor.Context
 	client        mqtt.Client
 	subscriptions map[string]*subscribeMSG
+	mux           sync.Mutex
 }
 
 var instance *pubsubActor
@@ -75,7 +76,9 @@ func Publish(topic string, msg []byte) {
 func Subscribe(topic string, pid *actor.PID, parse func([]byte) interface{}) error {
 	instance := getInstance(nil)
 	subs := &subscribeMSG{pid: pid, parse: parse}
+	instance.mux.Lock()
 	instance.subscriptions[topic] = subs
+	instance.mux.Unlock()
 	if !instance.client.IsConnected() {
 		return fmt.Errorf("pubsub is not connected")
 	}
