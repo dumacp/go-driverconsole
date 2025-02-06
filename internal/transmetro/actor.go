@@ -67,6 +67,7 @@ type App struct {
 	db                     *actor.PID
 	pidApp                 *actor.PID
 	pidSvc                 *actor.PID
+	lastReqProgVeh         time.Time
 	cancel                 func()
 	cancelStep             func()
 	cancelPop              func()
@@ -669,6 +670,7 @@ func (a *App) Runstate(ctx actor.Context) {
 			}
 		}
 		delete(a.shcservices, svc.GetId())
+		delete(a.companySchServices, svc.GetId())
 	case *MsgScreen:
 		if err := a.uix.Screen(msg.ID, msg.Switch); err != nil {
 			logs.LogWarn.Printf("msgScreen error: %s", err)
