@@ -119,11 +119,12 @@ func (a *App) takeservice() error {
 	case a.currentService.State == services.State_WAITING_TO_ARRIVE_TO_STARTING_POINT.String() ||
 		a.currentService.State == services.State_READY_TO_START.String() ||
 		a.currentService.State == services.State_SCHEDULED.String():
-		mss := &services.StartServiceMsg{
+		mss := &services.TakeServiceMsg{
 			DeviceId:   a.deviceId,
 			PlatformId: a.platformId,
 			CompanyId:  a.companyId,
 			ServiceId:  a.currentService.Id,
+			DriverId:   a.driver.Id,
 		}
 		if err := funcRequest(mss); err != nil {
 			return err
