@@ -205,7 +205,8 @@ func (a *App) showCurrentServiceWithAll(msg *services.ServiceAllMsg) {
 				v.GetItinerary().GetName(), v.GetRoute().GetCode()))
 		} else if v.GetState() == services.State_SCHEDULED.String() {
 			// a.currentService = v
-			if a.currentService == nil || a.currentService.GetState() == services.State_ENDED.String() {
+			if a.currentService == nil || a.currentService.GetState() == services.State_ENDED.String() ||
+				a.currentService.GetState() == services.State_ABORTED.String() {
 				a.currentService = v
 				ts := time.UnixMilli(v.GetScheduleDateTime())
 				prompt = strings.ToLower(fmt.Sprintf("próximo servicio:\n%s: %s (%s)", ts.Format("01/02 15:04"),
@@ -285,7 +286,8 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 			svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
 	} else if svc.GetState() == services.State_SCHEDULED.String() {
 		// a.currentService = v
-		if a.currentService == nil || a.currentService.GetState() == services.State_ENDED.String() {
+		if a.currentService == nil || a.currentService.GetState() == services.State_ENDED.String() ||
+			a.currentService.GetState() == services.State_ABORTED.String() {
 			a.currentService = svc
 			ts := time.UnixMilli(svc.GetScheduleDateTime())
 			prompt = strings.ToLower(fmt.Sprintf("próximo servicio:\n%s: %s (%s)", ts.Format("01/02 15:04"),
