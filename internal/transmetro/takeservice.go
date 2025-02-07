@@ -12,9 +12,15 @@ import (
 )
 
 func (a *App) takeservice() error {
-	if a.selectedService == nil {
+	if a.selectedService == nil && a.currentService == nil {
 		return fmt.Errorf("no hay un servicio seleccionado")
 	}
+
+	selectedService := a.currentService
+	if a.selectedService != nil {
+		selectedService = a.selectedService
+	}
+	a.selectedService = nil
 	if a.pidSvc == nil {
 		return fmt.Errorf("service pid is nil")
 	}
@@ -84,21 +90,23 @@ func (a *App) takeservice() error {
 	}
 
 	switch {
-	case a.currentService != a.selectedService &&
-		a.selectedService.State == services.State_SCHEDULED.String():
+	case selectedService == nil:
+		return fmt.Errorf("no hay un servicio iniciado")
+	case a.currentService != selectedService &&
+		selectedService.State == services.State_SCHEDULED.String():
 		mss := &services.TakeServiceMsg{
 			DeviceId:   a.deviceId,
 			PlatformId: a.platformId,
 			CompanyId:  a.companyId,
-			ServiceId:  a.selectedService.Id,
+			ServiceId:  selectedService.Id,
 			DriverId:   a.driver.Id,
 		}
 		if err := funcRequest(mss); err != nil {
 			return err
 		}
 		a.ctx.Send(a.ctx.Self(), &MsgSetRoute{
-			Route:     int(a.selectedService.GetItinerary().GetId()),
-			RouteName: a.selectedService.GetItinerary().GetName(),
+			Route:     int(selectedService.GetItinerary().GetId()),
+			RouteName: selectedService.GetItinerary().GetName(),
 		})
 	case a.currentService == nil:
 		return fmt.Errorf("no hay un servicio iniciado")
@@ -108,16 +116,22 @@ func (a *App) takeservice() error {
 		return fmt.Errorf("servicio ya finalizado")
 	case a.currentService.State == services.State_ABORTED.String():
 		return fmt.Errorf("servicio ya abortado")
-	// case a.currentService.State == services.State_WAITING_TO_ARRIVE_TO_STARTING_POINT.String() ||
-	// 	a.currentService.State == services.State_READY_TO_START.String() ||
-	// 	a.currentService.State == services.State_SCHEDULED.String():
-	// 	mss := &services.StartServiceMsg{
-	// 		DeviceId:   a.deviceId,
-	// 		PlatformId: a.platformId,
-	// 		CompanyId:  a.companyId,
-	// 		ServiceId:  a.currentService.Id,
-	// 	}
-	// 	return funcRequest(mss)
+	case a.currentService.State == services.State_WAITING_TO_ARRIVE_TO_STARTING_POINT.String() ||
+		a.currentService.State == services.State_READY_TO_START.String() ||
+		a.currentService.State == services.State_SCHEDULED.String():
+		mss := &services.StartServiceMsg{
+			DeviceId:   a.deviceId,
+			PlatformId: a.platformId,
+			CompanyId:  a.companyId,
+			ServiceId:  a.currentService.Id,
+		}
+		if err := funcRequest(mss); err != nil {
+			return err
+		}
+		a.ctx.Send(a.ctx.Self(), &MsgSetRoute{
+			Route:     int(selectedService.GetItinerary().GetId()),
+			RouteName: selectedService.GetItinerary().GetName(),
+		})
 	default:
 		fmt.Printf("current service: %v\n", a.currentService)
 		return fmt.Errorf("servicio no programado")
@@ -190,7 +204,7 @@ func (a *App) showCurrentServiceWithAll(msg *services.ServiceAllMsg) {
 				v.GetItinerary().GetName(), v.GetRoute().GetCode()))
 		} else if v.GetState() == services.State_SCHEDULED.String() {
 			// a.currentService = v
-			if a.currentService == nil || a.currentService.GetState() != services.State_ENDED.String() {
+			if a.currentService == nil || a.currentService.GetState() == services.State_ENDED.String() {
 				ts := time.UnixMilli(v.GetScheduleDateTime())
 				prompt = strings.ToLower(fmt.Sprintf("próximo servicio:\n%s: %s (%s)", ts.Format("01/02 15:04"),
 					v.GetItinerary().GetName(), v.GetRoute().GetCode()))
@@ -269,9 +283,11 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 			svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
 	} else if svc.GetState() == services.State_SCHEDULED.String() {
 		// a.currentService = v
-		ts := time.UnixMilli(svc.GetScheduleDateTime())
-		prompt = strings.ToLower(fmt.Sprintf("próximo servicio:\n%s: %s (%s)", ts.Format("01/02 15:04"),
-			svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
+		if a.currentService == nil || a.currentService.GetState() == services.State_ENDED.String() {
+			ts := time.UnixMilli(svc.GetScheduleDateTime())
+			prompt = strings.ToLower(fmt.Sprintf("próximo servicio:\n%s: %s (%s)", ts.Format("01/02 15:04"),
+				svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
+		}
 	} else if svc.GetState() == services.State_ENDED.String() {
 		// a.currentService = v
 		ts := time.UnixMilli(svc.GetScheduleDateTime())
