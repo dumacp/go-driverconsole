@@ -300,6 +300,7 @@ func (a *App) requestProg(ctx actor.Context, msg *RequestProgVeh) error {
 
 func (a *App) listDriverProg(msg *ListProgDriver) error {
 	if len(a.shcservices) <= 0 {
+		fmt.Printf("no hay servicios disponibles ListProgDriver\n")
 		return nil
 	}
 	dataSlice := make([]string, 0)
@@ -325,6 +326,8 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 		}
 		untilSlice = append(untilSlice, v)
 	}
+
+	slices.Reverse(untilSlice)
 
 	// a.companySchServicesShow = make([]*CompanySchService, 0)
 
@@ -354,7 +357,7 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 			ResumeString: data,
 			Services:     v,
 		})
-		if len(cs) >= 9 {
+		if len(cs) >= 12 {
 			break
 		}
 	}
@@ -365,26 +368,26 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 		dataSlice = append(dataSlice, cs[len(cs)-i-1].ResumeString)
 		a.vehicleSchServicesShow = append(a.vehicleSchServicesShow, cs[len(cs)-i-1])
 	}
-	if len(dataSlice) < 9 {
-		for i := 0; i <= 9-len(dataSlice); i++ {
-			size := Label2DisplayRegister(ui.PROGRAMATION_VEH_SCREEN).Size
+	if len(dataSlice) < 12 {
+		for i := 0; i <= 12-len(dataSlice); i++ {
+			size := Label2DisplayRegister(ui.PROGRAMATION_DRIVER_SCREEN).Size
 			// un string de tamaño size de espacios
 			spaces := strings.Repeat(" ", size)
 			dataSlice = append(dataSlice, spaces)
 		}
 	}
 
-	fmt.Printf("dataslice: %v\n", dataSlice)
+	fmt.Printf("dataslice progDriver: %v\n", dataSlice)
 	if len(dataSlice) > 0 {
 		if err := a.uix.ShowProgDriver(dataSlice...); err != nil {
 			return fmt.Errorf("event ShowProgVeh error: %s", err)
 		}
-		if err := a.uix.SetLed(AddrUpdateDropListProgVeh, false); err != nil {
-			return fmt.Errorf("error setLed (AddrScreenProgVeh): %s", err)
-		}
-		if err := a.uix.SetLed(AddrUpdateDropListProgVeh, true); err != nil {
-			return fmt.Errorf("error setLed (AddrScreenProgVeh): %s", err)
-		}
+		// if err := a.uix.SetLed(AddrUpdateDropListProgVeh, false); err != nil {
+		// 	return fmt.Errorf("error setLed (AddrScreenProgVeh): %s", err)
+		// }
+		// if err := a.uix.SetLed(AddrUpdateDropListProgVeh, true); err != nil {
+		// 	return fmt.Errorf("error setLed (AddrScreenProgVeh): %s", err)
+		// }
 	}
 	return nil
 }
