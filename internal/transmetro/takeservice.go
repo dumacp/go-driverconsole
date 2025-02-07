@@ -190,9 +190,11 @@ func (a *App) showCurrentServiceWithAll(msg *services.ServiceAllMsg) {
 				v.GetItinerary().GetName(), v.GetRoute().GetCode()))
 		} else if v.GetState() == services.State_SCHEDULED.String() {
 			// a.currentService = v
-			ts := time.UnixMilli(v.GetScheduleDateTime())
-			prompt = strings.ToLower(fmt.Sprintf("próximo servicio:\n%s: %s (%s)", ts.Format("01/02 15:04"),
-				v.GetItinerary().GetName(), v.GetRoute().GetCode()))
+			if a.currentService == nil || a.currentService.GetState() != services.State_ENDED.String() {
+				ts := time.UnixMilli(v.GetScheduleDateTime())
+				prompt = strings.ToLower(fmt.Sprintf("próximo servicio:\n%s: %s (%s)", ts.Format("01/02 15:04"),
+					v.GetItinerary().GetName(), v.GetRoute().GetCode()))
+			}
 		}
 		if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
 			fmt.Printf("error TextCurrentItinerary: %s\n", err)
@@ -203,6 +205,7 @@ func (a *App) showCurrentServiceWithAll(msg *services.ServiceAllMsg) {
 
 func (a *App) showCurrentService(svc *services.ScheduleService) {
 
+	// changeCurrentService := false
 	if len(svc.GetState()) > 0 {
 		state := svc.GetState()
 		if v, ok := a.shcservices[svc.GetId()]; ok {

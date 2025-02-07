@@ -327,6 +327,10 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 		untilSlice = append(untilSlice, v)
 	}
 
+	if len(untilSlice) <= 0 {
+		return fmt.Errorf("no hay servicios disponibles ListProgDriver")
+	}
+
 	slices.Reverse(untilSlice)
 
 	// a.companySchServicesShow = make([]*CompanySchService, 0)
@@ -370,7 +374,7 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 	}
 	if len(dataSlice) < 12 {
 		for i := 0; i <= 12-len(dataSlice); i++ {
-			size := Label2DisplayRegister(ui.PROGRAMATION_DRIVER_SCREEN).Size
+			size := Label2DisplayRegister(ui.PROGRAMATION_DRIVER_TEXT).Size
 			// un string de tamaño size de espacios
 			spaces := strings.Repeat(" ", size)
 			dataSlice = append(dataSlice, spaces)
