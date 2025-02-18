@@ -261,6 +261,9 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 	if svc.GetCheckpointTimingState() != nil && len(svc.GetCheckpointTimingState().GetState()) > 0 {
 		if a.currentService == nil {
 			a.currentService = svc
+			if a.currentService != nil && len(a.currentService.GetState()) > 0 {
+				a.currentService.State = services.State_STARTED.String()
+			}
 			prompt = strings.ToLower("servicio iniciado")
 		}
 		state := int(services.TimingState_value[svc.GetCheckpointTimingState().GetState()])

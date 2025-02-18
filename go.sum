@@ -17,6 +17,8 @@ github.com/dumacp/go-ignition v0.0.0-20240301165217-62b8949edaf7 h1:EQy8PKXRjR6t
 github.com/dumacp/go-ignition v0.0.0-20240301165217-62b8949edaf7/go.mod h1:w77bVdz3YKKURWxPOOBKswKjk2nCKF6xTVeanHvk5Fc=
 github.com/dumacp/go-itinerary v0.0.0-20241119182954-5f9b9a2761ee h1:EZZ6dDNhaW/AvAkVswc3busXD32W/5ULAcanxSZiv5g=
 github.com/dumacp/go-itinerary v0.0.0-20241119182954-5f9b9a2761ee/go.mod h1:UGIup5yqY1dkhxyb/kg2IoRzsDJxdMNg9WynmLTz8Ho=
+github.com/dumacp/go-itinerary v0.0.0-20250206143001-1ce6638f2c19 h1:Kvt/S2BmlQWdDolE/qkU1rA1LcDipRqYIYF7vSF0O2c=
+github.com/dumacp/go-itinerary v0.0.0-20250206143001-1ce6638f2c19/go.mod h1:UGIup5yqY1dkhxyb/kg2IoRzsDJxdMNg9WynmLTz8Ho=
 github.com/dumacp/go-levis v0.0.0-20241119224207-a91cacdf55e3 h1:OKloB9EoP8DFnvSIlWOrSzWT0NF4fR27s9fTuj3UW0c=
 github.com/dumacp/go-levis v0.0.0-20241119224207-a91cacdf55e3/go.mod h1:9f2R94dbumgXBnsfCcYSYR7PvTdLPOQKoGuAMpY6Kmc=
 github.com/dumacp/go-logs v0.0.0-20211122205852-dfcc5685457f/go.mod h1:dr8qC0qs36jLZFMZH/sRp3fc980yzZDCb/MkR/rHOSA=

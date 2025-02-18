@@ -130,3 +130,5 @@ type RequestDriver struct {
 }
 type RequestTakeService struct {
 }
+type RequestReTakeService struct {
+}

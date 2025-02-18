@@ -21,7 +21,7 @@ require (
 	github.com/dumacp/go-fareCollection v0.0.0-00010101000000-000000000000
 	github.com/dumacp/go-gwiot v0.0.0-20250115140529-82d0b659331a
 	github.com/dumacp/go-ignition v0.0.0-20240301165217-62b8949edaf7
-	github.com/dumacp/go-itinerary v0.0.0-20241119182954-5f9b9a2761ee
+	github.com/dumacp/go-itinerary v0.0.0-20250206143001-1ce6638f2c19
 	github.com/dumacp/go-levis v0.0.0-20241119224207-a91cacdf55e3
 	github.com/dumacp/go-params v0.0.0-20250108191046-36f8cb3a96ac
 	github.com/dumacp/go-schservices v0.0.4-0.20250115134655-33531cf6227c
