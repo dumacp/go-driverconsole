@@ -122,8 +122,14 @@ type ListProgDriver struct {
 type RequestProgVeh struct {
 	Itinerary int
 }
+type RequestShitfsVeh struct {
+	Shift string
+}
 type ListProgVeh struct {
 	Itinerary int
+}
+type ListShiftsVeh struct {
+	Shift string
 }
 type RequestDriver struct {
 	Driver string

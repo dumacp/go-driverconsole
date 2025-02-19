@@ -44,6 +44,7 @@ type App struct {
 	electInput           int32
 	driver               *services.Driver
 	route                int
+	shift                *services.ShiftService
 	routeString          string
 	companyId            string
 	deviceId             string
@@ -54,10 +55,12 @@ type App struct {
 	itineraries          map[int32]*routes.Itinerary
 	shcservices          map[string]*services.ScheduleService
 	companySchServices   map[string]*services.ScheduleService
+	CompanyShiftsService map[string]*services.ShiftService
 	currentSchServices   map[string]*services.ScheduleService
 	// vehicleSchServices   map[string]*services.ScheduleService
 	currentService  *services.ScheduleService
 	selectedService *services.ScheduleService
+	selectedShift   *services.ShiftService
 	// companyCurrentSchServices map[string]*CompanySchService
 	companySchServicesShow []*CompanySchService
 	vehicleSchServicesShow []*CompanySchService
@@ -68,6 +71,7 @@ type App struct {
 	pidApp                 *actor.PID
 	pidSvc                 *actor.PID
 	lastReqProgVeh         time.Time
+	lastReqShifts          time.Time
 	cancel                 func()
 	cancelStep             func()
 	cancelPop              func()
@@ -525,6 +529,28 @@ func (a *App) Runstate(ctx actor.Context) {
 			logs.LogWarn.Printf("textConfirmation error: %s", err)
 		}
 	case *ListProgVeh:
+		if err := a.listProg(msg); err != nil {
+			logs.LogWarn.Println("listProg error: ", err)
+			if err := a.uix.TextWarningPopup(err.Error()); err != nil {
+				logs.LogWarn.Printf("textWarningPopup error: %s", err)
+			}
+			if a.cancelPop != nil {
+				a.cancelPop()
+			}
+			contxt, cancel := context.WithCancel(context.Background())
+			a.cancelPop = cancel
+			go func() {
+				defer cancel()
+				select {
+				case <-contxt.Done():
+				case <-time.After(4 * time.Second):
+				}
+				if err := a.uix.TextWarningPopupClose(); err != nil {
+					logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+				}
+			}()
+		}
+	case *ListShiftsVeh:
 		if err := a.listProg(msg); err != nil {
 			logs.LogWarn.Println("listProg error: ", err)
 			if err := a.uix.TextWarningPopup(err.Error()); err != nil {
