@@ -17,7 +17,6 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/buttons"
 	"github.com/dumacp/go-driverconsole/internal/counterpass"
 	"github.com/dumacp/go-driverconsole/internal/ignition"
-	"github.com/dumacp/go-driverconsole/internal/itinerary"
 	"github.com/dumacp/go-driverconsole/internal/parameters"
 	"github.com/dumacp/go-driverconsole/internal/service"
 	app "github.com/dumacp/go-driverconsole/internal/transmetro"
@@ -167,9 +166,9 @@ func main() {
 			if _, err := ctx.SpawnNamed(actor.PropsFromFunc(parameters.NewActor(id, 60*time.Minute).Receive), "params-actor"); err != nil {
 				log.Fatalf("params actor error: %s", err)
 			}
-			if _, err := ctx.SpawnNamed(actor.PropsFromFunc(itinerary.NewActor(id).Receive), "route-actor"); err != nil {
-				log.Fatalf("route actor error: %s", err)
-			}
+			// if _, err := ctx.SpawnNamed(actor.PropsFromFunc(itinerary.NewActor(id).Receive), "route-actor"); err != nil {
+			// 	log.Fatalf("route actor error: %s", err)
+			// }
 
 			var confDev device.Device
 			var confButtons buttons.ButtonDevice
@@ -185,6 +184,7 @@ func main() {
 				app.AddrShowSelectProgVeh, app.AddrSelectItinerary,
 
 				app.AddrEnterService,
+				app.AddrExitSwitch,
 			},
 			)
 			confDisplay = display.NewPiDisplay(app.Label2DisplayRegister)

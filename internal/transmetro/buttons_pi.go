@@ -33,7 +33,8 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 				if err := a.uix.SetLed(AddrShowSelectProgVeh, false); err != nil {
 					return fmt.Errorf("error setLed (SELECT_PROG_VEH): %s", err)
 				}
-				a.ctx.Send(a.ctx.Self(), &RequestTakeService{})
+				// a.ctx.Send(a.ctx.Self(), &RequestTakeService{})
+				a.ctx.Send(a.ctx.Self(), &RequestTakeShift{})
 			case AddrScreenSwitch:
 				// release button
 				if v, ok := evt.Value.(bool); !ok || v {
@@ -59,12 +60,12 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 					fmt.Printf("data SELECT_PROG_VEH: %s\n", v)
 					num := binary.LittleEndian.Uint16(v)
 					fmt.Printf("num SELECT_PROG_VEH: %d\n", num)
-					if len(a.companySchServicesShow) > int(num) {
-						fmt.Printf("companySchServices: %v\n", a.companySchServicesShow[num])
-						a.selectedService = a.companySchServicesShow[num].Services
-						a.uix.WriteTextRawDisplay(AddrResumeSelectProgVeh, []string{a.companySchServicesShow[num].String})
+					if len(a.companyShiftsShow) > int(num) {
+						fmt.Printf("companySchServices: %v\n", a.companyShiftsShow[num])
+						a.selectedShift = a.companyShiftsShow[num].Shift
+						a.uix.WriteTextRawDisplay(AddrResumeSelectProgVeh, []string{a.companyShiftsShow[num].String})
 						prompt := fmt.Sprintf(`servicio preseleccionado:
-%s`, a.companySchServicesShow[num].ResumeString)
+%s`, a.companyShiftsShow[num].ResumeString)
 						if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
 							logs.LogWarn.Printf("error TextCurrentItinerary: %s", err)
 						}
@@ -96,27 +97,13 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 					}
 					if err := func() error {
 						fmt.Printf("data SELECT_ITI_VEH: %d\n", data)
-						rutaCodeInt := int(data)
-						fmt.Printf("routeCode: %d\n", rutaCodeInt)
-						if len(a.itineraries) > 0 {
-							if _, ok := a.itineraries[int32(rutaCodeInt)]; ok {
-								// a.routeString = iti.Name
-								// a.route = rutaCodeInt
-								a.ctx.Send(a.ctx.Self(), &RequestProgVeh{
-									Itinerary: int(rutaCodeInt),
-								})
-							} else {
-								//return fmt.Errorf("no existe el itinerario: %d", rutaCodeInt)
-								a.ctx.Send(a.ctx.Self(), &RequestProgVeh{
-									Itinerary: int(0),
-								})
-							}
-						} else {
-							fmt.Printf("routes is nil\n")
-							a.ctx.Send(a.ctx.Self(), &RequestProgVeh{
-								Itinerary: int(rutaCodeInt),
-							})
-						}
+						codeShift := int(data)
+						fmt.Printf("ShiftCode: %d\n", codeShift)
+
+						a.ctx.Send(a.ctx.Self(), &RequestShitfsVeh{
+							Shift: fmt.Sprintf("%d", codeShift),
+						})
+
 						return nil
 					}(); err != nil {
 						logs.LogWarn.Printf("error route: %s", err)
@@ -180,7 +167,8 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 					}
 				}
 
-				a.ctx.Send(a.ctx.Self(), &RequestProgVeh{})
+				// a.ctx.Send(a.ctx.Self(), &RequestProgVeh{})
+				a.ctx.Send(a.ctx.Self(), &RequestShitfsVeh{})
 
 			case AddrScreenAlarms:
 				// release button
@@ -211,6 +199,18 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 				}
 				if err := a.uix.ShowStats(); err != nil {
 					return fmt.Errorf("event ShowStats error: %s", err)
+				}
+			case AddrExitSwitch:
+				// release button
+				if v, ok := evt.Value.(bool); !ok || v {
+					break
+				}
+				if err := a.uix.SetLed(AddrExitSwitch, false); err != nil {
+					return fmt.Errorf("error setLed (AddrExitSwitch): %s", err)
+				}
+				a.uix.Driver("")
+				if a.driver != nil {
+					a.driver = nil
 				}
 			case AddrEnterRuta:
 				// release button

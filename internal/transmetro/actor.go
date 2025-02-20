@@ -573,6 +573,10 @@ func (a *App) Runstate(ctx actor.Context) {
 				}
 			}()
 		}
+	case *RequestShitfsVeh:
+		if err := a.requestProgShifts(ctx, msg); err != nil {
+			logs.LogWarn.Println("requestShifts error: ", err)
+		}
 	case *RequestProgVeh:
 		if err := a.requestProg(ctx, msg); err != nil {
 			logs.LogWarn.Println("requestProg error: ", err)
@@ -599,27 +603,51 @@ func (a *App) Runstate(ctx actor.Context) {
 			}()
 			logs.LogWarn.Println("listProgDriver error: ", err)
 		}
-	case *RequestShift:
-		if err := a.takeshift(); err != nil {
-			if err := a.uix.TextWarningPopup(fmt.Sprintf("%s\n", err)); err != nil {
-				logs.LogWarn.Printf("textWarningPopup error: %s", err)
-			}
-			if a.cancelPop != nil {
-				a.cancelPop()
-			}
-			contxt, cancel := context.WithCancel(context.TODO())
-			a.cancelPop = cancel
-			go func() {
-				defer cancel()
-				select {
-				case <-contxt.Done():
-				case <-time.After(4 * time.Second):
+	case *RequestTakeShift:
+		if a.selectedShift == nil {
+			if err := a.retakeservice(); err != nil {
+				if err := a.uix.TextWarningPopup(fmt.Sprintf("%s\n", err)); err != nil {
+					logs.LogWarn.Printf("textWarningPopup error: %s", err)
 				}
-				if err := a.uix.TextWarningPopupClose(); err != nil {
-					logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+				if a.cancelPop != nil {
+					a.cancelPop()
 				}
-			}()
-			logs.LogWarn.Printf("takeshift error: %s", err)
+				contxt, cancel := context.WithCancel(context.TODO())
+				a.cancelPop = cancel
+				go func() {
+					defer cancel()
+					select {
+					case <-contxt.Done():
+					case <-time.After(4 * time.Second):
+					}
+					if err := a.uix.TextWarningPopupClose(); err != nil {
+						logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+					}
+				}()
+				logs.LogWarn.Printf("takeshift error: %s", err)
+			}
+		} else {
+			if err := a.takeshift(); err != nil {
+				if err := a.uix.TextWarningPopup(fmt.Sprintf("%s\n", err)); err != nil {
+					logs.LogWarn.Printf("textWarningPopup error: %s", err)
+				}
+				if a.cancelPop != nil {
+					a.cancelPop()
+				}
+				contxt, cancel := context.WithCancel(context.TODO())
+				a.cancelPop = cancel
+				go func() {
+					defer cancel()
+					select {
+					case <-contxt.Done():
+					case <-time.After(4 * time.Second):
+					}
+					if err := a.uix.TextWarningPopupClose(); err != nil {
+						logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+					}
+				}()
+				logs.LogWarn.Printf("takeshift error: %s", err)
+			}
 		}
 
 	case *RequestTakeService:

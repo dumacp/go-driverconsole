@@ -32,7 +32,7 @@ func (a *App) takeservice() error {
 	case len(a.companyId) <= 0:
 		return fmt.Errorf("company id is empty")
 	case a.driver == nil || len(a.driver.DocumentId) <= 0:
-		return fmt.Errorf("driver is empty")
+		return fmt.Errorf("conductor no seleccionado")
 	}
 
 	funcRequest := func(mss interface{}) error {

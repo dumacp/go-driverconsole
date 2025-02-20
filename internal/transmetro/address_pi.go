@@ -18,6 +18,7 @@ const (
 	AddrUpdateDropListProgVeh      = 14
 	AddrShowSelectProgVeh          = 15
 	AddrSelectItinerary            = 16
+	AddrExitSwitch                 = 17
 	AddrLedReset                   = 20
 	AddrLedBeep                    = 23
 	AddrTextDate                   = 60

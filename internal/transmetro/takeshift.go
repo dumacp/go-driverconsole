@@ -11,10 +11,12 @@ import (
 )
 
 func (a *App) takeshift() error {
-	if a.selectedService == nil {
+	if a.selectedShift == nil {
 		return fmt.Errorf(`no hay un turno
 sobre el cual iniciar`)
 	}
+	selectedShift := a.selectedShift
+	a.selectedShift = nil
 
 	if a.pidSvc == nil {
 		return fmt.Errorf("service pid is nil")
@@ -27,7 +29,7 @@ sobre el cual iniciar`)
 	case len(a.companyId) <= 0:
 		return fmt.Errorf("company id is empty")
 	case a.driver == nil || len(a.driver.DocumentId) <= 0:
-		return fmt.Errorf("driver is empty")
+		return fmt.Errorf("conductor no seleccionado")
 	}
 
 	funcRequest := func(mss interface{}) error {
@@ -36,10 +38,10 @@ sobre el cual iniciar`)
 			return fmt.Errorf("request retake service error: %s", err)
 		}
 
-		if resSvc, ok := res.(*services.RetakeServiceResponseMsg); ok {
+		if resSvc, ok := res.(*services.TakeShiftResponseMsg); ok {
 
 			if len(resSvc.GetError()) > 0 {
-				logs.LogWarn.Printf("error request retake service: %s", err)
+				logs.LogWarn.Printf("error request take shift: %s", err)
 				return fmt.Errorf(resSvc.GetError())
 			}
 		} else {
@@ -69,28 +71,28 @@ sobre el cual iniciar`)
 	}
 
 	switch {
-	case a.selectedShift == nil:
+	case selectedShift == nil:
 		return fmt.Errorf("no hay un turno seleccionado")
-	case len(a.selectedShift.GetShift()) <= 0:
+	case len(selectedShift.GetShift()) <= 0:
 		return fmt.Errorf("el iD del turno es invalido")
-	case a.selectedShift.Itinerary == nil:
+	case selectedShift.Itinerary == nil:
 		return fmt.Errorf(`no hay un itinerario seleccionado
 dentro del turno`)
-	case len(a.selectedShift.ServiceSchedulingID) <= 0:
+	case len(selectedShift.ServiceSchedulingID) <= 0:
 		return fmt.Errorf(`no hay un servicio programado
 dentro del turno`)
-	case a.selectedShift.ServiceSchedulingID == a.currentService.Id:
+	case a.currentService != nil && selectedShift.ServiceSchedulingID == a.currentService.Id:
 		return fmt.Errorf(`el turno ya esta iniciado`)
-	case a.selectedShift.GetServiceAmount() <= 0:
+	case selectedShift.GetServiceAmount() <= 0:
 		return fmt.Errorf(`el turno no tiene servicios programados`)
-	case a.selectedShift.ServiceSchedulingID != a.currentService.Id:
+	// case a.currentService != nil && a.selectedShift.ServiceSchedulingID != a.currentService.Id:
 	default:
 		mss := &services.TakeShiftMsg{
 			DeviceId:            a.deviceId,
 			PlatformId:          a.platformId,
 			DriverId:            a.driver.Id,
-			ShiftId:             a.selectedShift.GetShift(),
-			ServiceSchedulingId: a.selectedShift.ServiceSchedulingID,
+			ShiftId:             selectedShift.GetShift(),
+			ServiceSchedulingId: selectedShift.ServiceSchedulingID,
 			MessageId:           uuid.New().String(),
 			Timestamp:           time.Now().UnixMilli(),
 		}
@@ -98,10 +100,12 @@ dentro del turno`)
 			return err
 		}
 		a.ctx.Send(a.ctx.Self(), &MsgSetRoute{
-			Route:     int(a.selectedShift.GetItinerary().GetId()),
-			RouteName: a.selectedShift.GetItinerary().GetName(),
+			Route:     int(selectedShift.GetItinerary().GetId()),
+			RouteName: selectedShift.GetItinerary().GetName(),
 		})
 	}
+
+	a.shift = selectedShift
 
 	return nil
 }

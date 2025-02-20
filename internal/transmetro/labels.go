@@ -263,6 +263,15 @@ func Label2DisplayRegister(label int) display.Register {
 			Gap:    0,
 			Toogle: 0,
 		}
+	case AddrExitSwitch:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrExitSwitch,
+			Len:    0,
+			Size:   0,
+			Gap:    0,
+			Toogle: 0,
+		}
 	case AddrScreenSwitch:
 		return display.Register{
 			Type:   display.LED,

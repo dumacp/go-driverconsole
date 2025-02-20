@@ -174,8 +174,8 @@ func (a *App) listProgShitfs(msg *ListShiftsVeh) error {
 			continue
 		}
 		ts := time.UnixMilli(v.GetNextServiceTimeStamp())
-		data := strings.ToLower(fmt.Sprintf(" %s: %s (%s)", ts.Format("01/02 15:04"),
-			v.GetItinerary().GetName(), v.GetRoute().GetCode()))
+		data := strings.ToLower(fmt.Sprintf(" %s: (%q) %s (%s)", ts.Format("01/02 15:04"),
+			v.GetShift(), v.GetItinerary().GetName(), v.GetRoute().GetCode()))
 		svc := strings.ToLower(fmt.Sprintf(`  shift id: %q
   inicio prox. servicio: %s
   itinenario: %q (%d)
@@ -511,7 +511,7 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 	return nil
 }
 
-func (a *App) requestShifts(ctx actor.Context, msg *RequestShitfsVeh) error {
+func (a *App) requestProgShifts(ctx actor.Context, msg *RequestShitfsVeh) error {
 	// sí hya servicios disponibles desde la última consulta
 	fmt.Printf("cs: %d, route: %d, shift: %s\n", len(a.companySchServices), a.route, msg.Shift)
 	if time.Since(a.lastReqShifts) < 5*time.Minute && len(a.CompanyShiftsService) > 0 && (a.shift == nil || a.shift.Shift != msg.Shift) {

@@ -26,7 +26,7 @@ sobre el cual retomar`)
 	case len(a.companyId) <= 0:
 		return fmt.Errorf("company id is empty")
 	case a.driver == nil || len(a.driver.DocumentId) <= 0:
-		return fmt.Errorf("driver is empty")
+		return fmt.Errorf("conductor no seleccionado")
 	}
 
 	funcRequest := func(mss interface{}) error {
@@ -35,7 +35,7 @@ sobre el cual retomar`)
 			return fmt.Errorf("request retake service error: %s", err)
 		}
 
-		if resSvc, ok := res.(*services.RetakeServiceResponseMsg); ok {
+		if resSvc, ok := res.(*services.TakeServiceResponseMsg); ok {
 
 			if len(resSvc.GetError()) > 0 {
 				logs.LogWarn.Printf("error request retake service: %s", err)
@@ -80,7 +80,7 @@ sobre el cual retomar`)
 		a.currentService.State == services.State_STARTED.String() ||
 		a.currentService.State == services.State_CANCELLED.String() ||
 		a.currentService.State == services.State_ENDED.String():
-		mss := &services.RetakeServiceMsg{
+		mss := &services.TakeServiceMsg{
 			DeviceId:   a.deviceId,
 			PlatformId: a.platformId,
 			CompanyId:  a.companyId,
