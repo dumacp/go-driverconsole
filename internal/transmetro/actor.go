@@ -63,6 +63,7 @@ type App struct {
 	selectedShift   *services.ShiftService
 	// companyCurrentSchServices map[string]*CompanySchService
 	companySchServicesShow []*CompanySchService
+	companyShiftsShow      []*CompanyShift
 	vehicleSchServicesShow []*CompanySchService
 	notif                  []string
 	uix                    ui.UI
@@ -551,7 +552,7 @@ func (a *App) Runstate(ctx actor.Context) {
 			}()
 		}
 	case *ListShiftsVeh:
-		if err := a.listProg(msg); err != nil {
+		if err := a.listProgShitfs(msg); err != nil {
 			logs.LogWarn.Println("listProg error: ", err)
 			if err := a.uix.TextWarningPopup(err.Error()); err != nil {
 				logs.LogWarn.Printf("textWarningPopup error: %s", err)
@@ -598,6 +599,29 @@ func (a *App) Runstate(ctx actor.Context) {
 			}()
 			logs.LogWarn.Println("listProgDriver error: ", err)
 		}
+	case *RequestShift:
+		if err := a.takeshift(); err != nil {
+			if err := a.uix.TextWarningPopup(fmt.Sprintf("%s\n", err)); err != nil {
+				logs.LogWarn.Printf("textWarningPopup error: %s", err)
+			}
+			if a.cancelPop != nil {
+				a.cancelPop()
+			}
+			contxt, cancel := context.WithCancel(context.TODO())
+			a.cancelPop = cancel
+			go func() {
+				defer cancel()
+				select {
+				case <-contxt.Done():
+				case <-time.After(4 * time.Second):
+				}
+				if err := a.uix.TextWarningPopupClose(); err != nil {
+					logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+				}
+			}()
+			logs.LogWarn.Printf("takeshift error: %s", err)
+		}
+
 	case *RequestTakeService:
 		if err := a.takeservice(); err != nil {
 			if err := a.uix.TextWarningPopup(fmt.Sprintf("%s\n", err)); err != nil {

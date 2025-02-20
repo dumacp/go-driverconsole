@@ -7,6 +7,7 @@ import (
 
 	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/dumacp/go-schservices/api/services"
+	"github.com/google/uuid"
 )
 
 func (a *App) takeshift() error {
@@ -84,19 +85,21 @@ dentro del turno`)
 		return fmt.Errorf(`el turno no tiene servicios programados`)
 	case a.selectedShift.ServiceSchedulingID != a.currentService.Id:
 	default:
-		mss := &services.TakeServiceMsg{
-			DeviceId:   a.deviceId,
-			PlatformId: a.platformId,
-			CompanyId:  a.companyId,
-			ServiceId:  a.currentService.Id,
-			DriverId:   a.driver.Id,
+		mss := &services.TakeShiftMsg{
+			DeviceId:            a.deviceId,
+			PlatformId:          a.platformId,
+			DriverId:            a.driver.Id,
+			ShiftId:             a.selectedShift.GetShift(),
+			ServiceSchedulingId: a.selectedShift.ServiceSchedulingID,
+			MessageId:           uuid.New().String(),
+			Timestamp:           time.Now().UnixMilli(),
 		}
 		if err := funcRequest(mss); err != nil {
 			return err
 		}
 		a.ctx.Send(a.ctx.Self(), &MsgSetRoute{
-			Route:     int(a.currentService.GetItinerary().GetId()),
-			RouteName: a.currentService.GetItinerary().GetName(),
+			Route:     int(a.selectedShift.GetItinerary().GetId()),
+			RouteName: a.selectedShift.GetItinerary().GetName(),
 		})
 	}
 

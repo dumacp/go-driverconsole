@@ -122,7 +122,7 @@ para el itinerario: %d`, msg.Itinerary)
 	return nil
 }
 
-func (a *App) listProShitfs(msg *ListProgVeh) error {
+func (a *App) listProgShitfs(msg *ListShiftsVeh) error {
 	if len(a.CompanyShiftsService) <= 0 {
 		return nil
 	}
@@ -133,7 +133,7 @@ func (a *App) listProShitfs(msg *ListProgVeh) error {
 	for _, v := range a.CompanyShiftsService {
 		ss = append(ss, v)
 	}
-	cs := make([]*CompanySchService, 0)
+	cs := make([]*CompanyShift, 0)
 
 	sort.SliceStable(ss, func(i, j int) bool {
 		return ss[i].GetNextServiceTimeStamp() < ss[j].GetNextServiceTimeStamp()
@@ -170,7 +170,7 @@ func (a *App) listProShitfs(msg *ListProgVeh) error {
 		if v.GetItinerary() == nil {
 			continue
 		}
-		if msg.Itinerary > 0 && v.GetItinerary().GetId() != int32(msg.Itinerary) {
+		if len(msg.Shift) > 0 && v.GetShift() != msg.Shift {
 			continue
 		}
 		ts := time.UnixMilli(v.GetNextServiceTimeStamp())
@@ -188,27 +188,27 @@ func (a *App) listProShitfs(msg *ListProgVeh) error {
 			v.GetVersion()))
 		fmt.Printf("servicio: %v\n", svc)
 		fmt.Printf("data: %s\n", data)
-		cs = append(cs, &CompanySchService{
+		cs = append(cs, &CompanyShift{
 			String:       svc,
 			ResumeString: data,
-			Services:     v,
+			Shift:        v,
 		})
 		if len(cs) >= 9 {
 			break
 		}
 	}
 
-	a.companySchServicesShow = make([]*CompanySchService, 0)
+	a.companyShiftsShow = make([]*CompanyShift, 0)
 	if len(cs) > 0 {
 		dataSlice = append(dataSlice, cs[0].ResumeString)
 	}
 	if len(cs) > 0 {
 		dataSlice = append(dataSlice, cs[0].ResumeString)
-		a.companySchServicesShow = append(a.companySchServicesShow, cs[0])
+		a.companyShiftsShow = append(a.companyShiftsShow, cs[0])
 	}
 	for i := range cs {
 		dataSlice = append(dataSlice, cs[i].ResumeString)
-		a.companySchServicesShow = append(a.companySchServicesShow, cs[i])
+		a.companyShiftsShow = append(a.companyShiftsShow, cs[i])
 	}
 	if len(dataSlice) < 9 {
 		for i := 0; i <= 9-len(dataSlice); i++ {
@@ -232,7 +232,7 @@ func (a *App) listProShitfs(msg *ListProgVeh) error {
 		}
 	} else {
 		return fmt.Errorf(`no hay servicios dsiponibles
-para el itinerario: %d`, msg.Itinerary)
+para el turno: %s`, msg.Shift)
 	}
 	return nil
 }

@@ -25,3 +25,9 @@ type CompanySchService struct {
 	ResumeString string
 	Services     *services.ScheduleService
 }
+
+type CompanyShift struct {
+	String       string
+	ResumeString string
+	Shift        *services.ShiftService
+}

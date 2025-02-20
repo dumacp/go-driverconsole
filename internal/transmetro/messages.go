@@ -134,6 +134,8 @@ type ListShiftsVeh struct {
 type RequestDriver struct {
 	Driver string
 }
+type RequestShift struct {
+}
 type RequestTakeService struct {
 }
 type RequestReTakeService struct {
