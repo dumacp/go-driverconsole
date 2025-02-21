@@ -125,6 +125,9 @@ type RequestProgVeh struct {
 type RequestShitfsVeh struct {
 	Shift string
 }
+type ReleaseShitfsVeh struct {
+	Shift string
+}
 type ListProgVeh struct {
 	Itinerary int
 }

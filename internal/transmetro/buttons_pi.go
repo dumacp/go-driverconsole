@@ -64,7 +64,7 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 						fmt.Printf("companySchServices: %v\n", a.companyShiftsShow[num])
 						a.selectedShift = a.companyShiftsShow[num].Shift
 						a.uix.WriteTextRawDisplay(AddrResumeSelectProgVeh, []string{a.companyShiftsShow[num].String})
-						prompt := fmt.Sprintf(`servicio preseleccionado:
+						prompt := fmt.Sprintf(`turno preseleccionado:
 %s`, a.companyShiftsShow[num].ResumeString)
 						if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
 							logs.LogWarn.Printf("error TextCurrentItinerary: %s", err)
@@ -208,10 +208,8 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 				if err := a.uix.SetLed(AddrExitSwitch, false); err != nil {
 					return fmt.Errorf("error setLed (AddrExitSwitch): %s", err)
 				}
-				a.uix.Driver("")
-				if a.driver != nil {
-					a.driver = nil
-				}
+				a.ctx.Send(a.ctx.Self(), &ReleaseShitfsVeh{})
+
 			case AddrEnterRuta:
 				// release button
 				if v, ok := evt.Value.(bool); !ok || v {

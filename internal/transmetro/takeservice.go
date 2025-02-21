@@ -264,7 +264,7 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 			if a.currentService != nil && len(a.currentService.GetState()) > 0 {
 				a.currentService.State = services.State_STARTED.String()
 			}
-			prompt = strings.ToLower("servicio iniciado")
+			prompt = strings.ToLower("turno iniciado")
 		}
 		state := int(services.TimingState_value[svc.GetCheckpointTimingState().GetState()])
 		promtp := ""
@@ -302,7 +302,8 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 	} else if svc.GetState() == services.State_SCHEDULED.String() {
 		// a.currentService = v
 		if a.currentService == nil || a.currentService.GetState() == services.State_ENDED.String() ||
-			a.currentService.GetState() == services.State_ABORTED.String() {
+			a.currentService.GetState() == services.State_ABORTED.String() ||
+			a.currentService.GetState() == services.State_CANCELLED.String() {
 			a.currentService = svc
 			ts := time.UnixMilli(svc.GetScheduleDateTime())
 			prompt = strings.ToLower(fmt.Sprintf("próximo servicio:\n%s: %s (%s)", ts.Format("01/02 15:04"),

@@ -48,7 +48,7 @@ sobre el cual iniciar`)
 			return fmt.Errorf("response type error (%T)", res)
 		}
 
-		if err := a.uix.TextConfirmationPopup("servicio iniciado\n"); err != nil {
+		if err := a.uix.TextConfirmationPopup("turno iniciado\n"); err != nil {
 			logs.LogWarn.Printf("textConfirmation error: %s", err)
 		}
 		if a.cancelPop != nil {

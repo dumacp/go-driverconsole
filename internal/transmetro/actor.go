@@ -577,6 +577,32 @@ func (a *App) Runstate(ctx actor.Context) {
 		if err := a.requestProgShifts(ctx, msg); err != nil {
 			logs.LogWarn.Println("requestShifts error: ", err)
 		}
+	case *ReleaseShitfsVeh:
+		if err := a.releaseshift(); err != nil {
+			if err := a.uix.TextWarningPopup(fmt.Sprintf("%s\n", err)); err != nil {
+				logs.LogWarn.Printf("textWarningPopup error: %s", err)
+			}
+			if a.cancelPop != nil {
+				a.cancelPop()
+			}
+			contxt, cancel := context.WithCancel(context.TODO())
+			a.cancelPop = cancel
+			go func() {
+				defer cancel()
+				select {
+				case <-contxt.Done():
+				case <-time.After(4 * time.Second):
+				}
+				if err := a.uix.TextWarningPopupClose(); err != nil {
+					logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+				}
+			}()
+			logs.LogWarn.Println("release shift error: ", err)
+		}
+		a.uix.Driver("")
+		if a.driver != nil {
+			a.driver = nil
+		}
 	case *RequestProgVeh:
 		if err := a.requestProg(ctx, msg); err != nil {
 			logs.LogWarn.Println("requestProg error: ", err)
@@ -694,6 +720,7 @@ func (a *App) Runstate(ctx actor.Context) {
 		}
 	case *services.UpdateServiceMsg:
 		fmt.Printf("******** (%T) %v **********\n", msg, msg)
+		fmt.Printf("******** current svc (%T) %v **********\n", a.currentService, a.currentService)
 		svc := msg.GetUpdate()
 		a.showCurrentService(svc)
 		if a.currentService != nil &&
@@ -734,19 +761,29 @@ func (a *App) Runstate(ctx actor.Context) {
 			}
 		}
 	case *services.RemoveServiceMsg:
+		// fmt.Printf("******** (%T) %v **********\n", msg, msg)
+		// fmt.Printf("******** current svc (%T) %v **********\n", a.currentService, a.currentService)
 		svc := msg.GetUpdate()
-		if svc.GetCheckpointTimingState() != nil && len(svc.GetCheckpointTimingState().GetState()) > 0 {
-			state := int(services.TimingState_value[svc.GetCheckpointTimingState().GetState()])
-			promtp := fmt.Sprintf("%s (%d / fin)", svc.GetCheckpointTimingState().GetName(), svc.GetCheckpointTimingState().GetTimeDiff())
-			fmt.Printf("///// state: %d\n", state)
-			if err := a.uix.ServiceCurrentState(0, promtp); err != nil {
-				logs.LogWarn.Printf("textConfirmation error: %s", err)
+		if a.currentService != nil && a.currentService.GetId() == svc.GetId() {
+			if svc.GetCheckpointTimingState() != nil && len(svc.GetCheckpointTimingState().GetState()) > 0 {
+				state := int(services.TimingState_value[svc.GetCheckpointTimingState().GetState()])
+				promtp := fmt.Sprintf("%s (%d / fin)", svc.GetCheckpointTimingState().GetName(), svc.GetCheckpointTimingState().GetTimeDiff())
+				fmt.Printf("///// state: %d\n", state)
+				if err := a.uix.ServiceCurrentState(0, promtp); err != nil {
+					logs.LogWarn.Printf("textConfirmation error: %s", err)
+				}
+			} else {
+				if err := a.uix.ServiceCurrentState(0, ""); err != nil {
+					logs.LogWarn.Printf("textConfirmation error: %s", err)
+				}
 			}
-		} else {
-			if err := a.uix.ServiceCurrentState(0, ""); err != nil {
-				logs.LogWarn.Printf("textConfirmation error: %s", err)
+			prompt := strings.ToLower("servicio actual removido\n")
+			if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
+				fmt.Printf("error TextCurrentItinerary: %s\n", err)
 			}
+			a.currentService = nil
 		}
+
 		delete(a.shcservices, svc.GetId())
 		delete(a.companySchServices, svc.GetId())
 	case *MsgScreen:
