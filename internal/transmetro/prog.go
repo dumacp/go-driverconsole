@@ -147,7 +147,7 @@ func (a *App) listProgShitfs(msg *ListShiftsVeh) error {
 	untilSlice := make([]*services.ShiftService, 0)
 	for _, v := range ss {
 		ts := time.UnixMilli(v.GetNextServiceTimeStamp())
-		if time.Until(ts) < 10*time.Minute {
+		if time.Since(ts) > 10*time.Minute {
 			break
 		}
 		untilSlice = append(untilSlice, v)
