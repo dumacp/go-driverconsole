@@ -261,10 +261,16 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 	if svc.GetCheckpointTimingState() != nil && len(svc.GetCheckpointTimingState().GetState()) > 0 {
 		if a.currentService == nil {
 			a.currentService = svc
-			if a.currentService != nil && len(a.currentService.GetState()) > 0 {
-				a.currentService.State = services.State_STARTED.String()
+			if len(a.shcservices) > 0 && a.shcservices[svc.GetId()] != nil {
+				a.currentService = a.shcservices[svc.GetId()]
 			}
-			prompt = strings.ToLower("turno iniciado")
+			ts := time.Now()
+			if a.currentService.GetScheduleDateTime() > 0 {
+				ts = time.UnixMilli(a.currentService.GetScheduleDateTime())
+			}
+			a.currentService.State = services.State_UNKNOWN.String()
+			prompt = strings.ToLower(fmt.Sprintf("servicio iniciado:\n%s: %s (%s)", ts.Format("01/02 15:04"),
+				svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
 		}
 		state := int(services.TimingState_value[svc.GetCheckpointTimingState().GetState()])
 		promtp := ""
@@ -293,7 +299,9 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 			svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
 	} else if svc.GetState() == services.State_WAITING_TO_ARRIVE_TO_STARTING_POINT.String() {
 		if a.currentService == nil || a.currentService.GetState() == services.State_ENDED.String() ||
-			a.currentService.GetState() == services.State_ABORTED.String() {
+			a.currentService.GetState() == services.State_ABORTED.String() ||
+			a.currentService.GetState() == services.State_CANCELLED.String() ||
+			a.currentService.GetState() == services.State_UNKNOWN.String() {
 			a.currentService = svc
 			ts := time.UnixMilli(svc.GetScheduleDateTime())
 			prompt = strings.ToLower(fmt.Sprintf("próximo servicio (esperando):\n%s: %s (%s)", ts.Format("01/02 15:04"),
@@ -303,7 +311,8 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 		// a.currentService = v
 		if a.currentService == nil || a.currentService.GetState() == services.State_ENDED.String() ||
 			a.currentService.GetState() == services.State_ABORTED.String() ||
-			a.currentService.GetState() == services.State_CANCELLED.String() {
+			a.currentService.GetState() == services.State_CANCELLED.String() ||
+			a.currentService.GetState() == services.State_UNKNOWN.String() {
 			a.currentService = svc
 			ts := time.UnixMilli(svc.GetScheduleDateTime())
 			prompt = strings.ToLower(fmt.Sprintf("próximo servicio:\n%s: %s (%s)", ts.Format("01/02 15:04"),

@@ -96,7 +96,7 @@ sobre el cual retomar`)
 		})
 	default:
 		fmt.Printf("current service: %v\n", a.currentService)
-		return fmt.Errorf("servicio no programado")
+		return fmt.Errorf("servicio anterior no finalizado")
 	}
 
 	return nil
