@@ -160,7 +160,7 @@ func Label2DisplayRegister(label int) display.Register {
 			Type:   display.INPUT_TEXT,
 			Addr:   AddrTextCurrentService,
 			Len:    1,
-			Size:   60,
+			Size:   120,
 			Gap:    0,
 			Toogle: 0,
 		}

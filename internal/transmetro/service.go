@@ -7,10 +7,10 @@ import (
 )
 
 func UpdateServiceStable(prev, current *services.ScheduleService) *services.ScheduleService {
-	if current == nil {
+	if current == nil && prev != nil {
 		return prev
 	}
-	if prev == nil {
+	if prev == nil && current != nil {
 		return current
 	}
 	if current != nil && prev != nil && current.Id != prev.Id {
@@ -46,10 +46,10 @@ func UpdateServiceStable(prev, current *services.ScheduleService) *services.Sche
 }
 
 func UpdateService(prev, current *services.ScheduleService) *services.ScheduleService {
-	if current == nil {
+	if current == nil && prev != nil {
 		return prev
 	}
-	if prev == nil {
+	if prev == nil && current != nil {
 		return current
 	}
 	if current != nil && prev != nil && current.Id != prev.Id {

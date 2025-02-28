@@ -520,7 +520,7 @@ func (u *ui) ServiceCurrentState(state int, prompt string) error {
 	res, err := u.rootctx.RequestFuture(u.pid, &ServiceCurrentStateMsg{
 		State:  state,
 		Prompt: prompt,
-	}, 2*time.Second).Result()
+	}, 3*time.Second).Result()
 	if err != nil {
 		return err
 	}

@@ -10,7 +10,7 @@ require (
 	github.com/dumacp/matrixorbital v0.0.0-20230818142648-d37611aecca5
 	github.com/dumacp/pubsub v0.0.0-20200115200904-f16f29d84ee0
 	github.com/eclipse/paho.mqtt.golang v1.4.3
-	github.com/google/uuid v1.6.0 // indirect
+	github.com/google/uuid v1.6.0
 	github.com/looplab/fsm v1.0.2
 	go.etcd.io/bbolt v1.3.10
 )
@@ -19,7 +19,7 @@ require (
 	github.com/asynkron/protoactor-go v0.0.0-20240413045429-76c172a71a16
 	github.com/dumacp/go-actors v0.0.0-20240613144007-fcb38ee7b9b1
 	github.com/dumacp/go-fareCollection v0.0.0-00010101000000-000000000000
-	github.com/dumacp/go-gwiot v0.0.0-20250115140529-82d0b659331a
+	github.com/dumacp/go-gwiot v0.0.0-20250219205658-c5ffa6d680c1
 	github.com/dumacp/go-ignition v0.0.0-20240301165217-62b8949edaf7
 	github.com/dumacp/go-itinerary v0.0.0-20250206143001-1ce6638f2c19
 	github.com/dumacp/go-levis v0.0.0-20241119224207-a91cacdf55e3

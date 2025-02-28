@@ -59,6 +59,8 @@ type App struct {
 	currentSchServices   map[string]*services.ScheduleService
 	// vehicleSchServices   map[string]*services.ScheduleService
 	currentService  *services.ScheduleService
+	nextService     *services.ScheduleService
+	lastService     *services.ScheduleService
 	selectedService *services.ScheduleService
 	selectedShift   *services.ShiftService
 	// companyCurrentSchServices map[string]*CompanySchService
@@ -73,6 +75,7 @@ type App struct {
 	pidSvc                 *actor.PID
 	lastReqProgVeh         time.Time
 	lastReqShifts          time.Time
+	lastReqRetakeSvc       time.Time
 	cancel                 func()
 	cancelStep             func()
 	cancelPop              func()
@@ -631,26 +634,29 @@ func (a *App) Runstate(ctx actor.Context) {
 		}
 	case *RequestTakeShift:
 		if a.selectedShift == nil {
-			if err := a.retakeservice(); err != nil {
-				if err := a.uix.TextWarningPopup(fmt.Sprintf("%s\n", err)); err != nil {
-					logs.LogWarn.Printf("textWarningPopup error: %s", err)
-				}
-				if a.cancelPop != nil {
-					a.cancelPop()
-				}
-				contxt, cancel := context.WithCancel(context.TODO())
-				a.cancelPop = cancel
-				go func() {
-					defer cancel()
-					select {
-					case <-contxt.Done():
-					case <-time.After(4 * time.Second):
+			if time.Since(a.lastReqRetakeSvc) > 5*time.Second {
+				a.lastReqRetakeSvc = time.Now()
+				if err := a.retakeservice(); err != nil {
+					if err := a.uix.TextWarningPopup(fmt.Sprintf("%s\n", err)); err != nil {
+						logs.LogWarn.Printf("textWarningPopup error: %s", err)
 					}
-					if err := a.uix.TextWarningPopupClose(); err != nil {
-						logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+					if a.cancelPop != nil {
+						a.cancelPop()
 					}
-				}()
-				logs.LogWarn.Printf("takeshift error: %s", err)
+					contxt, cancel := context.WithCancel(context.TODO())
+					a.cancelPop = cancel
+					go func() {
+						defer cancel()
+						select {
+						case <-contxt.Done():
+						case <-time.After(4 * time.Second):
+						}
+						if err := a.uix.TextWarningPopupClose(); err != nil {
+							logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+						}
+					}()
+					logs.LogWarn.Printf("takeshift error: %s", err)
+				}
 			}
 		} else {
 			if err := a.takeshift(); err != nil {
@@ -781,6 +787,7 @@ func (a *App) Runstate(ctx actor.Context) {
 			if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
 				fmt.Printf("error TextCurrentItinerary: %s\n", err)
 			}
+			a.lastService = a.currentService
 			a.currentService = nil
 		}
 

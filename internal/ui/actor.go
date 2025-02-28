@@ -383,7 +383,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
 			Text:  msg.Text,
 			Label: PROGRAMATION_DRIVER_TEXT,
-		}, time.Second*1))
+		}, time.Second*3))
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: result})
 		}
@@ -419,7 +419,7 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.WriteTextMsg{
 			Label: SERVICE_CURRENT_STATE_TEXT,
 			Text:  []string{msg.Prompt},
-		}, 1*time.Second))
+		}, 2*time.Second))
 		if ctx.Sender() != nil && result != nil {
 			ctx.Respond(&AckMsg{Error: result})
 			break

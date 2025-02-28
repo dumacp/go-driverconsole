@@ -135,35 +135,9 @@ func (a *App) listProgShitfs(msg *ListShiftsVeh) error {
 	}
 	cs := make([]*CompanyShift, 0)
 
-	sort.SliceStable(ss, func(i, j int) bool {
-		return ss[i].GetNextServiceTimeStamp() < ss[j].GetNextServiceTimeStamp()
-	})
-
-	slices.Reverse(ss)
-
-	fmt.Printf("service shift oldest: %s\n", time.UnixMilli(ss[len(ss)-1].GetNextServiceTimeStamp()))
-	fmt.Printf("service shiff newest: %s\n", time.UnixMilli(ss[0].GetNextServiceTimeStamp()))
-
-	untilSlice := make([]*services.ShiftService, 0)
-	for _, v := range ss {
-		ts := time.UnixMilli(v.GetNextServiceTimeStamp())
-		if time.Since(ts) > 10*time.Minute {
-			break
-		}
-		untilSlice = append(untilSlice, v)
-	}
-	fmt.Printf("services until: %d\n", len(untilSlice))
-
-	if len(untilSlice) <= 0 {
-		return fmt.Errorf("no hay servicios disponibles")
-	}
-
-	fmt.Printf("services until oldest: %s\n", time.UnixMilli(untilSlice[len(untilSlice)-1].GetNextServiceTimeStamp()))
-	fmt.Printf("services until newest: %s\n", time.UnixMilli(untilSlice[0].GetNextServiceTimeStamp()))
+	untilSlice := getBalancedSlice(ss, 10)
 
 	// a.companySchServicesShow = make([]*CompanySchService, 0)
-
-	slices.Reverse(untilSlice)
 
 	for _, v := range untilSlice {
 		// v := untilSlice[len(untilSlice)-1-i]
@@ -212,7 +186,7 @@ func (a *App) listProgShitfs(msg *ListShiftsVeh) error {
 	}
 	if len(dataSlice) < 9 {
 		for i := 0; i <= 9-len(dataSlice); i++ {
-			size := Label2DisplayRegister(ui.PROGRAMATION_VEH_SCREEN).Size
+			size := Label2DisplayRegister(ui.PROGRAMATION_VEH_TEXT).Size
 			// un string de tamaño size de espacios
 			spaces := strings.Repeat(" ", size)
 			dataSlice = append(dataSlice, spaces)
@@ -363,7 +337,7 @@ func (a *App) GenereCompanySchServices(msg *ListProgVeh) ([]*CompanySchService, 
 func (a *App) requestProg(ctx actor.Context, msg *RequestProgVeh) error {
 	// sí hya servicios disponibles desde la última consulta
 	fmt.Printf("cs: %d, route: %d, iti: %d\n", len(a.companySchServices), a.route, msg.Itinerary)
-	if time.Since(a.lastReqProgVeh) < 5*time.Minute && len(a.companySchServices) > 0 && (a.route == 0 || a.route == msg.Itinerary) {
+	if time.Since(a.lastReqProgVeh) < 3*time.Minute && len(a.companySchServices) > 0 && (a.route == 0 || a.route == msg.Itinerary) {
 		ss := a.companySchServicesShow
 		if len(ss) > 0 {
 			fmt.Printf("time: %s\n", time.UnixMilli(ss[len(ss)-1].Services.GetScheduleDateTime()))
@@ -514,7 +488,7 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 func (a *App) requestProgShifts(ctx actor.Context, msg *RequestShitfsVeh) error {
 	// sí hya servicios disponibles desde la última consulta
 	fmt.Printf("cs: %d, route: %d, shift: %s\n", len(a.companySchServices), a.route, msg.Shift)
-	if time.Since(a.lastReqShifts) < 5*time.Minute && len(a.CompanyShiftsService) > 0 && (a.shift == nil || a.shift.Shift != msg.Shift) {
+	if time.Since(a.lastReqShifts) < 1*time.Minute && len(a.CompanyShiftsService) > 0 && (a.shift == nil || a.shift.Shift != msg.Shift) {
 		ss := a.companySchServicesShow
 		if len(ss) > 0 {
 			fmt.Printf("time: %s\n", time.UnixMilli(ss[len(ss)-1].Services.GetScheduleDateTime()))
@@ -561,4 +535,45 @@ func (a *App) requestProgShifts(ctx actor.Context, msg *RequestShitfsVeh) error 
 		return fmt.Errorf("response shifts type error: %T", rs)
 	}
 	return nil
+}
+
+// Función para encontrar el slice balanceado
+func getBalancedSlice(sc []*services.ShiftService, maxResults int) []*services.ShiftService {
+	if len(sc) == 0 {
+		return nil
+	}
+
+	// Ordenar por Timestamp (de más antiguo a más reciente)
+	sort.Slice(sc, func(i, j int) bool {
+		return time.UnixMilli(sc[i].GetNextServiceTimeStamp()).Before(time.UnixMilli(sc[j].GetNextServiceTimeStamp()))
+	})
+
+	// Obtener el tiempo actual
+	now := time.Now()
+
+	// Encontrar el índice del elemento más cercano a `now`
+	closestIdx := 0
+	for i, svc := range sc {
+		if time.UnixMilli(svc.GetNextServiceTimeStamp()).After(now) {
+			break
+		}
+		closestIdx = i
+	}
+
+	// Equilibrar elementos en el pasado y futuro
+	result := []*services.ShiftService{}
+	left, right := closestIdx, closestIdx+1
+
+	for len(result) < maxResults && (left >= 0 || right < len(sc)) {
+		// Agregar elementos alternando pasado y futuro
+		if left >= 0 && (right >= len(sc) || len(result)%2 == 0) {
+			result = append([]*services.ShiftService{sc[left]}, result...)
+			left--
+		} else if right < len(sc) {
+			result = append(result, sc[right])
+			right++
+		}
+	}
+
+	return result
 }

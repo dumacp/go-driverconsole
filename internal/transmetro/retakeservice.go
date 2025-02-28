@@ -10,7 +10,7 @@ import (
 )
 
 func (a *App) retakeservice() error {
-	if a.currentService == nil {
+	if a.currentService == nil && a.lastService == nil {
 		return fmt.Errorf(`no hay un servicio iniciado
 sobre el cual retomar`)
 	}
@@ -68,8 +68,25 @@ sobre el cual retomar`)
 	}
 
 	switch {
-	case a.currentService == nil:
+	case a.currentService == nil && a.lastService == nil:
 		return fmt.Errorf("no hay un servicio iniciado")
+	case a.nextService != nil && a.nextService.State == services.State_WAITING_TO_ARRIVE_TO_STARTING_POINT.String():
+		return fmt.Errorf("próximo servicio esperando llegar al punto de inicio")
+	case a.currentService == nil && a.lastService != nil:
+		mss := &services.TakeServiceMsg{
+			DeviceId:   a.deviceId,
+			PlatformId: a.platformId,
+			CompanyId:  a.companyId,
+			ServiceId:  a.lastService.Id,
+			DriverId:   a.driver.Id,
+		}
+		if err := funcRequest(mss); err != nil {
+			return err
+		}
+		a.ctx.Send(a.ctx.Self(), &MsgSetRoute{
+			Route:     int(a.currentService.GetItinerary().GetId()),
+			RouteName: a.currentService.GetItinerary().GetName(),
+		})
 	case a.currentService.State == services.State_WAITING_TO_ARRIVE_TO_STARTING_POINT.String():
 		return fmt.Errorf("servicio actual esperando llegar al punto de inicio")
 	case a.currentService.State == services.State_SCHEDULED.String():
