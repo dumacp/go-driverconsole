@@ -83,6 +83,8 @@ type App struct {
 	gps                    bool
 	network                bool
 	isDisplayEnable        bool
+	isItineraryProgEnable  bool
+	hasCashInput           bool
 }
 
 func NewApp(uix ui.UI) *App {
@@ -327,8 +329,14 @@ func (a *App) Runstate(ctx actor.Context) {
 		if msg.GetCode() == messages.MsgAppPaso_CASH {
 			a.cashInput += 1
 			if a.uix != nil {
-				if err := a.uix.CashInputs(int32(a.cashInput + a.electInput)); err != nil {
-					logs.LogWarn.Printf("inputs error: %s", err)
+				if !a.hasCashInput {
+					if err := a.uix.ElectronicInputs(int32(a.cashInput + a.electInput)); err != nil {
+						logs.LogWarn.Printf("inputs error: %s", err)
+					}
+				} else {
+					if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
+						logs.LogWarn.Printf("inputs error: %s", err)
+					}
 				}
 			}
 		} else {
@@ -356,9 +364,14 @@ func (a *App) Runstate(ctx actor.Context) {
 					}
 				}()
 
-				// }
-				if err := a.uix.CashInputs(int32(a.electInput + a.cashInput)); err != nil {
-					logs.LogWarn.Printf("inputs error: %s", err)
+				if !a.hasCashInput {
+					if err := a.uix.ElectronicInputs(int32(a.electInput + a.cashInput)); err != nil {
+						logs.LogWarn.Printf("inputs error: %s", err)
+					}
+				} else {
+					if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+						logs.LogWarn.Printf("inputs error: %s", err)
+					}
 				}
 			}
 		}
@@ -403,7 +416,7 @@ func (a *App) Runstate(ctx actor.Context) {
 		ctx.Send(ctx.Self(), &MsgShowCounters{})
 	case *MsgShowCounters:
 		if a.uix != nil {
-			if err := a.uix.CashInputs(int32(a.cashInput + a.electInput)); err != nil {
+			if err := a.uix.ElectronicInputs(int32(a.cashInput + a.electInput)); err != nil {
 				logs.LogWarn.Printf("inputs error: %s", err)
 			}
 		}
@@ -413,7 +426,7 @@ func (a *App) Runstate(ctx actor.Context) {
 		a.cashInput += msg.CashInputs
 		a.electInput += msg.ElectInputs
 		if a.uix != nil {
-			if err := a.uix.CashInputs(int32(a.cashInput + a.electInput)); err != nil {
+			if err := a.uix.ElectronicInputs(int32(a.cashInput + a.electInput)); err != nil {
 				logs.LogWarn.Printf("inputs error: %s", err)
 			}
 		}

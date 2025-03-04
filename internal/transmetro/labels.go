@@ -122,7 +122,7 @@ func Label2DisplayRegister(label int) display.Register {
 	case ui.INPUTS_TEXT:
 		return display.Register{
 			Type:   display.INPUT_NUM,
-			Addr:   AddrNumElectonicInputs,
+			Addr:   AddrNumCashInputs,
 			Len:    1,
 			Size:   4,
 			Gap:    0,
@@ -177,6 +177,15 @@ func Label2DisplayRegister(label int) display.Register {
 		return display.Register{
 			Type:   display.ARRAY_PICT,
 			Addr:   AddrLedCurrentService,
+			Len:    1,
+			Size:   2,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case ui.SERVICE_SUMMARY_STATE:
+		return display.Register{
+			Type:   display.ARRAY_PICT,
+			Addr:   AddrLedSummaryService,
 			Len:    1,
 			Size:   2,
 			Gap:    0,
@@ -368,6 +377,69 @@ func Label2DisplayRegister(label int) display.Register {
 			Addr:   AddrItineraryProgVehVerify,
 			Len:    1,
 			Size:   2,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrPrevVehHeaderText:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrPrevVehHeaderText,
+			Len:    1,
+			Size:   80,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrCurrVehHeaderText:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrCurrVehHeaderText,
+			Len:    1,
+			Size:   80,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrNextVehHeaderText:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrNextVehHeaderText,
+			Len:    1,
+			Size:   80,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrPrevVehFooterText:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrPrevVehFooterText,
+			Len:    1,
+			Size:   80,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrCurrVehFooterText:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrCurrVehFooterText,
+			Len:    1,
+			Size:   80,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrNextVehFooterText:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrNextVehFooterText,
+			Len:    1,
+			Size:   80,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrCurrItineraryText:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrCurrItineraryText,
+			Len:    1,
+			Size:   80,
 			Gap:    0,
 			Toogle: 0,
 		}

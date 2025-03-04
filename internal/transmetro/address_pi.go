@@ -26,11 +26,12 @@ const (
 	AddrNumRoute                  = 120
 	AddrTextDriver                = 140
 	AddrNumDriver                 = 160
-	AddrNumCashInputs             = 80
-	AddrNumElectonicInputs        = 84
+	AddrNumCashInputs             = 84 // 80
+	AddrNumElectonicInputs        = 80 // 84
 	AddrNumDeviation              = 88
 	AddrTextCurrentService        = 700 //180
 	AddrLedCurrentService         = 200
+	AddrLedSummaryService         = 4160
 	AddrTextCurrentItinerary      = 220
 	AddrTextWarnPopup             = 300
 	AddrTextPopup                 = 400
@@ -51,4 +52,12 @@ const (
 	// AddrLedBeep                = 23
 	// AddrSwitchStep             = 25
 	// AddrSendStep               = 24
+
+	AddrPrevVehHeaderText = 4100
+	AddrCurrVehHeaderText = 4140
+	AddrNextVehHeaderText = 4180
+	AddrPrevVehFooterText = 4220
+	AddrCurrVehFooterText = 4260
+	AddrNextVehFooterText = 4300
+	AddrCurrItineraryText = 4340
 )

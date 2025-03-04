@@ -60,18 +60,31 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 					fmt.Printf("data SELECT_PROG_VEH: %s\n", v)
 					num := binary.LittleEndian.Uint16(v)
 					fmt.Printf("num SELECT_PROG_VEH: %d\n", num)
-					if len(a.companyShiftsShow) > int(num) {
-						fmt.Printf("companySchServices: %v\n", a.companyShiftsShow[num])
-						a.selectedShift = a.companyShiftsShow[num].Shift
-						a.uix.WriteTextRawDisplay(AddrResumeSelectProgVeh, []string{a.companyShiftsShow[num].String})
-						prompt := fmt.Sprintf(`turno preseleccionado:
+					if a.isItineraryProgEnable {
+						if len(a.companyShiftsShow) > int(num) {
+							fmt.Printf("companySchServices: %v\n", a.companyShiftsShow[num])
+							a.selectedShift = a.companyShiftsShow[num].Shift
+							a.uix.WriteTextRawDisplay(AddrResumeSelectProgVeh, []string{a.companyShiftsShow[num].String})
+							prompt := fmt.Sprintf(`turno preseleccionado:
 %s`, a.companyShiftsShow[num].ResumeString)
-						if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
-							logs.LogWarn.Printf("error TextCurrentItinerary: %s", err)
+							if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
+								logs.LogWarn.Printf("error TextCurrentItinerary: %s", err)
+							}
+							// if err := a.uix.Route(fmt.Sprintf("%d", a.companySchServicesShow[num].Services.Itinerary.Id)); err != nil {
+							// 	fmt.Printf("error Route: %s\n", err)
+							// }
 						}
-						// if err := a.uix.Route(fmt.Sprintf("%d", a.companySchServicesShow[num].Services.Itinerary.Id)); err != nil {
-						// 	fmt.Printf("error Route: %s\n", err)
-						// }
+					} else {
+						if len(a.companySchServicesShow) > int(num) {
+							fmt.Printf("companySchServices: %v\n", a.companySchServicesShow[num])
+							a.selectedService = a.companySchServicesShow[num].Services
+							a.uix.WriteTextRawDisplay(AddrResumeSelectProgVeh, []string{a.companySchServicesShow[num].String})
+							prompt := fmt.Sprintf(`servicio preseleccionado:
+%s`, a.companySchServicesShow[num].ResumeString)
+							if err := a.uix.WriteTextRawDisplay(AddrTextCurrentItinerary, []string{prompt}); err != nil {
+								logs.LogWarn.Printf("error TextCurrentItinerary: %s", err)
+							}
+						}
 					}
 				}
 			case AddrSelectItinerary:
@@ -96,14 +109,17 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 						data = binary.LittleEndian.Uint64(v)
 					}
 					if err := func() error {
-						fmt.Printf("data SELECT_ITI_VEH: %d\n", data)
 						codeShift := int(data)
-						fmt.Printf("ShiftCode: %d\n", codeShift)
-
-						a.ctx.Send(a.ctx.Self(), &RequestShitfsVeh{
-							Shift: fmt.Sprintf("%d", codeShift),
-						})
-
+						fmt.Printf("ShiftCode (iti): %d\n", codeShift)
+						if a.isItineraryProgEnable {
+							a.ctx.Send(a.ctx.Self(), &RequestProgVeh{
+								Itinerary: codeShift,
+							})
+						} else {
+							a.ctx.Send(a.ctx.Self(), &RequestShitfsVeh{
+								Shift: fmt.Sprintf("%d", codeShift),
+							})
+						}
 						return nil
 					}(); err != nil {
 						logs.LogWarn.Printf("error route: %s", err)

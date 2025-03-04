@@ -178,6 +178,12 @@ type ServiceCurrentStateMsg struct {
 	Prompt string
 }
 
+type ServiceSummaryStateMsg struct {
+}
+
+type ServiceSummaryVehicle struct {
+}
+
 type AckMsg struct {
 	Error error
 }
