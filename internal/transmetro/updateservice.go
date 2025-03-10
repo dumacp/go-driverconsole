@@ -21,6 +21,9 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 			a.shcservices[svc.GetId()] = svc
 		}
 		svc = a.shcservices[svc.GetId()]
+		if svc.GetScheduleDateTime() <= 0 {
+			svc.ScheduleDateTime = time.Now().UnixMilli()
+		}
 		startOfDay := time.Now().Truncate(24 * time.Hour)
 		if time.UnixMilli(svc.GetScheduleDateTime()).Before(startOfDay) ||
 			!time.UnixMilli(svc.GetScheduleDateTime()).Before(startOfDay.Add(24*time.Hour)) {
