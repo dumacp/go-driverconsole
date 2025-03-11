@@ -357,7 +357,7 @@ func (a *App) requestProg(ctx actor.Context, msg *RequestProgVeh) error {
 		State:     services.State_SCHEDULED.String(),
 		CompanyId: a.companyId,
 		DeviceId:  a.platformId,
-	}, 6*time.Second).Result()
+	}, 10*time.Second).Result()
 	if err != nil {
 		return fmt.Errorf("request service error: %s", err)
 	}
@@ -507,7 +507,7 @@ func (a *App) requestProgShifts(ctx actor.Context, msg *RequestShitfsVeh) error 
 		ShiftId:   msg.Shift,
 		CompanyId: a.companyId,
 		DeviceId:  a.platformId,
-	}, 6*time.Second).Result()
+	}, 10*time.Second).Result()
 	if err != nil {
 		return fmt.Errorf("request shifts service error: %s", err)
 	}

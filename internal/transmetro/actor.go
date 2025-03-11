@@ -63,6 +63,7 @@ type App struct {
 	lastService     *services.ScheduleService
 	selectedService *services.ScheduleService
 	selectedShift   *services.ShiftService
+	summaryService  *services.ServiceSummary
 	// companyCurrentSchServices map[string]*CompanySchService
 	companySchServicesShow []*CompanySchService
 	companyShiftsShow      []*CompanyShift
@@ -76,10 +77,13 @@ type App struct {
 	lastReqProgVeh         time.Time
 	lastReqShifts          time.Time
 	lastReqRetakeSvc       time.Time
+	lastReqSummarySvc      time.Time
 	cancel                 func()
 	cancelStep             func()
 	cancelPop              func()
+	renewStep              func()
 	behavior               actor.Behavior
+	enableStep             bool
 	gps                    bool
 	network                bool
 	isDisplayEnable        bool
@@ -105,6 +109,14 @@ func NewApp(uix ui.UI) *App {
 
 func (a *App) RegisterActorService(pid *actor.PID) {
 	a.pidSvc = pid
+}
+
+func (a *App) SetCashInput(v bool) {
+	a.hasCashInput = v
+}
+
+func (a *App) SetItineraryProg(v bool) {
+	a.isItineraryProgEnable = v
 }
 
 func subscribe(ctx actor.Context, evs *eventstream.EventStream) *eventstream.Subscription {
@@ -254,6 +266,30 @@ func (a *App) Runstate(ctx actor.Context) {
 
 		a.isDisplayEnable = true
 
+		if a.isItineraryProgEnable {
+			if err := a.uix.SetLed(AddrSwitchLang1, true); err != nil {
+				logs.LogWarn.Printf("setLed cash error: %s", err)
+			}
+		} else {
+			if err := a.uix.SetLed(AddrSwitchLang1, false); err != nil {
+				logs.LogWarn.Printf("setLed cash error: %s", err)
+			}
+		}
+		if a.hasCashInput {
+			if err := a.uix.SetLed(AddrShowStep, true); err != nil {
+				logs.LogWarn.Printf("setLed itiprog error: %s", err)
+			}
+			if err := a.uix.WriteTextRawDisplay(AddrTextCashInputs, []string{"Pagos", "      Conductor"}); err != nil {
+				logs.LogWarn.Printf("writeText cash error: %s", err)
+			}
+		} else {
+			if err := a.uix.SetLed(AddrShowStep, false); err != nil {
+				logs.LogWarn.Printf("setLed itiprog error: %s", err)
+			}
+			if err := a.uix.WriteTextRawDisplay(AddrTextCashInputs, []string{"Contador", "      Pasajeros"}); err != nil {
+				logs.LogWarn.Printf("writeText cash error: %s", err)
+			}
+		}
 		a.uix.Gps(a.gps)
 		a.uix.Network(a.network)
 
@@ -694,7 +730,28 @@ func (a *App) Runstate(ctx actor.Context) {
 				logs.LogWarn.Printf("takeshift error: %s", err)
 			}
 		}
-
+	case *RequestSummaryService:
+		if err := a.summaryservice(); err != nil {
+			if err := a.uix.TextWarningPopup(fmt.Sprintf("%s\n", err)); err != nil {
+				logs.LogWarn.Printf("textWarningPopup error: %s", err)
+			}
+			if a.cancelPop != nil {
+				a.cancelPop()
+			}
+			contxt, cancel := context.WithCancel(context.TODO())
+			a.cancelPop = cancel
+			go func() {
+				defer cancel()
+				select {
+				case <-contxt.Done():
+				case <-time.After(4 * time.Second):
+				}
+				if err := a.uix.TextWarningPopupClose(); err != nil {
+					logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+				}
+			}()
+			logs.LogWarn.Printf("summaryservice error: %s", err)
+		}
 	case *RequestTakeService:
 		if err := a.takeservice(); err != nil {
 			if err := a.uix.TextWarningPopup(fmt.Sprintf("%s\n", err)); err != nil {
@@ -802,6 +859,7 @@ func (a *App) Runstate(ctx actor.Context) {
 			}
 			a.lastService = a.currentService
 			a.currentService = nil
+			a.summaryService = nil
 		}
 
 		delete(a.shcservices, svc.GetId())

@@ -143,3 +143,4 @@ type RequestTakeService struct {
 }
 type RequestReTakeService struct {
 }
+type RequestSummaryService struct{}

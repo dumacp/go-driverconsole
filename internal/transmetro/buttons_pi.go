@@ -60,7 +60,7 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 					fmt.Printf("data SELECT_PROG_VEH: %s\n", v)
 					num := binary.LittleEndian.Uint16(v)
 					fmt.Printf("num SELECT_PROG_VEH: %d\n", num)
-					if a.isItineraryProgEnable {
+					if !a.isItineraryProgEnable {
 						if len(a.companyShiftsShow) > int(num) {
 							fmt.Printf("companySchServices: %v\n", a.companyShiftsShow[num])
 							a.selectedShift = a.companyShiftsShow[num].Shift
@@ -210,12 +210,14 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 				if err := a.uix.SetLed(AddrScreenMore, false); err != nil {
 					return fmt.Errorf("error setLed (AddrScreenMore): %s", err)
 				}
+				a.ctx.Send(a.ctx.Self(), &RequestSummaryService{})
 				if err := a.uix.Screen(int(ui.ADDITIONALS_SCREEN), switchScreen); err != nil {
 					return fmt.Errorf("event SCREEN error: %s", err)
 				}
-				if err := a.uix.ShowStats(); err != nil {
-					return fmt.Errorf("event ShowStats error: %s", err)
-				}
+
+				// if err := a.uix.ShowStats(); err != nil {
+				// 	return fmt.Errorf("event ShowStats error: %s", err)
+				// }
 			case AddrExitSwitch:
 				// release button
 				if v, ok := evt.Value.(bool); !ok || v {
@@ -293,6 +295,69 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 					// if err := a.uix.Driver(fmt.Sprintf(" %s", data)); err != nil {
 					// 	return fmt.Errorf("error Driver: %s", err)
 					// }
+				}
+			case AddrSwitchStep:
+				if v, ok := evt.Value.(bool); ok {
+					if !v {
+						fmt.Println("/////////// step enable: true ////////////")
+						a.enableStep = true
+						if a.cancelStep != nil {
+							a.cancelStep()
+						}
+
+						go func() {
+
+							contxt, cancel := context.WithCancel(context.Background())
+							defer cancel()
+							a.cancelStep = cancel
+
+							func() {
+								for {
+									timer := time.NewTimer(10 * time.Second)
+									defer timer.Stop()
+
+									renewcontxt, renewcancel := context.WithCancel(context.TODO())
+									defer renewcancel()
+									a.renewStep = renewcancel
+
+									select {
+									case <-contxt.Done():
+										return
+									case <-renewcontxt.Done():
+										if !timer.Stop() {
+											select {
+											case <-timer.C:
+											case <-time.After(30 * time.Millisecond):
+											}
+										}
+										timer.Reset(10 * time.Second)
+									case <-timer.C:
+										return
+									}
+
+								}
+							}()
+							a.enableStep = false
+							fmt.Println("/////////// step enable: false ////////////")
+							a.uix.StepEnable(false)
+						}()
+					} else {
+						a.enableStep = false
+						if a.cancelStep != nil {
+							a.cancelStep()
+						}
+					}
+				}
+			case AddrSendStep:
+				// release button
+				if v, ok := evt.Value.(bool); !ok || v {
+					break
+				}
+				if a.enableStep {
+					a.ctx.Send(a.ctx.Self(), &StepMsg{})
+					if a.renewStep != nil {
+						a.renewStep()
+					}
 				}
 			default:
 				if evt.Error != nil {

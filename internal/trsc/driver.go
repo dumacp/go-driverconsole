@@ -23,7 +23,7 @@ func (a *App) setDriver(ctx actor.Context, msg *MsgSetDriver) error {
 		res, err := ctx.RequestFuture(a.pidSvc, &services.GetCompanyDriverMsg{
 			CompanyId: a.companyId,
 			DriverDoc: fmt.Sprintf("%d", msg.Driver),
-		}, 3*time.Second).Result()
+		}, 6*time.Second).Result()
 		if err != nil {
 			return fmt.Errorf("error request driver: %s", err)
 		}

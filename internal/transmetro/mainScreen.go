@@ -10,6 +10,32 @@ func (a *App) mainScreen() error {
 	if err := a.uix.MainScreen(); err != nil {
 		return fmt.Errorf("main screen error: %s", err)
 	}
+
+	if a.isItineraryProgEnable {
+		if err := a.uix.SetLed(AddrSwitchLang1, true); err != nil {
+			return fmt.Errorf("setLed error: %s", err)
+		}
+	} else {
+		if err := a.uix.SetLed(AddrSwitchLang1, false); err != nil {
+			return fmt.Errorf("setLed error: %s", err)
+		}
+	}
+	if a.hasCashInput {
+		if err := a.uix.SetLed(AddrShowStep, true); err != nil {
+			return fmt.Errorf("setLed error: %s", err)
+		}
+		if err := a.uix.WriteTextRawDisplay(AddrTextCashInputs, []string{"Pagos", "      Conductor"}); err != nil {
+			return fmt.Errorf("writeText cash error: %s", err)
+		}
+	} else {
+		if err := a.uix.SetLed(AddrShowStep, false); err != nil {
+			return fmt.Errorf("setLed error: %s", err)
+		}
+		if err := a.uix.WriteTextRawDisplay(AddrTextCashInputs, []string{"Contador", "      Pasajeros"}); err != nil {
+			return fmt.Errorf("writeText cash error: %s", err)
+		}
+	}
+
 	// if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
 	// 	return fmt.Errorf("electInput error: %s", err)
 	// }

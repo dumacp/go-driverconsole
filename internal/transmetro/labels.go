@@ -245,15 +245,15 @@ func Label2DisplayRegister(label int) display.Register {
 			Gap:    0,
 			Toogle: 0,
 		}
-	// case ui.STEP_ENABLE:
-	// 	return display.Register{
-	// 		Type:   display.LED,
-	// 		Addr:   AddrSwitchStep,
-	// 		Len:    0,
-	// 		Size:   0,
-	// 		Gap:    0,
-	// 		Toogle: 0,
-	// 	}
+	case ui.STEP_ENABLE:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrSwitchStep,
+			Len:    0,
+			Size:   0,
+			Gap:    0,
+			Toogle: 0,
+		}
 	case AddrEnterRuta:
 		return display.Register{
 			Type:   display.LED,
@@ -440,6 +440,42 @@ func Label2DisplayRegister(label int) display.Register {
 			Addr:   AddrCurrItineraryText,
 			Len:    1,
 			Size:   80,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrSwitchLang1:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrSwitchLang1,
+			Len:    0,
+			Size:   0,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrSwitchLang2:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrSwitchLang2,
+			Len:    0,
+			Size:   0,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrShowStep:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrShowStep,
+			Len:    0,
+			Size:   0,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrTextCashInputs:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrTextCashInputs,
+			Len:    1,
+			Size:   30,
 			Gap:    0,
 			Toogle: 0,
 		}

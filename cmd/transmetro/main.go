@@ -37,8 +37,10 @@ var debug bool
 var logStd bool
 var showversion bool
 var url string
+var hasCashInput bool
+var isItineraryProgEnable bool
 
-const version = "1.1.16_transmetro"
+const version = "1.2.17_transmetro"
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")
@@ -47,6 +49,8 @@ func init() {
 	flag.BoolVar(&debug, "debug", false, "debug")
 	flag.BoolVar(&logStd, "logStd", false, "send logs to stdout")
 	flag.BoolVar(&showversion, "version", false, "show version")
+	flag.BoolVar(&hasCashInput, "cash", false, "cash input")
+	flag.BoolVar(&isItineraryProgEnable, "itiprog", false, "itinerary prog enable")
 	flag.StringVar(&url, "url", "", fmt.Sprintf("example: %q, rest url", url_))
 }
 
@@ -185,6 +189,9 @@ func main() {
 
 				app.AddrEnterService,
 				app.AddrExitSwitch,
+
+				app.AddrSendStep,
+				app.AddrSwitchStep,
 			},
 			)
 			confDisplay = display.NewPiDisplay(app.Label2DisplayRegister)
@@ -200,6 +207,8 @@ func main() {
 			time.Sleep(3 * time.Second)
 
 			appinstance := app.NewApp(uii)
+			appinstance.SetCashInput(hasCashInput)
+			appinstance.SetItineraryProg(isItineraryProgEnable)
 			appinstance.RegisterActorService(pidSvc)
 			propsApp := actor.PropsFromFunc(appinstance.Receive)
 			pidApp, err = ctx.SpawnNamed(propsApp, "app")

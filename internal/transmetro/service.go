@@ -2,6 +2,7 @@ package app
 
 import (
 	"reflect"
+	"time"
 
 	"github.com/dumacp/go-schservices/api/services"
 )
@@ -58,6 +59,8 @@ func UpdateService(prev, current *services.ScheduleService) *services.ScheduleSe
 	sourceValue := reflect.ValueOf(current).Elem()
 	destinationValue := reflect.ValueOf(prev).Elem()
 
+	zeroTime := time.UnixMilli(0)
+
 	for i := 0; i < sourceValue.NumField(); i++ {
 		sourceFieldValue := sourceValue.Field(i)
 		destinationFieldValue := destinationValue.Field(i)
@@ -66,10 +69,15 @@ func UpdateService(prev, current *services.ScheduleService) *services.ScheduleSe
 			// fmt.Println("can set")
 			// Check if the destination field is different from zero
 
-			if sourceFieldValue.IsZero() {
-				// if reflect.DeepEqual(destinationFieldValue.Interface(), reflect.Zero(destinationFieldValue.Type()).Interface()) {
-				// fmt.Println("skip")
-				continue // Skip updating if it's not zero
+			if sourceFieldValue.Type() == reflect.TypeOf(time.Time{}) {
+				t := sourceFieldValue.Interface().(time.Time)
+				if t.IsZero() || t.Equal(zeroTime) {
+					continue // Omitir si es un valor considerado "cero"
+				}
+			} else {
+				if sourceFieldValue.IsZero() {
+					continue // Skip updating if it's not zero
+				}
 			}
 
 			// fmt.Println("set", sourceFieldValue)
