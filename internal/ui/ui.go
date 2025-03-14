@@ -62,6 +62,7 @@ type UI interface {
 	WriteTextRawDisplay(label int, data []string) error
 	SetLed(label int, state bool) error
 	VerifyDisplay() error
+	ArrayPict(label int, num int) error
 	// Events() chan *Event
 }
 
@@ -530,6 +531,22 @@ func (u *ui) ServiceCurrentState(state int, prompt string) error {
 		return nil
 	}
 	return fmt.Errorf("deviationInputs with response form display")
+}
+
+func (u *ui) ArrayPict(label int, num int) error {
+	res, err := u.rootctx.RequestFuture(u.pid, &ArrayPictMsg{
+		Label: label,
+		Num:   num,
+	}, 3*time.Second).Result()
+	if err != nil {
+		return err
+	}
+	if v, ok := res.(*AckMsg); ok && v.Error != nil {
+		return v.Error
+	} else if ok {
+		return nil
+	}
+	return fmt.Errorf("arrayPict with response form display")
 }
 
 func (u *ui) ReadBytesRawDisplay(label int) ([]byte, error) {

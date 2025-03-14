@@ -62,7 +62,6 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 				prompt = strings.ToLower(fmt.Sprintf("servicio iniciado:\n%s: %s (%s)", ts.Format("01/02 15:04"),
 					svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
 			}
-
 		}
 		state := int(services.TimingState_value[svc.GetCheckpointTimingState().GetState()])
 		promtp := ""

@@ -16,7 +16,7 @@ func (a *App) takeshift() error {
 sobre el cual iniciar`)
 	}
 	selectedShift := a.selectedShift
-	a.selectedShift = nil
+	// a.selectedShift = nil
 
 	if a.pidSvc == nil {
 		return fmt.Errorf("service pid is nil")
@@ -67,6 +67,7 @@ sobre el cual iniciar`)
 				logs.LogWarn.Printf("textConfirmation error: %s", err)
 			}
 		}()
+		a.selectedShift = nil
 		return nil
 	}
 

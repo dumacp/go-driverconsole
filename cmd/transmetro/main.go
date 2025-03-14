@@ -40,7 +40,7 @@ var url string
 var hasCashInput bool
 var isItineraryProgEnable bool
 
-const version = "1.2.17_transmetro"
+const version = "1.2.18_transmetro"
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")

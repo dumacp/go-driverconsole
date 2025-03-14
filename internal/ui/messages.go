@@ -222,3 +222,9 @@ type WriteTextRawResponseMsg struct {
 type StepEnableMsg struct {
 	State bool
 }
+
+// ArrayPict is a message to write a number to a specific area on the Display.
+type ArrayPictMsg struct {
+	Label int
+	Num   int
+}

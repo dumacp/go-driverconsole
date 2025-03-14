@@ -481,6 +481,26 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		} else {
 			ctx.Respond(&ReadBytesRawResponseMsg{Label: msg.Label, Error: fmt.Errorf("unkown error")})
 		}
+	case *ArrayPictMsg:
+		if ctx.Sender() == nil {
+			break
+		}
+		res, err := ctx.RequestFuture(a.pidDisplay, &display.ArrayPictMsg{Label: msg.Label, Num: msg.Num}, 1*time.Second).Result()
+		if err != nil {
+			logs.LogWarn.Printf("arrayPictMsg error: %s", err)
+			break
+		}
+		if v, ok := res.(*display.AckMsg); ok {
+			if v.Error != nil {
+				ctx.Respond(&AckMsg{
+					Error: v.Error,
+				})
+				break
+			}
+			ctx.Respond(&AckMsg{Error: nil})
+		} else {
+			ctx.Respond(&AckMsg{Error: fmt.Errorf("unkown error (%T)", res)})
+		}
 	case *WriteTextRawMsg:
 		if ctx.Sender() == nil {
 			break

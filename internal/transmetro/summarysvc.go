@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/dumacp/go-schservices/api/services"
 )
@@ -70,7 +71,7 @@ func (a *App) summaryservice() error {
 			}
 			if len(a.summaryService.GetPrevVehicle().GetCheckpoint()) > 0 {
 				if err := a.uix.WriteTextRawDisplay(AddrPrevVehFooterText, []string{
-					fmt.Sprintf("%s: %d", a.summaryService.GetPrevVehicle().GetCheckpoint(), a.summaryService.GetPrevVehicle().GetTimeDiff()),
+					fmt.Sprintf("%s\nRegulación: %d", a.summaryService.GetPrevVehicle().GetCheckpoint(), a.summaryService.GetPrevVehicle().GetTimeDiff()),
 				}); err != nil {
 					return fmt.Errorf("error prev footer: %s", err)
 				}
@@ -84,13 +85,17 @@ func (a *App) summaryservice() error {
 			}
 			if len(a.summaryService.GetNextVehicle().GetCheckpoint()) > 0 {
 				if err := a.uix.WriteTextRawDisplay(AddrNextVehFooterText, []string{
-					fmt.Sprintf("%s: %d", a.summaryService.GetNextVehicle().GetCheckpoint(), a.summaryService.GetNextVehicle().GetTimeDiff()),
+					fmt.Sprintf("%s\nRegulación: %d", a.summaryService.GetNextVehicle().GetCheckpoint(), a.summaryService.GetNextVehicle().GetTimeDiff()),
 				}); err != nil {
 					return fmt.Errorf("error next footer: %s", err)
 				}
 			}
 		}
 		if a.summaryService.GetVehicle() != nil && len(a.summaryService.GetVehicle().GetPlate()) > 0 {
+			state := int(services.TimingState_value[a.summaryService.GetVehicle().GetTimingState()])
+			if err := a.uix.ArrayPict(ui.SERVICE_SUMMARY_STATE, state); err != nil {
+				return fmt.Errorf("error curr pict: %s", err)
+			}
 			if err := a.uix.WriteTextRawDisplay(AddrCurrVehHeaderText, []string{
 				fmt.Sprintf("%s (%s)", a.summaryService.GetVehicle().GetPlate(), a.summaryService.GetVehicle().GetNumber())}); err != nil {
 
@@ -98,7 +103,14 @@ func (a *App) summaryservice() error {
 			}
 			if len(a.summaryService.GetVehicle().GetCheckpoint()) > 0 {
 				if err := a.uix.WriteTextRawDisplay(AddrCurrVehFooterText, []string{
-					fmt.Sprintf("%s: %d", a.summaryService.GetVehicle().GetCheckpoint(), a.summaryService.GetVehicle().GetTimeDiff()),
+					fmt.Sprintf("%s\nRegulación: %d", a.summaryService.GetVehicle().GetCheckpoint(), a.summaryService.GetVehicle().GetTimeDiff()),
+				}); err != nil {
+					return fmt.Errorf("error curr footer: %s", err)
+				}
+			}
+			if len(a.summaryService.GetVehicle().GetCheckpoint()) > 0 {
+				if err := a.uix.WriteTextRawDisplay(AddrCurrCheckpointText, []string{
+					a.summaryService.GetVehicle().GetCheckpoint(),
 				}); err != nil {
 					return fmt.Errorf("error curr footer: %s", err)
 				}

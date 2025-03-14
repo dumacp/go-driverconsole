@@ -123,7 +123,7 @@ para el itinerario: %d`, msg.Itinerary)
 }
 
 func (a *App) listProgShitfs(msg *ListShiftsVeh) error {
-	if len(a.CompanyShiftsService) <= 0 {
+	if a.CompanyShiftsService == nil {
 		return nil
 	}
 	dataSlice := make([]string, 0)
@@ -184,8 +184,10 @@ func (a *App) listProgShitfs(msg *ListShiftsVeh) error {
 		dataSlice = append(dataSlice, cs[i].ResumeString)
 		a.companyShiftsShow = append(a.companyShiftsShow, cs[i])
 	}
+	fmt.Printf("dataslice: %v (len: %d)\n", dataSlice, len(dataSlice))
 	if len(dataSlice) < 9 {
-		for i := 0; i <= 9-len(dataSlice); i++ {
+		lensc := len(dataSlice)
+		for i := 0; i <= 9-lensc; i++ {
 			size := Label2DisplayRegister(ui.PROGRAMATION_VEH_TEXT).Size
 			// un string de tamaño size de espacios
 			spaces := strings.Repeat(" ", size)
@@ -193,7 +195,7 @@ func (a *App) listProgShitfs(msg *ListShiftsVeh) error {
 		}
 	}
 
-	fmt.Printf("dataslice: %v\n", dataSlice)
+	fmt.Printf("dataslice: %v (len: %d)\n", dataSlice, len(dataSlice))
 	if len(dataSlice) > 0 {
 		if err := a.uix.ShowProgVeh(dataSlice...); err != nil {
 			return fmt.Errorf("event ShowProgVeh error: %s", err)
@@ -526,6 +528,8 @@ func (a *App) requestProgShifts(ctx actor.Context, msg *RequestShitfsVeh) error 
 					fmt.Printf("shifts services in company (%q): %d\n", a.companyId, len(cs))
 					a.CompanyShiftsService = cs
 				}
+			} else {
+				a.CompanyShiftsService = make(map[string]*services.ShiftService, 0)
 			}
 			ctx.Send(ctx.Self(), &ListShiftsVeh{
 				Shift: msg.Shift,

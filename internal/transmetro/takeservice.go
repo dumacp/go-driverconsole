@@ -20,7 +20,7 @@ func (a *App) takeservice() error {
 	if a.selectedService != nil {
 		selectedService = a.selectedService
 	}
-	a.selectedService = nil
+	// a.selectedService = nil
 	if a.pidSvc == nil {
 		return fmt.Errorf("service pid is nil")
 	}
@@ -86,6 +86,7 @@ func (a *App) takeservice() error {
 				logs.LogWarn.Printf("textConfirmation error: %s", err)
 			}
 		}()
+		a.selectedService = nil
 		return nil
 	}
 

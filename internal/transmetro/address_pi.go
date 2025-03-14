@@ -22,18 +22,19 @@ const (
 	AddrShowStep                  = 19
 	AddrLedReset                  = 20
 	// AddrLedBeep                   = 23
-	AddrTextDate             = 60
-	AddrTextRoute            = 100
-	AddrNumRoute             = 120
-	AddrTextDriver           = 140
-	AddrNumDriver            = 160
-	AddrNumCashInputs        = 84 // 80
-	AddrNumElectonicInputs   = 80 // 84
-	AddrNumDeviation         = 88
-	AddrTextCurrentService   = 700 //180
-	AddrTextCashInputs       = 760
-	AddrLedCurrentService    = 200
-	AddrLedSummaryService    = 4160
+	AddrTextDate           = 60
+	AddrTextRoute          = 100
+	AddrNumRoute           = 120
+	AddrTextDriver         = 140
+	AddrNumDriver          = 160
+	AddrNumCashInputs      = 84 // 80
+	AddrNumElectonicInputs = 80 // 84
+	AddrNumDeviation       = 88
+	AddrTextCurrentService = 700 //180
+	AddrTextCashInputs     = 760
+	AddrLedCurrentService  = 200
+	// AddrLedSummaryService    = 4160
+	AddrLedSummaryService    = 480
 	AddrTextCurrentItinerary = 220
 	AddrTextWarnPopup        = 300
 	AddrTextPopup            = 400
@@ -48,7 +49,6 @@ const (
 	AddrItineraryProgVehVerify = 2996
 	AddrCurrentSelectProgVeh   = 2998
 	AddrTextNotiAlarm          = 3000
-
 	// AddrAddBright              = 21
 	AddrSwitchLang1 = 21
 	AddrSwitchLang2 = 22
@@ -56,11 +56,12 @@ const (
 	AddrSwitchStep  = 25
 	AddrSendStep    = 24
 
-	AddrPrevVehHeaderText = 4100
-	AddrCurrVehHeaderText = 4140
-	AddrNextVehHeaderText = 4180
-	AddrPrevVehFooterText = 4220
-	AddrCurrVehFooterText = 4260
-	AddrNextVehFooterText = 4300
-	AddrCurrItineraryText = 4340
+	AddrPrevVehHeaderText  = 4100
+	AddrCurrVehHeaderText  = 4140
+	AddrNextVehHeaderText  = 4180
+	AddrPrevVehFooterText  = 4220
+	AddrCurrVehFooterText  = 4260
+	AddrNextVehFooterText  = 4300
+	AddrCurrItineraryText  = 4340
+	AddrCurrCheckpointText = 4420
 )
