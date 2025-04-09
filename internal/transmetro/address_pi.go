@@ -45,7 +45,7 @@ const (
 	AddrTextProgDriver         = 1000
 	AddrTextProgVeh            = 2000
 	AddrResumeSelectProgVeh    = 2600
-	AddrItineraryProgVeh       = 2994
+	AddrItineraryProgVeh       = 2960 // 2994
 	AddrItineraryProgVehVerify = 2996
 	AddrCurrentSelectProgVeh   = 2998
 	AddrTextNotiAlarm          = 3000
@@ -56,12 +56,12 @@ const (
 	AddrSwitchStep  = 25
 	AddrSendStep    = 24
 
-	AddrPrevVehHeaderText  = 4100
+	AddrPrevVehHeaderText  = 4180 // 4100
 	AddrCurrVehHeaderText  = 4140
-	AddrNextVehHeaderText  = 4180
-	AddrPrevVehFooterText  = 4220
+	AddrNextVehHeaderText  = 4100 // 4180
+	AddrPrevVehFooterText  = 4300 // 4220
 	AddrCurrVehFooterText  = 4260
-	AddrNextVehFooterText  = 4300
+	AddrNextVehFooterText  = 4220 // 4300
 	AddrCurrItineraryText  = 4340
 	AddrCurrCheckpointText = 4420
 )

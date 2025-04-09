@@ -126,6 +126,7 @@ func (a *App) listProgShitfs(msg *ListShiftsVeh) error {
 	if a.CompanyShiftsService == nil {
 		return nil
 	}
+	fmt.Printf("list shift: %s\n", msg.Shift)
 	dataSlice := make([]string, 0)
 	// sliceSvc := make([]*CompanySchService, 0)
 
@@ -144,7 +145,7 @@ func (a *App) listProgShitfs(msg *ListShiftsVeh) error {
 		if v.GetItinerary() == nil {
 			continue
 		}
-		if len(msg.Shift) > 0 && v.GetShift() != msg.Shift {
+		if len(msg.Shift) > 0 && msg.Shift != "0" && v.GetShift() != msg.Shift {
 			continue
 		}
 		ts := time.UnixMilli(v.GetNextServiceTimeStamp())

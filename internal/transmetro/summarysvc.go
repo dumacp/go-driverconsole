@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/dumacp/go-driverconsole/internal/ui"
@@ -76,6 +77,21 @@ func (a *App) summaryservice() error {
 					return fmt.Errorf("error prev footer: %s", err)
 				}
 			}
+		} else {
+			sizeHeader := Label2DisplayRegister(AddrPrevVehHeaderText).Size
+			spacesHeader := strings.Repeat(" ", sizeHeader)
+			if err := a.uix.WriteTextRawDisplay(AddrPrevVehHeaderText, []string{
+				spacesHeader,
+			}); err != nil {
+				return fmt.Errorf("error prev header: %s", err)
+			}
+			sizeFooter := Label2DisplayRegister(AddrPrevVehFooterText).Size
+			spacesFooter := strings.Repeat(" ", sizeFooter)
+			if err := a.uix.WriteTextRawDisplay(AddrPrevVehFooterText, []string{
+				spacesFooter,
+			}); err != nil {
+				return fmt.Errorf("error prev footer: %s", err)
+			}
 		}
 		if a.summaryService.GetNextVehicle() != nil && len(a.summaryService.GetNextVehicle().GetPlate()) > 0 {
 			if err := a.uix.WriteTextRawDisplay(AddrNextVehHeaderText, []string{
@@ -89,6 +105,21 @@ func (a *App) summaryservice() error {
 				}); err != nil {
 					return fmt.Errorf("error next footer: %s", err)
 				}
+			}
+		} else {
+			sizeHeader := Label2DisplayRegister(AddrNextVehHeaderText).Size
+			spacesHeader := strings.Repeat(" ", sizeHeader)
+			if err := a.uix.WriteTextRawDisplay(AddrNextVehHeaderText, []string{
+				spacesHeader,
+			}); err != nil {
+				return fmt.Errorf("error next header: %s", err)
+			}
+			sizeFooter := Label2DisplayRegister(AddrNextVehFooterText).Size
+			spacesFooter := strings.Repeat(" ", sizeFooter)
+			if err := a.uix.WriteTextRawDisplay(AddrNextVehFooterText, []string{
+				spacesFooter,
+			}); err != nil {
+				return fmt.Errorf("error next footer: %s", err)
 			}
 		}
 		if a.summaryService.GetVehicle() != nil && len(a.summaryService.GetVehicle().GetPlate()) > 0 {
@@ -114,6 +145,30 @@ func (a *App) summaryservice() error {
 				}); err != nil {
 					return fmt.Errorf("error curr footer: %s", err)
 				}
+			}
+		} else {
+			state := int(services.TimingState_NOT_APPLICABLE)
+			if err := a.uix.ArrayPict(ui.SERVICE_SUMMARY_STATE, state); err != nil {
+				return fmt.Errorf("error curr pict: %s", err)
+			}
+			if err := a.uix.WriteTextRawDisplay(AddrCurrVehHeaderText, []string{
+				"Sin vehículo",
+			}); err != nil {
+				return fmt.Errorf("error curr header: %s", err)
+			}
+			size := Label2DisplayRegister(AddrCurrVehHeaderText).Size
+			spaces := strings.Repeat(" ", size)
+			if err := a.uix.WriteTextRawDisplay(AddrCurrVehFooterText, []string{
+				spaces,
+			}); err != nil {
+				return fmt.Errorf("error curr footer: %s", err)
+			}
+			sizeCheckpoint := Label2DisplayRegister(AddrCurrCheckpointText).Size
+			spacesCheckpoint := strings.Repeat(" ", sizeCheckpoint)
+			if err := a.uix.WriteTextRawDisplay(AddrCurrCheckpointText, []string{
+				spacesCheckpoint,
+			}); err != nil {
+				return fmt.Errorf("error curr checkpoint: %s", err)
 			}
 		}
 		if err := a.uix.WriteTextRawDisplay(AddrCurrItineraryText, []string{
