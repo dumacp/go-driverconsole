@@ -5,23 +5,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/dumacp/go-schservices/api/services"
 )
 
-func (a *App) showCurrentService(svc *services.ScheduleService) {
+func (a *App) viewCurrentService(svc *services.ScheduleService) {
 
 	// changeCurrentService := false
 	state := svc.GetState()
 	if len(state) > 0 {
-		if v, ok := a.shcservices[svc.GetId()]; ok {
-			UpdateService(v, svc)
-			fmt.Printf("////// update: %v\n", v)
-		} else {
-			a.shcservices[svc.GetId()] = svc
-		}
-		svc = a.shcservices[svc.GetId()]
 		if svc.GetScheduleDateTime() <= 0 {
 			svc.ScheduleDateTime = time.Now().UnixMilli()
 		}
@@ -33,17 +25,6 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 		}
 		a.companySchServices[svc.GetId()] = svc
 
-		if !strings.EqualFold(state, svc.GetState()) {
-			data := strings.ToLower(fmt.Sprintf(" %s: (%d) %s (%s)", time.Now().Format("01/02 15:04"),
-				svc.GetItinerary().GetId(), svc.GetItinerary().GetName(), svc.GetState()))
-			a.notif = append(a.notif, data)
-			max := Label2DisplayRegister(ui.NOTIFICATIONS_ALARM_TEXT).Len
-			if len(a.notif) > max {
-				copy(a.notif, a.notif[1:])
-				a.notif = a.notif[:len(a.notif)-1]
-			}
-			fmt.Printf("notif len: %d, %v\n", len(a.notif), a.notif)
-		}
 	}
 
 	prompt := ""
@@ -110,31 +91,14 @@ func (a *App) showCurrentService(svc *services.ScheduleService) {
 			// prompt = strings.ToLower(fmt.Sprintf("servicio iniciado:\n%s: %s (%s)", ts.Format("01/02 15:04"),
 			svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
 	} else if state == services.State_WAITING_TO_ARRIVE_TO_STARTING_POINT.String() {
-		if a.currentService == nil || a.currentService.GetState() == services.State_ENDED.String() ||
-			a.currentService.GetState() == services.State_ABORTED.String() ||
-			a.currentService.GetState() == services.State_CANCELLED.String() ||
-			a.currentService.GetState() == services.State_UNKNOWN.String() ||
-			a.currentService.GetState() == services.State_SCHEDULED.String() {
-			a.currentService = svc
-			ts := time.UnixMilli(svc.GetScheduleDateTime())
-			prompt = strings.ToLower(fmt.Sprintf("próximo servicio (esperando):\n%s: %s (%s)", ts.Format("01/02 15:04"),
-				svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
-		} else if a.currentService.GetState() == services.State_STARTED.String() {
-			a.nextService = svc
-		} else {
-			a.nextService = nil
-		}
+		ts := time.UnixMilli(svc.GetScheduleDateTime())
+		prompt = strings.ToLower(fmt.Sprintf("próximo servicio (esperando):\n%s: %s (%s)", ts.Format("01/02 15:04"),
+			svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
 	} else if state == services.State_SCHEDULED.String() {
 		// a.currentService = v
-		if a.currentService == nil || a.currentService.GetState() == services.State_ENDED.String() ||
-			a.currentService.GetState() == services.State_ABORTED.String() ||
-			a.currentService.GetState() == services.State_CANCELLED.String() ||
-			a.currentService.GetState() == services.State_UNKNOWN.String() {
-			a.currentService = svc
-			ts := time.UnixMilli(svc.GetScheduleDateTime())
-			prompt = strings.ToLower(fmt.Sprintf("próximo servicio:\n%s: %s (%s)", ts.Format("01/02 15:04"),
-				svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
-		}
+		ts := time.UnixMilli(svc.GetScheduleDateTime())
+		prompt = strings.ToLower(fmt.Sprintf("próximo servicio:\n%s: %s (%s)", ts.Format("01/02 15:04"),
+			svc.GetItinerary().GetName(), svc.GetRoute().GetCode()))
 	} else if state == services.State_ENDED.String() {
 		// a.currentService = v
 		ts := time.UnixMilli(svc.GetScheduleDateTime())

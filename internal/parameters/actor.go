@@ -9,8 +9,8 @@ import (
 	"github.com/dumacp/go-params/pkg/params"
 )
 
-func NewActor(id string, timeout time.Duration) actor.Actor {
-	a := params.Actor(id, false, params.NatsActor(id, gwiot.NewDiscoveryActor("dconsolediscovery/params",
+func NewActor(id, databasename string, timeout time.Duration) actor.Actor {
+	a := params.Actor(id, databasename, false, params.NatsActor(id, gwiot.NewDiscoveryActor("dconsolediscovery/params",
 		pubsub.Subscribe,
 		pubsub.Publish)))
 	return a

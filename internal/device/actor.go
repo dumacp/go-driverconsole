@@ -69,7 +69,7 @@ func (a *Actor) Receive(ctx actor.Context) {
 		if err := a.fmachinae.Event(a.contxt, eStarted); err != nil {
 			if time.Since(a.lastError) > 3*time.Minute {
 				a.lastError = time.Now()
-				logs.LogError.Printf("open device error: %s", err)
+				logs.LogError.Printf("open device errorn: %s", err)
 			}
 			time.Sleep(3 * time.Second)
 			ctx.Send(ctx.Self(), &StartDevice{})

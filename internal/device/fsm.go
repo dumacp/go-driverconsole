@@ -65,7 +65,7 @@ func (a *Actor) Fsm() {
 				if err == nil {
 					break
 				}
-				fmt.Printf("open device error: %s\n", err)
+				fmt.Printf("open device errorm: %s\n", err)
 				a.dev.Close()
 			}
 			if err != nil {

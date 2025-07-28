@@ -33,13 +33,18 @@ func NewActor(dev, disp actor.Actor) actor.Actor {
 }
 
 func (a *ActorUI) Receive(ctx actor.Context) {
-	fmt.Printf("message: %q --> %q, %T\n", func() string {
-		if ctx.Sender() == nil {
-			return ""
-		} else {
-			return ctx.Sender().GetId()
-		}
-	}(), ctx.Self().GetId(), ctx.Message())
+	switch ctx.Message().(type) {
+	case *VerifyDisplayMsg:
+	case *GpsMsg:
+	default:
+		fmt.Printf("message: %q --> %q, %T\n", func() string {
+			if ctx.Sender() == nil {
+				return ""
+			} else {
+				return ctx.Sender().GetId()
+			}
+		}(), ctx.Self().GetId(), ctx.Message())
+	}
 	switch msg := ctx.Message().(type) {
 	case *actor.Started:
 		propsDev := actor.PropsFromFunc(a.actorDevice.Receive)

@@ -29,31 +29,34 @@ func (a *App) listProg(msg *ListProgVeh) error {
 		return ss[i].GetScheduleDateTime() < ss[j].GetScheduleDateTime()
 	})
 
-	slices.Reverse(ss)
+	// slices.Reverse(ss)
 
-	fmt.Printf("services oldest: %s\n", time.UnixMilli(ss[len(ss)-1].GetScheduleDateTime()))
-	fmt.Printf("services newest: %s\n", time.UnixMilli(ss[0].GetScheduleDateTime()))
+	// fmt.Printf("services oldest: %s\n", time.UnixMilli(ss[len(ss)-1].GetScheduleDateTime()))
+	// fmt.Printf("services newest: %s\n", time.UnixMilli(ss[0].GetScheduleDateTime()))
 
-	untilSlice := make([]*services.ScheduleService, 0)
-	for _, v := range ss {
-		ts := time.UnixMilli(v.GetScheduleDateTime())
-		if time.Until(ts) < 0 {
-			break
-		}
-		untilSlice = append(untilSlice, v)
-	}
+	// untilSlice := make([]*services.ScheduleService, 0)
+	// for _, v := range ss {
+	// 	ts := time.UnixMilli(v.GetScheduleDateTime())
+	// 	if time.Until(ts) < 0 {
+	// 		break
+	// 	}
+	// 	untilSlice = append(untilSlice, v)
+	// }
+
+	untilSlice := getBalancedSchSlice(ss, 10)
+
 	fmt.Printf("services until: %d\n", len(untilSlice))
 
 	if len(untilSlice) <= 0 {
 		return fmt.Errorf("no hay servicios disponibles")
 	}
 
-	fmt.Printf("services until oldest: %s\n", time.UnixMilli(untilSlice[len(untilSlice)-1].GetScheduleDateTime()))
-	fmt.Printf("services until newest: %s\n", time.UnixMilli(untilSlice[0].GetScheduleDateTime()))
+	fmt.Printf("services until newest: %s\n", time.UnixMilli(untilSlice[len(untilSlice)-1].GetScheduleDateTime()))
+	fmt.Printf("services until oldest: %s\n", time.UnixMilli(untilSlice[0].GetScheduleDateTime()))
 
 	// a.companySchServicesShow = make([]*CompanySchService, 0)
 
-	slices.Reverse(untilSlice)
+	// slices.Reverse(untilSlice)
 
 	for _, v := range untilSlice {
 		// v := untilSlice[len(untilSlice)-1-i]
@@ -410,6 +413,11 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 
 	slices.Reverse(ss)
 
+	if len(ss) > 0 {
+		fmt.Printf("services sch oldest: %s\n", time.UnixMilli(ss[len(ss)-1].GetScheduleDateTime()))
+		fmt.Printf("services sch newest: %s\n", time.UnixMilli(ss[0].GetScheduleDateTime()))
+	}
+
 	untilSlice := make([]*services.ScheduleService, 0)
 	for _, v := range ss {
 		ts := time.UnixMilli(v.GetScheduleDateTime())
@@ -432,7 +440,7 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 		if msg.Itinerary > 0 && v.GetItinerary().GetId() != int32(msg.Itinerary) {
 			continue
 		}
-		if len(msg.DriverDocument) > 0 && v.GetDriver().GetDocument() != msg.DriverDocument {
+		if len(msg.DriverDocument) > 0 && v.GetDriver().GetDocumentId() != msg.DriverDocument {
 			continue
 		}
 		ts := time.UnixMilli(v.GetScheduleDateTime())
@@ -573,6 +581,47 @@ func getBalancedSlice(sc []*services.ShiftService, maxResults int) []*services.S
 		// Agregar elementos alternando pasado y futuro
 		if left >= 0 && (right >= len(sc) || len(result)%2 == 0) {
 			result = append([]*services.ShiftService{sc[left]}, result...)
+			left--
+		} else if right < len(sc) {
+			result = append(result, sc[right])
+			right++
+		}
+	}
+
+	return result
+}
+
+// Función para encontrar el slice balanceado
+func getBalancedSchSlice(sc []*services.ScheduleService, maxResults int) []*services.ScheduleService {
+	if len(sc) == 0 {
+		return nil
+	}
+
+	// Ordenar por Timestamp (de más antiguo a más reciente)
+	sort.Slice(sc, func(i, j int) bool {
+		return time.UnixMilli(sc[i].GetScheduleDateTime()).Before(time.UnixMilli(sc[j].GetScheduleDateTime()))
+	})
+
+	// Obtener el tiempo actual
+	now := time.Now()
+
+	// Encontrar el índice del elemento más cercano a `now`
+	closestIdx := 0
+	for i, svc := range sc {
+		if time.UnixMilli(svc.GetScheduleDateTime()).After(now) {
+			break
+		}
+		closestIdx = i
+	}
+
+	// Equilibrar elementos en el pasado y futuro
+	result := []*services.ScheduleService{}
+	left, right := closestIdx, closestIdx+1
+
+	for len(result) < maxResults && (left >= 0 || right < len(sc)) {
+		// Agregar elementos alternando pasado y futuro
+		if left >= 0 && (right >= len(sc) || len(result)%2 == 0) {
+			result = append([]*services.ScheduleService{sc[left]}, result...)
 			left--
 		} else if right < len(sc) {
 			result = append(result, sc[right])

@@ -1,6 +1,7 @@
 package device
 
 import (
+	"fmt"
 	"time"
 
 	"github.com/dumacp/matrixorbital/gtt43a"
@@ -20,6 +21,7 @@ func (d *devGtt50) Init() (interface{}, error) {
 	dev := gtt43a.NewDisplay(opts)
 
 	if err := dev.Open(); err != nil {
+		fmt.Printf("error opening GTT50 device on port %s: %s\n", d.port, err)
 		return nil, err
 	}
 	return dev, nil

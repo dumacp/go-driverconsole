@@ -69,6 +69,7 @@ type App struct {
 	companyShiftsShow      []*CompanyShift
 	vehicleSchServicesShow []*CompanySchService
 	notif                  []string
+	vehicleMessages        []string
 	uix                    ui.UI
 	ctx                    actor.Context
 	db                     *actor.PID
@@ -133,6 +134,18 @@ func subscribe(ctx actor.Context, evs *eventstream.EventStream) *eventstream.Sub
 
 func (a *App) Receive(ctx actor.Context) {
 	a.ctx = ctx
+	switch ctx.Message().(type) {
+	case *MsgUpdateTime:
+	case *tickMsg:
+	default:
+		fmt.Printf("message: %q --> %q, %T\n", func() string {
+			if ctx.Sender() == nil {
+				return ""
+			} else {
+				return ctx.Sender().GetId()
+			}
+		}(), ctx.Self().GetId(), ctx.Message())
+	}
 	switch msg := ctx.Message().(type) {
 	case *params.Parameters:
 		if msg != nil {
@@ -151,13 +164,6 @@ func (a *App) Receive(ctx actor.Context) {
 }
 
 func (a *App) Starting(ctx actor.Context) {
-	fmt.Printf("message: %q --> %q, %T\n", func() string {
-		if ctx.Sender() == nil {
-			return ""
-		} else {
-			return ctx.Sender().GetId()
-		}
-	}(), ctx.Self().GetId(), ctx.Message())
 
 	switch ctx.Message().(type) {
 
@@ -192,13 +198,6 @@ func (a *App) Starting(ctx actor.Context) {
 }
 
 func (a *App) Runstate(ctx actor.Context) {
-	fmt.Printf("message: %q --> %q, %T\n", func() string {
-		if ctx.Sender() == nil {
-			return ""
-		} else {
-			return ctx.Sender().GetId()
-		}
-	}(), ctx.Self().GetId(), ctx.Message())
 
 	switch msg := ctx.Message().(type) {
 	case *startMsg:
@@ -260,9 +259,9 @@ func (a *App) Runstate(ctx actor.Context) {
 			return msg
 		})
 
-		contxt, cancel := context.WithCancel(context.Background())
-		a.cancel = cancel
-		go tick(contxt, ctx, TIMEOUT)
+		// contxt, cancel := context.WithCancel(context.Background())
+		// a.cancel = cancel
+		// go tick(contxt, ctx, TIMEOUT)
 
 		a.isDisplayEnable = true
 
@@ -292,6 +291,19 @@ func (a *App) Runstate(ctx actor.Context) {
 		}
 		a.uix.Gps(a.gps)
 		a.uix.Network(a.network)
+		if len(a.routeString) > 0 {
+			if err := a.uix.Route(a.routeString); err != nil {
+				logs.LogWarn.Printf("route error: %s", err)
+			}
+		}
+		if a.driver != nil && len(a.driver.GetDocumentId()) > 0 {
+			if err := a.uix.Driver(a.driver.GetDocumentId()); err != nil {
+				logs.LogWarn.Printf("driver error: %s", err)
+			}
+		}
+		if a.currentService != nil {
+			a.viewCurrentService(a.currentService)
+		}
 
 	case *actor.Stopping:
 		if a.cancel != nil {
@@ -322,9 +334,6 @@ func (a *App) Runstate(ctx actor.Context) {
 		}
 		if a.db != nil {
 			ctx.RequestFuture(a.db, &database.MsgCloseDB{}, 100*time.Millisecond).Wait()
-		}
-		if a.cancel != nil {
-			a.cancel()
 		}
 		if a.cancelStep != nil {
 			a.cancelStep()
@@ -452,8 +461,20 @@ func (a *App) Runstate(ctx actor.Context) {
 		ctx.Send(ctx.Self(), &MsgShowCounters{})
 	case *MsgShowCounters:
 		if a.uix != nil {
-			if err := a.uix.ElectronicInputs(int32(a.cashInput + a.electInput)); err != nil {
-				logs.LogWarn.Printf("inputs error: %s", err)
+			// if err := a.uix.ElectronicInputs(int32(a.cashInput + a.electInput)); err != nil {
+			// 	logs.LogWarn.Printf("inputs error: %s", err)
+			// }
+			if !a.hasCashInput {
+				if err := a.uix.ElectronicInputs(int32(a.cashInput + a.electInput)); err != nil {
+					logs.LogWarn.Printf("inputs error: %s", err)
+				}
+			} else {
+				if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
+					logs.LogWarn.Printf("cashInput error: %s", err)
+				}
+				if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+					logs.LogWarn.Printf("inputs error: %s", err)
+				}
 			}
 		}
 	case *ValidationData:
@@ -462,11 +483,23 @@ func (a *App) Runstate(ctx actor.Context) {
 		a.cashInput += msg.CashInputs
 		a.electInput += msg.ElectInputs
 		if a.uix != nil {
-			if err := a.uix.ElectronicInputs(int32(a.cashInput + a.electInput)); err != nil {
-				logs.LogWarn.Printf("inputs error: %s", err)
+			// 	if err := a.uix.ElectronicInputs(int32(a.cashInput + a.electInput)); err != nil {
+			// 		logs.LogWarn.Printf("inputs error: %s", err)
+			// 	}
+			// }
+			if !a.hasCashInput {
+				if err := a.uix.ElectronicInputs(int32(a.cashInput + a.electInput)); err != nil {
+					logs.LogWarn.Printf("inputs error: %s", err)
+				}
+			} else {
+				if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
+					logs.LogWarn.Printf("cashInput error: %s", err)
+				}
+				if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+					logs.LogWarn.Printf("inputs error: %s", err)
+				}
 			}
 		}
-
 	case *MsgDoors:
 		if len(msg.Value) <= 0 {
 			break
@@ -561,7 +594,7 @@ func (a *App) Runstate(ctx actor.Context) {
 			contxt, cancel := context.WithCancel(context.TODO())
 			a.cancelPop = cancel
 			if err := a.uix.TextConfirmationPopup(
-				"entrada confirmada"); err != nil {
+				string(msg.Text)); err != nil {
 				logs.LogWarn.Printf("textConfirmation error: %s", err)
 			}
 			go func() {
@@ -627,7 +660,26 @@ func (a *App) Runstate(ctx actor.Context) {
 		}
 	case *RequestShitfsVeh:
 		if err := a.requestProgShifts(ctx, msg); err != nil {
-			logs.LogWarn.Println("requestShifts error: ", err)
+			// logs.LogWarn.Println("requestShifts error: ", err)
+			if err := a.uix.TextWarningPopup(fmt.Sprintf("%s\n", err)); err != nil {
+				logs.LogWarn.Printf("textWarningPopup error: %s", err)
+			}
+			if a.cancelPop != nil {
+				a.cancelPop()
+			}
+			contxt, cancel := context.WithCancel(context.TODO())
+			a.cancelPop = cancel
+			go func() {
+				defer cancel()
+				select {
+				case <-contxt.Done():
+				case <-time.After(4 * time.Second):
+				}
+				if err := a.uix.TextWarningPopupClose(); err != nil {
+					logs.LogWarn.Printf("textWarningPopupClose error: %s", err)
+				}
+			}()
+			logs.LogWarn.Println("request shift error: ", err)
 		}
 	case *ReleaseShitfsVeh:
 		if err := a.releaseshift(); err != nil {
@@ -812,6 +864,15 @@ func (a *App) Runstate(ctx actor.Context) {
 				}
 			}
 		}
+		if a.currentService != nil &&
+			len(a.currentService.GetDriver().GetDocumentId()) > 0 {
+			if a.driver == nil || a.driver.GetId() != a.currentService.GetDriver().GetId() {
+				if err := a.uix.Driver(a.currentService.GetDriver().DocumentId); err != nil {
+					logs.LogWarn.Printf("driver error: %s", err)
+				}
+				a.driver = a.currentService.GetDriver()
+			}
+		}
 	case *services.ServiceMsg:
 		fmt.Printf("******** (%T) %v **********\n", msg, msg)
 		svc := msg.GetUpdate()
@@ -858,7 +919,13 @@ func (a *App) Runstate(ctx actor.Context) {
 				fmt.Printf("error TextCurrentItinerary: %s\n", err)
 			}
 			a.lastService = a.currentService
-			a.currentService = nil
+			if a.nextService != nil {
+				a.currentService = a.nextService
+				a.nextService = nil
+				a.viewCurrentService(a.currentService)
+			} else {
+				a.currentService = nil
+			}
 			a.summaryService = nil
 		}
 
@@ -871,17 +938,18 @@ func (a *App) Runstate(ctx actor.Context) {
 	case *counterpass.CounterEvent:
 		fmt.Printf("counter event: %v\n", msg)
 		a.countInput += int32(msg.Inputs)
-		if msg.Inputs > 0 {
-			if err := a.uix.Inputs(int32(a.countInput)); err != nil {
-				logs.LogWarn.Printf("inputs error: %s", err)
-			}
-		}
+		// TODO: disable display
+		//if msg.Inputs > 0 {
+		//	if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+		//		logs.LogWarn.Printf("inputs error: %s", err)
+		//	}
+		//}
 		a.countOutput += int32(msg.Outputs)
-		if msg.Outputs > 0 {
-			if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
-				logs.LogWarn.Printf("outputs error: %s", err)
-			}
-		}
+		//if msg.Outputs > 0 {
+		//	if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+		//		logs.LogWarn.Printf("outputs error: %s", err)
+		//	}
+		//}
 
 	case *counterpass.CounterExtraEvent:
 		if len(msg.Text) > 0 {
@@ -918,9 +986,10 @@ func (a *App) Runstate(ctx actor.Context) {
 			// fmt.Printf("%d += %d - %d\n", a.countInput, a.totalCountInput, totalCountInput)
 			a.countInput += totalCountInput - a.totalCountInput
 			fmt.Printf("input count: %d\n", a.countInput)
-			if err := a.uix.Inputs(int32(a.countInput)); err != nil {
-				logs.LogWarn.Printf("inputs error: %s", err)
-			}
+			// TODO: disable display
+			// if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+			//	logs.LogWarn.Printf("inputs error: %s", err)
+			// }
 		}
 		a.totalCountInput = totalCountInput
 	case *messages.MsgGpsOk:
@@ -956,6 +1025,17 @@ func (a *App) Runstate(ctx actor.Context) {
 		if err := a.uix.ShowProgDriver(msg.Text...); err != nil {
 			logs.LogWarn.Printf("textProgVehicle error: %s", err)
 		}
+	case *TestVehicleMessages:
+		for _, v := range msg.Text {
+			a.AddVehicleMessage(&VehicleMessages{
+				Message:   v,
+				VehicleId: "test",
+			})
+		}
+		if err := a.ShowVehicleMessages(); err != nil {
+			logs.LogWarn.Printf("showVehicleMessages error: %s", err)
+		}
+
 	case *ErrorDisplay:
 		if msg.Error == nil {
 			break
@@ -1017,14 +1097,13 @@ func tick(contxt context.Context, ctx actor.Context, timeout time.Duration) {
 	go func() {
 
 		tn := time.Now()
-		var until time.Duration
+		// var until time.Duration
 		// TODO: comment out for test
 		// fmt.Printf("////////// time: %s\n", tRefg.Sub(time.Time{}))
-		t := time.Date(tn.Year(), tn.Month(), tn.Day(), 00, 01, 59, 0, tn.Location())
-		until = time.Until(t)
+		t := time.Date(tn.Year(), tn.Month(), tn.Day(), 00, 01, 59, 0, tn.Location()).Add(time.Hour * 24)
 		t2 := time.NewTicker(timeout)
 		defer t2.Stop()
-		t1 := time.NewTimer(until)
+		t1 := time.NewTimer(time.Until(t))
 		defer t1.Stop()
 		for {
 			select {
@@ -1032,6 +1111,9 @@ func tick(contxt context.Context, ctx actor.Context, timeout time.Duration) {
 				return
 			case <-t1.C:
 				ctxroot.Send(self, &tickResetCountersMsg{})
+				tn := time.Now()
+				t := time.Date(tn.Year(), tn.Month(), tn.Day(), 00, 01, 59, 0, tn.Location()).Add(time.Hour * 24)
+				t1.Reset(time.Until(t))
 			case <-t2.C:
 				ctxroot.Send(self, &tickMsg{})
 			}

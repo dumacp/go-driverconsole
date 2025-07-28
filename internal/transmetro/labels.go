@@ -34,7 +34,44 @@ import (
 // 	addrTimeDate int = 60
 // )
 
-func Label2DisplayRegister(label int) display.Register {
+var Label2DisplayRegister func(label int) display.Register
+
+func Label2DisplayRegisterLegacy(label int) display.Register {
+
+	switch label {
+	case ui.CASH_INPUTS_TEXT:
+		return display.Register{
+			Type:   display.INPUT_NUM,
+			Addr:   AddrNumElectonicInputs,
+			Len:    1,
+			Size:   4,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case ui.ELECT_INPUTS_TEXT:
+		return display.Register{
+			Type:   display.INPUT_NUM,
+			Addr:   AddrNumCashInputs,
+			Len:    1,
+			Size:   4,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case ui.SERVICE_CURRENT_STATE_TEXT:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   180,
+			Len:    1,
+			Size:   100,
+			Gap:    0,
+			Toogle: 0,
+		}
+	default:
+		return Label2DisplayRegisterDefault(label)
+	}
+}
+
+func Label2DisplayRegisterDefault(label int) display.Register {
 
 	switch label {
 	case ui.ROUTE_TEXT:
@@ -213,7 +250,16 @@ func Label2DisplayRegister(label int) display.Register {
 		return display.Register{
 			Type:   display.INPUT_TEXT,
 			Addr:   AddrTextNotiAlarm,
-			Len:    10,
+			Len:    6,
+			Size:   100,
+			Gap:    100,
+			Toogle: 0,
+		}
+	case ui.NOTIFICATIONS_VEHI_TEXT:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrTextVehiMessages,
+			Len:    6,
 			Size:   100,
 			Gap:    100,
 			Toogle: 0,
@@ -476,6 +522,24 @@ func Label2DisplayRegister(label int) display.Register {
 			Addr:   AddrTextCashInputs,
 			Len:    1,
 			Size:   30,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrAcceptError:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrAcceptError,
+			Len:    0,
+			Size:   0,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case AddrAcceptOk:
+		return display.Register{
+			Type:   display.LED,
+			Addr:   AddrAcceptOk,
+			Len:    0,
+			Size:   0,
 			Gap:    0,
 			Toogle: 0,
 		}

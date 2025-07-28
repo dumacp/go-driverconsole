@@ -115,6 +115,12 @@ type MsgShowCounters struct{}
 type TestTextProgDriver struct {
 	Text []string
 }
+type TestTextAlarmDriver struct {
+	Text []string
+}
+type TestTextMsgDriver struct {
+	Text []string
+}
 type ListProgDriver struct {
 	Itinerary      int
 	DriverDocument string
@@ -144,3 +150,6 @@ type RequestTakeService struct {
 type RequestReTakeService struct {
 }
 type RequestSummaryService struct{}
+type TestVehicleMessages struct {
+	Text []string
+}

@@ -29,13 +29,17 @@ func NewDisplayActor(disp Display) actor.Actor {
 }
 
 func (d *DisplayActor) Receive(ctx actor.Context) {
-	fmt.Printf("message: %q --> %q, %T, %v\n", func() string {
-		if ctx.Sender() == nil {
-			return ""
-		} else {
-			return ctx.Sender().GetId()
-		}
-	}(), ctx.Self().GetId(), ctx.Message(), ctx.Message())
+	switch ctx.Message().(type) {
+	case *VerifyMsg:
+	default:
+		fmt.Printf("message: %q --> %q, %T, %v\n", func() string {
+			if ctx.Sender() == nil {
+				return ""
+			} else {
+				return ctx.Sender().GetId()
+			}
+		}(), ctx.Self().GetId(), ctx.Message(), ctx.Message())
+	}
 	switch ctx.Message().(type) {
 	case *actor.Started:
 	case *actor.Stopping:

@@ -143,13 +143,17 @@ func (a *actorDisplay) InitState(ctx actor.Context) {
 
 func (a *actorDisplay) Runstate(ctx actor.Context) {
 	a.ctx = ctx
-	fmt.Printf("message (Runstate): %q --> %q, %T\n", func() string {
-		if ctx.Sender() == nil {
-			return ""
-		} else {
-			return ctx.Sender().GetId()
-		}
-	}(), ctx.Self().GetId(), ctx.Message())
+	switch ctx.Message().(type) {
+	case *VerifyMsg:
+	default:
+		fmt.Printf("message (Runstate): %q --> %q, %T\n", func() string {
+			if ctx.Sender() == nil {
+				return ""
+			} else {
+				return ctx.Sender().GetId()
+			}
+		}(), ctx.Self().GetId(), ctx.Message())
+	}
 	switch msg := ctx.Message().(type) {
 	case *actor.Stopping:
 		if a.stopTimeDate != nil {

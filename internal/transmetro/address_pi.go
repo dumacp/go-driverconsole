@@ -20,6 +20,7 @@ const (
 	AddrSelectItinerary           = 16
 	AddrExitSwitch                = 17
 	AddrShowStep                  = 19
+	AddrScreeMessages             = 18
 	AddrLedReset                  = 20
 	// AddrLedBeep                   = 23
 	AddrTextDate           = 60
@@ -55,6 +56,8 @@ const (
 	AddrLedBeep     = 23
 	AddrSwitchStep  = 25
 	AddrSendStep    = 24
+	AddrAcceptError = 26
+	AddrAcceptOk    = 27
 
 	AddrPrevVehHeaderText  = 4180 // 4100
 	AddrCurrVehHeaderText  = 4140
@@ -64,4 +67,6 @@ const (
 	AddrNextVehFooterText  = 4220 // 4300
 	AddrCurrItineraryText  = 4340
 	AddrCurrCheckpointText = 4420
+
+	AddrTextVehiMessages = 5000
 )

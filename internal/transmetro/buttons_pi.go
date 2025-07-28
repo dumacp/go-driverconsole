@@ -26,6 +26,21 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 			switchScreen := false
 			fmt.Printf("event: %v\n", evt.Value)
 			switch evt.KeyCode {
+			case AddrAcceptError:
+				if v, ok := evt.Value.(bool); !ok || v {
+					break
+				}
+				fmt.Println("/////////// AcceptError ////////////")
+				if err := a.uix.SetLed(AddrAcceptError, false); err != nil {
+					return fmt.Errorf("error setLed (AddrAcceptError): %s", err)
+				}
+			case AddrAcceptOk:
+				if v, ok := evt.Value.(bool); !ok || v {
+					break
+				}
+				if err := a.uix.SetLed(AddrAcceptOk, false); err != nil {
+					return fmt.Errorf("error setLed (AddrAcceptOk): %s", err)
+				}
 			case AddrEnterService:
 				if v, ok := evt.Value.(bool); !ok || v {
 					break
@@ -171,7 +186,9 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 				}
 
 				dataSlice := make([]string, 0)
-				for i := 0; i <= 10; i++ {
+				length := Label2DisplayRegister(ui.PROGRAMATION_VEH_TEXT).Len
+
+				for i := 0; i <= length; i++ {
 					size := Label2DisplayRegister(ui.PROGRAMATION_VEH_TEXT).Size
 					// un string de tamaño size de espacios
 					spaces := strings.Repeat(" ", size)
@@ -197,8 +214,27 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 				if err := a.uix.Screen(int(ui.ALARMS_SCREEN), switchScreen); err != nil {
 					return fmt.Errorf("event SCREEN error: %s", err)
 				}
+
+				dataSlice := make([]string, 0)
+
 				if len(a.notif) > 0 {
-					if err := a.uix.ShowNotifications(a.notif...); err != nil {
+					dataSlice = append(dataSlice, a.notif...)
+					length := Label2DisplayRegister(ui.NOTIFICATIONS_ALARM_TEXT).Len
+
+					for i := len(a.notif); i <= length; i++ {
+						size := Label2DisplayRegister(ui.NOTIFICATIONS_ALARM_TEXT).Size
+						// un string de tamaño size de espacios
+						spaces := strings.Repeat(" ", size)
+						dataSlice = append(dataSlice, spaces)
+					}
+					if len(dataSlice) > 0 {
+						if err := a.uix.ShowNotifications(dataSlice...); err != nil {
+							fmt.Printf("clean event ShowProgVeh error: %s", err)
+						}
+					}
+				}
+				if len(dataSlice) > 0 {
+					if err := a.uix.ShowNotifications(dataSlice...); err != nil {
 						return fmt.Errorf("event ShowNotifications error: %s", err)
 					}
 				}
