@@ -15,6 +15,7 @@ import (
 	"github.com/asynkron/protoactor-go/remote"
 
 	"github.com/dumacp/go-driverconsole/internal/buttons"
+	"github.com/dumacp/go-driverconsole/internal/constant"
 	"github.com/dumacp/go-driverconsole/internal/counterpass"
 	"github.com/dumacp/go-driverconsole/internal/ignition"
 	"github.com/dumacp/go-driverconsole/internal/itinerary"
@@ -67,6 +68,13 @@ func main() {
 		id = utils.Hostname()
 	} else {
 		utils.SetHostname(id)
+	}
+
+	// verify and create path database
+	if _, err := os.Stat(constant.DATABASE_PATH); os.IsNotExist(err) {
+		if err := os.MkdirAll(constant.DATABASE_PATH, 0755); err != nil {
+			log.Fatalf("error creating database directory: %s", err)
+		}
 	}
 
 	sys := actor.NewActorSystem()
@@ -164,7 +172,8 @@ func main() {
 			if err != nil {
 				log.Fatalf("service actor error: %s", err)
 			}
-			if _, err := ctx.SpawnNamed(actor.PropsFromFunc(parameters.NewActor(id, 60*time.Minute).Receive), "params-actor"); err != nil {
+			if _, err := ctx.SpawnNamed(actor.PropsFromFunc(parameters.NewActor(id,
+				fmt.Sprintf("%s/%s", constant.DATABASE_PATH, constant.DATABASE_PARAMS_NAME), 60*time.Minute).Receive), "params-actor"); err != nil {
 				log.Fatalf("params actor error: %s", err)
 			}
 			if _, err := ctx.SpawnNamed(actor.PropsFromFunc(itinerary.NewActor(id).Receive), "route-actor"); err != nil {

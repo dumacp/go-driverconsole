@@ -17,7 +17,7 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/counterpass"
 	"github.com/dumacp/go-driverconsole/internal/gps"
 	"github.com/dumacp/go-driverconsole/internal/service"
-	app "github.com/dumacp/go-driverconsole/internal/sibus"
+	app "github.com/dumacp/go-driverconsole/internal/transmetro"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-driverconsole/internal/utils"
 
@@ -106,8 +106,10 @@ func main() {
 			confDev := device.NewPiDevice(port, baud)
 
 			confButtons := buttons.NewConfPiButtons(0, 30, []int{
-				app.AddrAddBright, app.AddrEnterDriver, app.AddrEnterPaso, app.AddrEnterRuta,
-				app.AddrScreenAlarms, app.AddrSelectPaso, app.AddrSubBright, app.AddrScreenMore,
+				// app.AddrAddBright,
+				app.AddrEnterDriver, app.AddrEnterPaso, app.AddrEnterRuta,
+				app.AddrScreenAlarms, app.AddrSelectPaso, // app.AddrSubBright,
+				app.AddrScreenMore,
 				app.AddrScreenProgDriver, app.AddrScreenProgVeh, app.AddrScreenSwitch,
 				app.AddrSwitchStep, app.AddrSendStep},
 			)
@@ -284,17 +286,17 @@ func main() {
 					if pidGps != nil {
 						// root.RequestWithCustomSender(pidGps, &gps.MsgGpsStatusRequest{}, pidApp)
 					}
-					// root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 0})
+					root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 0})
 					// root.Send(pidApp, &app.MsgScreen{ID: 3, Switch: true})
 					// time.Sleep(3 * time.Second)
 
-					// root.Send(pidApp, &app.MsgConfirmationText{
-					// 	Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
-					// })
-					// go func() {
-					// 	time.Sleep(3 * time.Second)
-					// 	root.Send(pidApp, &app.MsgMainScreen{})
-					// }()
+					root.Send(pidApp, &app.MsgConfirmationText{
+						Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
+					})
+					go func() {
+						time.Sleep(3 * time.Second)
+						root.Send(pidApp, &app.MsgMainScreen{})
+					}()
 
 				}
 			}

@@ -136,13 +136,17 @@ func subscribe(ctx actor.Context, evs *eventstream.EventStream) {
 
 // Receive func Receive in actor
 func (a *Actor) Receive(ctx actor.Context) {
-	fmt.Printf("message: %q --> %q, %T\n", func() string {
-		if ctx.Sender() == nil {
-			return ""
-		} else {
-			return ctx.Sender().GetId()
-		}
-	}(), ctx.Self().GetId(), ctx.Message())
+	switch ctx.Message().(type) {
+	case *CounterMap:
+	default:
+		fmt.Printf("message: %q --> %q, %T\n", func() string {
+			if ctx.Sender() == nil {
+				return ""
+			} else {
+				return ctx.Sender().GetId()
+			}
+		}(), ctx.Self().GetId(), ctx.Message())
+	}
 
 	a.ctx = ctx
 	switch msg := ctx.Message().(type) {
@@ -165,6 +169,10 @@ func (a *Actor) Receive(ctx actor.Context) {
 			logs.LogError.Panic(err)
 		}
 	case *actor.Stopping:
+		pubsub.Unsubscribe("COUNTERSMAPDOOR")
+		pubsub.Unsubscribe("EVENTS/backcounter")
+		pubsub.Unsubscribe("EVENTS/counterevents")
+		pubsub.Unsubscribe("TURNSTILENE")
 		logs.LogWarn.Printf("\"%s\" - Stopped actor, reason -> %v", ctx.Self(), msg)
 	case *actor.Restarting:
 		logs.LogWarn.Printf("\"%s\" - Restarting actor, reason -> %v", ctx.Self(), msg)

@@ -61,6 +61,9 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 		a.pidDevice = pidDev
 		a.pidDisplay = pidDisplay
+	case *actor.Stopping:
+	case *actor.Terminated:
+		fmt.Printf("terminated: %q (%s)\n", msg.GetWho().GetId(), msg.GetWho().GetId())
 	case *device.MsgDevice:
 		a.dev = msg.Device
 		if a.pidDisplay != nil {

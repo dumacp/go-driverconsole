@@ -17,7 +17,7 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/buttons"
 	"github.com/dumacp/go-driverconsole/internal/counterpass"
 	"github.com/dumacp/go-driverconsole/internal/ignition"
-	app "github.com/dumacp/go-driverconsole/internal/sibus"
+	app "github.com/dumacp/go-driverconsole/internal/transmetro"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-driverconsole/internal/utils"
 
@@ -160,10 +160,14 @@ func main() {
 			confDev = device.NewPiDevice(port, baud)
 
 			confButtons = buttons.NewConfPiButtons(0, 30, []int{
-				app.AddrAddBright, app.AddrEnterDriver, app.AddrEnterPaso, app.AddrEnterRuta,
-				app.AddrScreenAlarms, app.AddrSelectPaso, app.AddrSubBright, app.AddrScreenMore,
+				// app.AddrAddBright,
+				app.AddrEnterDriver, app.AddrEnterPaso, app.AddrEnterRuta,
+				app.AddrScreenAlarms, app.AddrSelectPaso, // app.AddrSubBright,
+				app.AddrScreenMore,
 				app.AddrScreenProgDriver, app.AddrScreenProgVeh, app.AddrScreenSwitch,
-				app.AddrSwitchStep, app.AddrSendStep},
+				app.AddrSwitchStep, app.AddrSendStep,
+				app.AddrAcceptError, app.AddrAcceptOk,
+			},
 			)
 			confDisplay = display.NewPiDisplay(app.Label2DisplayRegister)
 
@@ -325,8 +329,8 @@ func main() {
 		tick0 := time.Tick(5 * time.Second)
 		// tick1 := time.Tick(30 * time.Second)
 		tick2 := time.Tick(3 * time.Second)
-		tick3 := time.Tick(30 * time.Second)
-		tick4 := time.Tick(330 * time.Second)
+		tick3 := time.Tick(20 * time.Second)
+		tick4 := time.Tick(25 * time.Second)
 
 		// toggle := false
 		for {
@@ -361,14 +365,22 @@ func main() {
 				// 		`2024/10/23 10:23:03 | Ruta: 255_D3 | Iti: Circular sin fin a ninguna parte`,
 				// 	},
 				// })
-				// root.Send(pidApp, &messages.MsgAppPaso{
-				// 	Value: 1,
-				// 	Code:  messages.MsgAppPaso_ELECTRONIC,
-				// })
+				root.Send(pidApp, &app.TestVehicleMessages{
+					Text: []string{
+						fmt.Sprintf(` %s | Ruta: 255_D1 | Iti: Circular sin fin a ninguna parte`, time.Now().Add(-2*time.Second).Format("2006/01/02 15:04:05")),
+						fmt.Sprintf(` %s | Ruta: 255_D2 | Iti: Circular sin fin
+a ninguna parte`, time.Now().Add(-1*time.Second).Format("2006/01/02 15:04:05")),
+						fmt.Sprintf(` %s | Ruta: 255_D3 | Iti: Circular sin fin
+a ninguna parte`, time.Now().Format("2006/01/02 15:04:05")),
+					},
+				})
 			case <-tick4:
-			// root.Send(pidApp, &messages.MsgAppError{
-			// 	Error: "entrada invalida",
-			// })
+				// root.Send(pidApp, &messages.MsgAppError{
+				// 	Error: "entrada invalida",
+				// })
+				root.Send(pidApp, &app.MsgConfirmationTextMainScreen{
+					Text: []byte(fmt.Sprintf("texto de prueba\nTIME: %s", time.Now().Format("2006/01/02 15:04:05"))),
+				})
 			case <-finish:
 				// TODO:
 				sys.Root.PoisonFuture(pidMain).Wait()

@@ -64,6 +64,9 @@ func (d *DisplayActor) InitState(ctx actor.Context) {
 		logs.LogInfo.Printf("actor to runState")
 		d.behavior.Become(d.RunState)
 	case *InitMsg:
+		if ctx.Sender() != nil {
+			ctx.Respond(&AckMsg{Error: fmt.Errorf("actor in InitState")})
+		}
 	default:
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: fmt.Errorf("actor in InitState")})

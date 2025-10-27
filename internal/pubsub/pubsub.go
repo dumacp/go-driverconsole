@@ -87,9 +87,24 @@ func Subscribe(topic string, pid *actor.PID, parse func([]byte) interface{}) err
 	return nil
 }
 
+func Unsubscribe(topic string) {
+	instance := getInstance(nil)
+	instance.mux.Lock()
+	defer instance.mux.Unlock()
+	if _, ok := instance.subscriptions[topic]; ok {
+		if err := instance.client.Unsubscribe(topic); err != nil {
+			logs.LogError.Printf("error unsubscribe topic %q: %s", topic, err)
+		}
+		delete(instance.subscriptions, topic)
+		logs.LogBuild.Printf("unsubscribed from topic -> %q", topic)
+	} else {
+		logs.LogBuild.Printf("not subscribed to topic -> %q", topic)
+	}
+}
+
 func (ps *pubsubActor) subscribe(topic string, subs *subscribeMSG) error {
 	handler := func(client mqtt.Client, m mqtt.Message) {
-		fmt.Printf("local topic -> %q, local payload - > %s\n", m.Topic(), m.Payload())
+		// fmt.Printf("local topic -> %q, local payload - > %s\n", m.Topic(), m.Payload())
 		m.Ack()
 		msg := subs.parse(m.Payload())
 		// logs.LogBuild.Printf("parse payload-> %s", msg)

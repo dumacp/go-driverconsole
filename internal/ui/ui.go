@@ -21,6 +21,7 @@ type ui struct {
 }
 
 type UI interface {
+	GetPID() *actor.PID
 	Init() error
 	Shutdown() error
 	MainScreen() error
@@ -73,6 +74,7 @@ func New(ctx actor.Context, dev, disp actor.Actor) (UI, error) {
 	if err != nil {
 		return nil, fmt.Errorf("init UI actor error: %s", err)
 	}
+	// pid := ctx.Spawn(props)
 
 	u := &ui{}
 	u.notif = make([]string, 0)
@@ -80,6 +82,13 @@ func New(ctx actor.Context, dev, disp actor.Actor) (UI, error) {
 	u.rootctx = ctx.ActorSystem().Root
 
 	return u, nil
+}
+
+func (u *ui) GetPID() *actor.PID {
+	if u.pid == nil {
+		return nil
+	}
+	return u.pid
 }
 
 func (u *ui) Init() error {

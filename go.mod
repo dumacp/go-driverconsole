@@ -1,8 +1,8 @@
 module github.com/dumacp/go-driverconsole
 
-go 1.21.0
+go 1.23.0
 
-toolchain go1.22.0
+//toolchain go1.22.0
 
 //github.com/AsynkronIT/protoactor-go v0.0.0-20220121183416-233df622d732
 require (
@@ -23,11 +23,11 @@ require (
 	github.com/dumacp/go-ignition v0.0.0-20240301165217-62b8949edaf7
 	github.com/dumacp/go-itinerary v0.0.0-20250206143001-1ce6638f2c19
 	github.com/dumacp/go-levis v0.0.0-20241119224207-a91cacdf55e3
-	github.com/dumacp/go-params v0.0.0-20250108191046-36f8cb3a96ac
+	github.com/dumacp/go-params v1.0.3
 	github.com/dumacp/go-schservices v0.0.4-0.20250115134655-33531cf6227c
 	github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
-	google.golang.org/protobuf v1.34.1
+	google.golang.org/protobuf v1.36.8
 )
 
 require (
@@ -45,11 +45,11 @@ require (
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gorilla/websocket v1.5.0 // indirect
-	github.com/klauspost/compress v1.17.9 // indirect
+	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/lithammer/shortuuid/v4 v4.0.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/nats-io/nats.go v1.36.0 // indirect
-	github.com/nats-io/nkeys v0.4.7 // indirect
+	github.com/nats-io/nkeys v0.4.11 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/orcaman/concurrent-map v1.0.0 // indirect
 	github.com/pquerna/cachecontrol v0.1.0 // indirect
@@ -57,6 +57,7 @@ require (
 	github.com/prometheus/client_model v0.5.0 // indirect
 	github.com/prometheus/common v0.44.0 // indirect
 	github.com/prometheus/procfs v0.11.1 // indirect
+	github.com/serialx/hashring v0.0.0-20200727003509-22c0c7ab6b1b // indirect
 	github.com/tarm/serial v0.0.0-20180830185346-98f6abe2eb07 // indirect
 	github.com/twmb/murmur3 v1.1.8 // indirect
 	go.opentelemetry.io/otel v1.21.0 // indirect
@@ -65,13 +66,13 @@ require (
 	go.opentelemetry.io/otel/sdk v1.21.0 // indirect
 	go.opentelemetry.io/otel/sdk/metric v1.21.0 // indirect
 	go.opentelemetry.io/otel/trace v1.21.0 // indirect
-	golang.org/x/crypto v0.27.0 // indirect
+	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
-	golang.org/x/net v0.21.0 // indirect
+	golang.org/x/net v0.42.0 // indirect
 	golang.org/x/oauth2 v0.13.0 // indirect
-	golang.org/x/sync v0.8.0 // indirect
-	golang.org/x/sys v0.25.0 // indirect
-	golang.org/x/text v0.18.0 // indirect
+	golang.org/x/sync v0.16.0 // indirect
+	golang.org/x/sys v0.35.0 // indirect
+	golang.org/x/text v0.28.0 // indirect
 	google.golang.org/appengine v1.6.8 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20231002182017-d307bd883b97 // indirect
 	google.golang.org/grpc v1.60.1 // indirect
@@ -82,7 +83,7 @@ replace github.com/dumacp/go-fareCollection => ../go-fareCollection
 
 //replace github.com/dumacp/go-levis => ../go-levis
 
-//replace github.com/dumacp/go-params => ../go-params
+replace github.com/dumacp/go-params => ../go-params
 
 //replace github.com/dumacp/go-itinerary => ../go-itinerary
 

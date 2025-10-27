@@ -143,7 +143,7 @@ func (a *App) summaryservice() error {
 				if err := a.uix.WriteTextRawDisplay(AddrCurrCheckpointText, []string{
 					a.summaryService.GetVehicle().GetCheckpoint(),
 				}); err != nil {
-					return fmt.Errorf("error curr footer: %s", err)
+					return fmt.Errorf("error curr checkpoint: %s", err)
 				}
 			}
 		} else {

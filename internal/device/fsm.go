@@ -3,7 +3,6 @@ package device
 import (
 	"context"
 	"fmt"
-	"time"
 
 	"github.com/dumacp/go-logs/pkg/logs"
 	"github.com/looplab/fsm"
@@ -56,19 +55,20 @@ func (a *Actor) Fsm() {
 		beforeEvent(eStarted): func(_ context.Context, e *fsm.Event) {
 			var err error
 
-			var devi interface{}
-			for _, v := range []int{0, 3, 3, 10, 30, 60} {
-				if v > 0 {
-					time.Sleep(time.Duration(v) * time.Second)
-				}
-				devi, err = a.dev.Init()
-				if err == nil {
-					break
-				}
-				fmt.Printf("open device errorm: %s\n", err)
-				a.dev.Close()
-			}
+			// var devi interface{}
+			// for _, v := range []int{0, 3, 3, 10, 30, 60} {
+			// 	if v > 0 {
+			// 		time.Sleep(time.Duration(v) * time.Second)
+			// 	}
+			devi, err := a.dev.Init()
+			// 	if err == nil {
+			// 		break
+			// 	}
+			// 	fmt.Printf("open device errorm: %s\n", err)
+			// 	a.dev.Close()
+			// }
 			if err != nil {
+				a.dev.Close()
 				e.Cancel(fmt.Errorf("%w", err))
 				return
 			}

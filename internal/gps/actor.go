@@ -111,6 +111,7 @@ func (a *Actor) Receive(ctx actor.Context) {
 			logs.LogError.Panic(err)
 		}
 	case *actor.Stopping:
+		pubsub.Unsubscribe("GPS")
 		logs.LogWarn.Printf("\"%s\" - Stopped actor, reason -> %v", ctx.Self(), msg)
 	case *actor.Restarting:
 		logs.LogWarn.Printf("\"%s\" - Restarting actor, reason -> %v", ctx.Self(), msg)

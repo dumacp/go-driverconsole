@@ -137,6 +137,7 @@ func (a *App) Receive(ctx actor.Context) {
 	switch ctx.Message().(type) {
 	case *MsgUpdateTime:
 	case *tickMsg:
+	case *counterpass.CounterMap:
 	default:
 		fmt.Printf("message: %q --> %q, %T\n", func() string {
 			if ctx.Sender() == nil {

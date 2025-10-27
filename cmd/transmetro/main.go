@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -15,6 +16,7 @@ import (
 	"github.com/asynkron/protoactor-go/remote"
 
 	"github.com/dumacp/go-driverconsole/internal/buttons"
+	"github.com/dumacp/go-driverconsole/internal/constant"
 	"github.com/dumacp/go-driverconsole/internal/counterpass"
 	"github.com/dumacp/go-driverconsole/internal/ignition"
 	"github.com/dumacp/go-driverconsole/internal/parameters"
@@ -22,6 +24,7 @@ import (
 	app "github.com/dumacp/go-driverconsole/internal/transmetro"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-driverconsole/internal/utils"
+	"github.com/dumacp/go-params/api/params"
 
 	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/display"
@@ -39,8 +42,9 @@ var showversion bool
 var url string
 var hasCashInput bool
 var isItineraryProgEnable bool
+var legacySibus bool
 
-const version = "1.2.19_transmetro"
+const version = "1.2.25"
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")
@@ -52,6 +56,7 @@ func init() {
 	flag.BoolVar(&hasCashInput, "cash", false, "cash input")
 	flag.BoolVar(&isItineraryProgEnable, "itiprog", false, "itinerary prog enable")
 	flag.StringVar(&url, "url", "", fmt.Sprintf("example: %q, rest url", url_))
+	flag.BoolVar(&legacySibus, "legacySibus", false, "use legacy sibus terminal (default false)")
 }
 
 func main() {
@@ -62,6 +67,14 @@ func main() {
 		os.Exit(2)
 	}
 
+	if legacySibus {
+		fmt.Println("legacy sibus terminal enabled")
+		app.Label2DisplayRegister = app.Label2DisplayRegisterLegacy
+	} else {
+		fmt.Println("legacy sibus terminal disabled")
+		app.Label2DisplayRegister = app.Label2DisplayRegisterDefault
+	}
+
 	getENV()
 
 	initLogs(debug, logStd)
@@ -70,6 +83,13 @@ func main() {
 		id = utils.Hostname()
 	} else {
 		utils.SetHostname(id)
+	}
+
+	// verify and create path database
+	if _, err := os.Stat(constant.DATABASE_PATH); os.IsNotExist(err) {
+		if err := os.MkdirAll(constant.DATABASE_PATH, 0755); err != nil {
+			log.Fatalf("error creating database directory: %s", err)
+		}
 	}
 
 	sys := actor.NewActorSystem()
@@ -85,6 +105,7 @@ func main() {
 	pubsub.Init(root)
 
 	type Init struct{}
+	type initActorListen struct{}
 	var lastIgnitionEvent *ignition.IgnitionEvent
 	var pidApp *actor.PID
 	isAppActive := false
@@ -147,6 +168,53 @@ func main() {
 				}
 			}
 			lastIgnitionEvent = msg
+		case *params.Parameters:
+			if len(msg.TerminaldriverConf) > 0 {
+				logs.LogInfo.Printf("terminaldriver config: %s", msg.TerminaldriverConf)
+				conf := new(parameters.TerminalConfig)
+
+				if err := json.Unmarshal([]byte(msg.TerminaldriverConf), conf); err != nil {
+					logs.LogError.Printf("error marshal terminaldriver config: %s", err)
+				} else {
+					changeDevice := false
+					if len(conf.TerminalPort) > 0 && port != conf.TerminalPort {
+						port = conf.TerminalPort
+						changeDevice = true
+						logs.LogInfo.Printf("socket changed to: %s", port)
+					}
+					if conf.TerminalBaud > 0 && baud != conf.TerminalBaud {
+						baud = conf.TerminalBaud
+						changeDevice = true
+						logs.LogInfo.Printf("baudrate changed to: %d", baud)
+					}
+					if conf.IsCashEnabled != hasCashInput {
+						hasCashInput = conf.IsCashEnabled
+						changeDevice = true
+						logs.LogInfo.Printf("cash input changed to: %t", hasCashInput)
+					}
+					if conf.IsItineraryProgEnabled != isItineraryProgEnable {
+						isItineraryProgEnable = conf.IsItineraryProgEnabled
+						changeDevice = true
+						logs.LogInfo.Printf("itinerary prog enable changed to: %t", isItineraryProgEnable)
+					}
+					if conf.IsLegacy != legacySibus {
+						legacySibus = conf.IsLegacy
+						changeDevice = true
+						if legacySibus {
+							app.Label2DisplayRegister = app.Label2DisplayRegisterLegacy
+							logs.LogInfo.Println("legacy sibus terminal enabled")
+						} else {
+							app.Label2DisplayRegister = app.Label2DisplayRegisterDefault
+							logs.LogInfo.Println("legacy sibus terminal disabled")
+						}
+					}
+					if changeDevice {
+						ctx.Send(ctx.Self(), &initActorListen{})
+					}
+				}
+			} else {
+				logs.LogWarn.Println("terminal config is empty")
+			}
 		case *Init:
 			if pidCounter != nil {
 				ctx.PoisonFuture(pidCounter)
@@ -167,12 +235,25 @@ func main() {
 			if err != nil {
 				log.Fatalf("service actor error: %s", err)
 			}
-			if _, err := ctx.SpawnNamed(actor.PropsFromFunc(parameters.NewActor(id, 60*time.Minute).Receive), "params-actor"); err != nil {
+			if _, err := ctx.SpawnNamed(actor.PropsFromFunc(parameters.NewActor(id,
+				fmt.Sprintf("%s/%s", constant.DATABASE_PATH, constant.DATABASE_PARAMS_NAME), 60*time.Minute).Receive), "params-actor"); err != nil {
 				log.Fatalf("params actor error: %s", err)
 			}
+			ctx.Send(ctx.Self(), &initActorListen{})
 			// if _, err := ctx.SpawnNamed(actor.PropsFromFunc(itinerary.NewActor(id).Receive), "route-actor"); err != nil {
 			// 	log.Fatalf("route actor error: %s", err)
 			// }
+		case *initActorListen:
+
+			isAppActive = false
+			if pidApp != nil {
+				ctx.PoisonFuture(pidApp).Wait()
+			}
+			if uii != nil {
+				// uii.Shutdown()
+				ctx.PoisonFuture(uii.GetPID()).Wait()
+				time.Sleep(3000 * time.Millisecond)
+			}
 
 			var confDev device.Device
 			var confButtons buttons.ButtonDevice
@@ -196,6 +277,7 @@ func main() {
 			)
 			confDisplay = display.NewPiDisplay(app.Label2DisplayRegister)
 
+			var err error
 			uii, err = ui.New(ctx,
 				device.NewActor(confDev),
 				display.NewDisplayActor(confDisplay))
