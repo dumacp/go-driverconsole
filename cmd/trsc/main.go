@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -17,13 +18,14 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/buttons"
 	"github.com/dumacp/go-driverconsole/internal/constant"
 	"github.com/dumacp/go-driverconsole/internal/counterpass"
+	"github.com/dumacp/go-driverconsole/internal/gps"
 	"github.com/dumacp/go-driverconsole/internal/ignition"
-	"github.com/dumacp/go-driverconsole/internal/itinerary"
 	"github.com/dumacp/go-driverconsole/internal/parameters"
 	"github.com/dumacp/go-driverconsole/internal/service"
-	app "github.com/dumacp/go-driverconsole/internal/trsc"
+	app "github.com/dumacp/go-driverconsole/internal/trscnew"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-driverconsole/internal/utils"
+	"github.com/dumacp/go-params/api/params"
 
 	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/display"
@@ -40,7 +42,13 @@ var logStd bool
 var showversion bool
 var url string
 
-const version = "1.1.6_trsc"
+// var hasCashInput bool
+var isShiftProgEnable bool
+
+// var reverseTQ bool
+var reverseTQ bool
+
+const version = "1.2.26_trsc_test"
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")
@@ -49,7 +57,12 @@ func init() {
 	flag.BoolVar(&debug, "debug", false, "debug")
 	flag.BoolVar(&logStd, "logStd", false, "send logs to stdout")
 	flag.BoolVar(&showversion, "version", false, "show version")
+	// flag.BoolVar(&hasCashInput, "cash", false, "cash input")
+	flag.BoolVar(&isShiftProgEnable, "shiftprog", false, "shift prog enable")
 	flag.StringVar(&url, "url", "", fmt.Sprintf("example: %q, rest url", url_))
+	flag.BoolVar(&reverseTQ, "reverseTQ", false, "reverse TQ direction")
+
+	// flag.BoolVar(&legacySibus, "legacySibus", false, "use legacy sibus terminal (default false)")
 }
 
 func main() {
@@ -59,6 +72,14 @@ func main() {
 		fmt.Printf("version: %s\n", version)
 		os.Exit(2)
 	}
+
+	// if legacySibus {
+	// 	fmt.Println("legacy sibus terminal enabled")
+	// 	app.Label2DisplayRegister = app.Label2DisplayRegisterLegacy
+	// } else {
+	fmt.Println("legacy sibus terminal disabled")
+	app.Label2DisplayRegister = app.Label2DisplayRegisterDefault
+	// }
 
 	getENV()
 
@@ -90,9 +111,11 @@ func main() {
 	pubsub.Init(root)
 
 	type Init struct{}
+	type initActorListen struct{}
 	var lastIgnitionEvent *ignition.IgnitionEvent
 	var pidApp *actor.PID
 	isAppActive := false
+	var pidGps *actor.PID
 	var pidCounter *actor.PID
 	var pidSvc *actor.PID
 	var uii ui.UI
@@ -152,6 +175,44 @@ func main() {
 				}
 			}
 			lastIgnitionEvent = msg
+		case *params.Parameters:
+			if len(msg.TerminaldriverConf) > 0 {
+				logs.LogInfo.Printf("terminaldriver config: %s", msg.TerminaldriverConf)
+				conf := new(parameters.TerminalConfig)
+
+				if err := json.Unmarshal([]byte(msg.TerminaldriverConf), conf); err != nil {
+					logs.LogError.Printf("error marshal terminaldriver config: %s", err)
+				} else {
+					changeDevice := false
+					if len(conf.TerminalPort) > 0 && port != conf.TerminalPort {
+						port = conf.TerminalPort
+						changeDevice = true
+						logs.LogInfo.Printf("socket changed to: %s", port)
+					}
+					if conf.TerminalBaud > 0 && baud != conf.TerminalBaud {
+						baud = conf.TerminalBaud
+						changeDevice = true
+						logs.LogInfo.Printf("baudrate changed to: %d", baud)
+					}
+					if conf.IsReverseTQ != reverseTQ {
+						reverseTQ = conf.IsReverseTQ
+						changeDevice = true
+						logs.LogInfo.Printf("reverse TQ direction changed to: %t", reverseTQ)
+					}
+					if conf.IsItineraryProgEnabled != !isShiftProgEnable {
+						isShiftProgEnable = !conf.IsItineraryProgEnabled
+						changeDevice = true
+						logs.LogInfo.Printf("itinerary prog enable changed to: %t", !isShiftProgEnable)
+					}
+
+					app.Label2DisplayRegister = app.Label2DisplayRegisterDefault
+					if changeDevice {
+						ctx.Send(ctx.Self(), &initActorListen{})
+					}
+				}
+			} else {
+				logs.LogWarn.Println("terminal config is empty")
+			}
 		case *Init:
 			if pidCounter != nil {
 				ctx.PoisonFuture(pidCounter)
@@ -164,6 +225,10 @@ func main() {
 				uii.Shutdown()
 			}
 			var err error
+			pidGps, err = ctx.SpawnNamed(actor.PropsFromFunc(gps.NewActor().Receive), "gps-actor")
+			if err != nil {
+				log.Fatalf("gps actor error: %s", err)
+			}
 			pidCounter, err = ctx.SpawnNamed(actor.PropsFromFunc(counterpass.NewActor().Receive), "counter-actor")
 			if err != nil {
 				log.Fatalf("counter actor error: %s", err)
@@ -176,8 +241,20 @@ func main() {
 				fmt.Sprintf("%s/%s", constant.DATABASE_PATH, constant.DATABASE_PARAMS_NAME), 60*time.Minute).Receive), "params-actor"); err != nil {
 				log.Fatalf("params actor error: %s", err)
 			}
-			if _, err := ctx.SpawnNamed(actor.PropsFromFunc(itinerary.NewActor(id).Receive), "route-actor"); err != nil {
-				log.Fatalf("route actor error: %s", err)
+			ctx.Send(ctx.Self(), &initActorListen{})
+			// if _, err := ctx.SpawnNamed(actor.PropsFromFunc(itinerary.NewActor(id).Receive), "route-actor"); err != nil {
+			// 	log.Fatalf("route actor error: %s", err)
+			// }
+		case *initActorListen:
+
+			isAppActive = false
+			if pidApp != nil {
+				ctx.PoisonFuture(pidApp).Wait()
+			}
+			if uii != nil {
+				// uii.Shutdown()
+				ctx.PoisonFuture(uii.GetPID()).Wait()
+				time.Sleep(3000 * time.Millisecond)
 			}
 
 			var confDev device.Device
@@ -190,14 +267,19 @@ func main() {
 				app.AddrEnterDriver, app.AddrEnterRuta,
 				app.AddrScreenAlarms, app.AddrScreenMore,
 				app.AddrScreenProgDriver, app.AddrScreenProgVeh, app.AddrScreenSwitch,
-				app.AddrSwitchStep, app.AddrSendStep,
+
 				app.AddrShowSelectProgVeh, app.AddrSelectItinerary,
 
 				app.AddrEnterService,
+				app.AddrExitSwitch,
+
+				app.AddrSendStep,
+				app.AddrSwitchStep,
 			},
 			)
 			confDisplay = display.NewPiDisplay(app.Label2DisplayRegister)
 
+			var err error
 			uii, err = ui.New(ctx,
 				device.NewActor(confDev),
 				display.NewDisplayActor(confDisplay))
@@ -209,6 +291,9 @@ func main() {
 			time.Sleep(3 * time.Second)
 
 			appinstance := app.NewApp(uii)
+			// appinstance.SetCashInput(true)
+			appinstance.SetAppVersion(fmt.Sprintf("app: %s", version))
+			appinstance.SetItineraryProg(!isShiftProgEnable)
 			appinstance.RegisterActorService(pidSvc)
 			propsApp := actor.PropsFromFunc(appinstance.Receive)
 			pidApp, err = ctx.SpawnNamed(propsApp, "app")
@@ -385,6 +470,10 @@ func main() {
 				// root.Send(pidApp, &counterpass.CounterEvent{Inputs: 1, Outputs: 1})
 
 			case <-tick3:
+
+				if isAppActive && pidGps != nil && pidApp != nil {
+					root.RequestWithCustomSender(pidGps, &gps.MsgGpsStatusRequest{}, pidApp)
+				}
 
 				// root.Send(pidApp, &messages.MsgAppPaso{
 				// 	Value: 1,
