@@ -146,5 +146,7 @@ func (a *Actor) Receive(ctx actor.Context) {
 		if time.Since(a.lastFrame.Time) < 30*time.Second {
 			ctx.Respond(&MsgGpsData{Data: a.lastFrame})
 		}
+	case error:
+		fmt.Printf("error gps actor: %s\n", msg)
 	}
 }

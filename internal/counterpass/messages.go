@@ -12,8 +12,10 @@ type CounterMap struct {
 }
 
 type CounterEvent struct {
+	Id      int
 	Inputs  int
 	Outputs int
+	Type    string
 }
 
 type CounterExtraEvent struct {

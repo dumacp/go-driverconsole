@@ -77,7 +77,7 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 					fmt.Printf("num SELECT_PROG_VEH: %d\n", num)
 					if !a.isItineraryProgEnable {
 						if len(a.companyShiftsShow) > int(num) {
-							fmt.Printf("companySchServices: %v\n", a.companyShiftsShow[num])
+							fmt.Printf("companySchServices from shift: %v\n", a.companyShiftsShow[num])
 							a.selectedShift = a.companyShiftsShow[num].Shift
 							a.uix.WriteTextRawDisplay(AddrResumeSelectProgVeh, []string{a.companyShiftsShow[num].String})
 							prompt := fmt.Sprintf(`turno preseleccionado:
@@ -91,7 +91,7 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 						}
 					} else {
 						if len(a.companySchServicesShow) > int(num) {
-							fmt.Printf("companySchServices: %v\n", a.companySchServicesShow[num])
+							fmt.Printf("companySchServices from iti: %v\n", a.companySchServicesShow[num])
 							a.selectedService = a.companySchServicesShow[num].Services
 							a.uix.WriteTextRawDisplay(AddrResumeSelectProgVeh, []string{a.companySchServicesShow[num].String})
 							prompt := fmt.Sprintf(`servicio preseleccionado:
@@ -200,8 +200,11 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 					}
 				}
 
-				// a.ctx.Send(a.ctx.Self(), &RequestProgVeh{})
-				a.ctx.Send(a.ctx.Self(), &RequestShitfsVeh{})
+				if a.isItineraryProgEnable {
+					a.ctx.Send(a.ctx.Self(), &RequestProgVeh{})
+				} else {
+					a.ctx.Send(a.ctx.Self(), &RequestShitfsVeh{})
+				}
 
 			case AddrScreenAlarms:
 				// release button

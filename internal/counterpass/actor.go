@@ -54,7 +54,7 @@ func parseEvents(msg []byte) interface{} {
 		// Type:      "COUNTERSDOOR",
 	}
 
-	// fmt.Printf("********* event msg: %s\n", msg)
+	fmt.Printf("********* event msg: %s\n", msg)
 
 	val := struct {
 		// Coord    string  `json:"coord"`
@@ -70,7 +70,7 @@ func parseEvents(msg []byte) interface{} {
 		return err
 	}
 
-	// fmt.Printf("********* parse event: %v, value: %v\n", message, message.Value)
+	fmt.Printf("********* parse event: %v, value: %v\n", message, message.Value)
 
 	if !strings.Contains(message.Type, "COUNTERSDOOR") {
 		return fmt.Errorf("extraEvent not configured, type: %s, value: %q", message.Type, message.Value)
@@ -78,7 +78,10 @@ func parseEvents(msg []byte) interface{} {
 
 	event := new(CounterEvent)
 
-	if val.Counters != nil && len(val.Counters) > 1 {
+	event.Id = int(val.ID)
+	event.Type = val.Type
+
+	if len(val.Counters) > 1 {
 		event.Inputs = int(val.Counters[0])
 		event.Outputs = int(val.Counters[1])
 	}

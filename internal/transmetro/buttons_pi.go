@@ -200,8 +200,11 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 					}
 				}
 
-				// a.ctx.Send(a.ctx.Self(), &RequestProgVeh{})
-				a.ctx.Send(a.ctx.Self(), &RequestShitfsVeh{})
+				if a.isItineraryProgEnable {
+					a.ctx.Send(a.ctx.Self(), &RequestProgVeh{})
+				} else {
+					a.ctx.Send(a.ctx.Self(), &RequestShitfsVeh{})
+				}
 
 			case AddrScreenAlarms:
 				// release button

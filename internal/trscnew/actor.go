@@ -93,6 +93,7 @@ type App struct {
 	isDisplayEnable        bool
 	isItineraryProgEnable  bool
 	isReverseTQ            bool
+	enableCameraFrontDoor  bool
 	// hasCashInput           bool
 }
 
@@ -132,6 +133,10 @@ func (a *App) SetReverseTQ(v bool) {
 	a.isReverseTQ = v
 }
 
+func (a *App) SetEnableCameraFrontDoor(v bool) {
+	a.enableCameraFrontDoor = v
+}
+
 func subscribe(ctx actor.Context, evs *eventstream.EventStream) *eventstream.Subscription {
 	rootctx := ctx.ActorSystem().Root
 	pid := ctx.Sender()
@@ -161,6 +166,7 @@ func (a *App) Receive(ctx actor.Context) {
 	}
 	switch msg := ctx.Message().(type) {
 	case *params.Parameters:
+		fmt.Printf("parameters: %v\n", msg)
 		if msg != nil {
 			if len(msg.COMPANY_ID) > 0 {
 				a.companyId = msg.COMPANY_ID
@@ -455,6 +461,12 @@ func (a *App) Runstate(ctx actor.Context) {
 		if a.uix != nil {
 			if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
 				logs.LogWarn.Printf("cashInput error: %s", err)
+			}
+			if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+				logs.LogWarn.Printf("inputs error: %s", err)
+			}
+			if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+				logs.LogWarn.Printf("outputs error: %s", err)
 			}
 		}
 	case *ValidationData:
@@ -903,6 +915,18 @@ func (a *App) Runstate(ctx actor.Context) {
 			logs.LogWarn.Printf("msgScreen error: %s", err)
 		}
 	case *counterpass.CounterEvent:
+		if a.enableCameraFrontDoor {
+			if msg.Id == 0 && !strings.EqualFold(msg.Type, "CAMERA") {
+				fmt.Printf("ignore %s counter event (CAMERA main counter enable): %v\n", msg.Type, msg)
+				break
+			}
+		} else {
+			if msg.Id == 0 && strings.EqualFold(msg.Type, "CAMERA") {
+				fmt.Printf("ignore CAMERA counter event (CAMERA main counter disable): %v\n", msg)
+				break
+			}
+		}
+
 		fmt.Printf("counter event: %v\n", msg)
 		a.countInput += int32(msg.Inputs)
 		// TODO: disable display
@@ -942,10 +966,19 @@ func (a *App) Runstate(ctx actor.Context) {
 	case *counterpass.CounterMap:
 	case *counterpass.TurnstileRegisters:
 		fmt.Printf("counter turnstile registers: %v\n", msg)
+		if a.enableCameraFrontDoor {
+			fmt.Printf("ignore Turnstile counter event (CAMERA main counter enable): %v\n", msg)
+			break
+		}
 		if len(msg.Registers) < 3 {
 			break
 		}
-		totalCountInput := int32(msg.Registers[0])
+		totalCountInput := int32(0)
+		if !a.isReverseTQ {
+			totalCountInput = int32(msg.Registers[0])
+		} else {
+			totalCountInput = int32(msg.Registers[1])
+		}
 		if a.totalCountInput < totalCountInput {
 			if a.totalCountInput == 0 {
 				a.totalCountInput = totalCountInput - 1
@@ -960,7 +993,12 @@ func (a *App) Runstate(ctx actor.Context) {
 		}
 		a.totalCountInput = totalCountInput
 
-		totalCountOutput := int32(msg.Registers[1])
+		totalCountOutput := int32(0)
+		if !a.isReverseTQ {
+			totalCountOutput = int32(msg.Registers[1])
+		} else {
+			totalCountOutput = int32(msg.Registers[0])
+		}
 		if a.totalCountOutput < totalCountOutput {
 			if a.totalCountOutput == 0 {
 				a.totalCountOutput = totalCountOutput - 1

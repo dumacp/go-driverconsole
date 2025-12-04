@@ -9,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -44,11 +45,10 @@ var url string
 
 // var hasCashInput bool
 var isShiftProgEnable bool
-
-// var reverseTQ bool
 var reverseTQ bool
+var enableCameraFrontDoor bool
 
-const version = "1.2.26_trsc_test"
+const version = "1.2.26_trsc"
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")
@@ -61,6 +61,7 @@ func init() {
 	flag.BoolVar(&isShiftProgEnable, "shiftprog", false, "shift prog enable")
 	flag.StringVar(&url, "url", "", fmt.Sprintf("example: %q, rest url", url_))
 	flag.BoolVar(&reverseTQ, "reverseTQ", false, "reverse TQ direction")
+	flag.BoolVar(&enableCameraFrontDoor, "cameraFrontDoor", false, "enable camera front door counter as main counter")
 
 	// flag.BoolVar(&legacySibus, "legacySibus", false, "use legacy sibus terminal (default false)")
 }
@@ -112,6 +113,7 @@ func main() {
 
 	type Init struct{}
 	type initActorListen struct{}
+	type initActorSvc struct{}
 	var lastIgnitionEvent *ignition.IgnitionEvent
 	var pidApp *actor.PID
 	isAppActive := false
@@ -184,6 +186,7 @@ func main() {
 					logs.LogError.Printf("error marshal terminaldriver config: %s", err)
 				} else {
 					changeDevice := false
+					changeSvc := false
 					if len(conf.TerminalPort) > 0 && port != conf.TerminalPort {
 						port = conf.TerminalPort
 						changeDevice = true
@@ -199,13 +202,25 @@ func main() {
 						changeDevice = true
 						logs.LogInfo.Printf("reverse TQ direction changed to: %t", reverseTQ)
 					}
+					if conf.IsEnableCameraFrontDoor != enableCameraFrontDoor {
+						enableCameraFrontDoor = conf.IsEnableCameraFrontDoor
+						changeDevice = true
+						logs.LogInfo.Printf("enable camera front door counter changed to: %t", enableCameraFrontDoor)
+					}
 					if conf.IsItineraryProgEnabled != !isShiftProgEnable {
 						isShiftProgEnable = !conf.IsItineraryProgEnabled
 						changeDevice = true
 						logs.LogInfo.Printf("itinerary prog enable changed to: %t", !isShiftProgEnable)
 					}
-
+					if len(conf.Url) > 0 && !strings.EqualFold(url, conf.Url) {
+						url = conf.Url
+						changeSvc = true
+						logs.LogInfo.Printf("rest url changed to: %s", url)
+					}
 					app.Label2DisplayRegister = app.Label2DisplayRegisterDefault
+					if changeSvc {
+						ctx.Send(ctx.Self(), &initActorSvc{})
+					}
 					if changeDevice {
 						ctx.Send(ctx.Self(), &initActorListen{})
 					}
@@ -213,9 +228,15 @@ func main() {
 			} else {
 				logs.LogWarn.Println("terminal config is empty")
 			}
+			if isAppActive && pidApp != nil {
+				ctx.RequestWithCustomSender(pidApp, msg, ctx.Sender())
+			}
 		case *Init:
 			if pidCounter != nil {
-				ctx.PoisonFuture(pidCounter)
+				ctx.PoisonFuture(pidCounter).Wait()
+			}
+			if pidSvc != nil {
+				ctx.PoisonFuture(pidSvc).Wait()
 			}
 			isAppActive = false
 			if pidApp != nil {
@@ -242,11 +263,19 @@ func main() {
 				log.Fatalf("params actor error: %s", err)
 			}
 			ctx.Send(ctx.Self(), &initActorListen{})
-			// if _, err := ctx.SpawnNamed(actor.PropsFromFunc(itinerary.NewActor(id).Receive), "route-actor"); err != nil {
-			// 	log.Fatalf("route actor error: %s", err)
-			// }
+		// if _, err := ctx.SpawnNamed(actor.PropsFromFunc(itinerary.NewActor(id).Receive), "route-actor"); err != nil {
+		// 	log.Fatalf("route actor error: %s", err)
+		// }
+		case *initActorSvc:
+			if pidSvc != nil {
+				ctx.PoisonFuture(pidSvc).Wait()
+			}
+			var err error
+			pidSvc, err = ctx.SpawnNamed(actor.PropsFromFunc(service.NewActor(id, url).Receive), "service-actor")
+			if err != nil {
+				log.Fatalf("service actor error: %s", err)
+			}
 		case *initActorListen:
-
 			isAppActive = false
 			if pidApp != nil {
 				ctx.PoisonFuture(pidApp).Wait()
@@ -294,6 +323,8 @@ func main() {
 			// appinstance.SetCashInput(true)
 			appinstance.SetAppVersion(fmt.Sprintf("app: %s", version))
 			appinstance.SetItineraryProg(!isShiftProgEnable)
+			appinstance.SetReverseTQ(reverseTQ)
+			appinstance.SetEnableCameraFrontDoor(enableCameraFrontDoor)
 			appinstance.RegisterActorService(pidSvc)
 			propsApp := actor.PropsFromFunc(appinstance.Receive)
 			pidApp, err = ctx.SpawnNamed(propsApp, "app")

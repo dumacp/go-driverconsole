@@ -20,7 +20,6 @@ func (a *App) mainScreen() error {
 			return fmt.Errorf("setLed error: %s", err)
 		}
 	}
-	// if a.hasCashInput {
 	if err := a.uix.SetLed(AddrShowStep, true); err != nil {
 		return fmt.Errorf("setLed error: %s", err)
 	}
@@ -29,36 +28,16 @@ func (a *App) mainScreen() error {
 			return fmt.Errorf("writeText appVersion error: %s", err)
 		}
 	}
-	// if err := a.uix.WriteTextRawDisplay(AddrTextCashInputs, []string{"Pagos", "      Conductor"}); err != nil {
-	// 	return fmt.Errorf("writeText cash error: %s", err)
-	// }
-	// } else {
-	// 	if err := a.uix.SetLed(AddrShowStep, false); err != nil {
-	// 		return fmt.Errorf("setLed error: %s", err)
-	// 	}
-	// 	if err := a.uix.WriteTextRawDisplay(AddrTextCashInputs, []string{"Contador", "      Pasajeros"}); err != nil {
-	// 		return fmt.Errorf("writeText cash error: %s", err)
-	// 	}
-	// }
 
-	// if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
-	// 	return fmt.Errorf("electInput error: %s", err)
-	// }
-	// if err := a.uix.CashInputs(int32(a.cashInput + a.electInput)); err != nil {
-	// 	return fmt.Errorf("cashInput error: %s", err)
-	// }
-	// if !a.hasCashInput {
-	// 	if err := a.uix.ElectronicInputs(int32(a.cashInput + a.electInput)); err != nil {
-	// 		return fmt.Errorf("inputs error: %s", err)
-	// 	}
-	// } else {
 	if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
 		return fmt.Errorf("cashInput error: %s", err)
 	}
-	// if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
-	// 	return fmt.Errorf("inputs error: %s", err)
-	// }
-	// }
+	if err := a.uix.Inputs(int32(a.countInput)); err != nil {
+		return fmt.Errorf("inputs error: %s", err)
+	}
+	if err := a.uix.Outputs(int32(a.countOutput)); err != nil {
+		return fmt.Errorf("outputs error: %s", err)
+	}
 	if err := a.uix.DateWithFormat(a.updateTime, "2006/01/02 15:04"); err != nil {
 		return fmt.Errorf("date error: %s", err)
 	}
