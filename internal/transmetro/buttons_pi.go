@@ -188,7 +188,7 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 				dataSlice := make([]string, 0)
 				length := Label2DisplayRegister(ui.PROGRAMATION_VEH_TEXT).Len
 
-				for i := 0; i <= length; i++ {
+				for i := 0; i < length; i++ {
 					size := Label2DisplayRegister(ui.PROGRAMATION_VEH_TEXT).Size
 					// un string de tamaño size de espacios
 					spaces := strings.Repeat(" ", size)

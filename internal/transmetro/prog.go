@@ -98,13 +98,9 @@ func (a *App) listProg(msg *ListProgVeh) error {
 		dataSlice = append(dataSlice, cs[i].ResumeString)
 		a.companySchServicesShow = append(a.companySchServicesShow, cs[i])
 	}
-	if len(dataSlice) < 9 {
-		for i := 0; i <= 9-len(dataSlice); i++ {
-			size := Label2DisplayRegister(ui.PROGRAMATION_VEH_SCREEN).Size
-			// un string de tamaño size de espacios
-			spaces := strings.Repeat(" ", size)
-			dataSlice = append(dataSlice, spaces)
-		}
+	regVeh0 := Label2DisplayRegister(ui.PROGRAMATION_VEH_TEXT)
+	for len(dataSlice) < regVeh0.Len {
+		dataSlice = append(dataSlice, strings.Repeat(" ", regVeh0.Size))
 	}
 
 	fmt.Printf("dataslice: %v\n", dataSlice)
@@ -188,15 +184,9 @@ func (a *App) listProgShitfs(msg *ListShiftsVeh) error {
 		dataSlice = append(dataSlice, cs[i].ResumeString)
 		a.companyShiftsShow = append(a.companyShiftsShow, cs[i])
 	}
-	fmt.Printf("dataslice: %v (len: %d)\n", dataSlice, len(dataSlice))
-	if len(dataSlice) < 9 {
-		lensc := len(dataSlice)
-		for i := 0; i <= 9-lensc; i++ {
-			size := Label2DisplayRegister(ui.PROGRAMATION_VEH_TEXT).Size
-			// un string de tamaño size de espacios
-			spaces := strings.Repeat(" ", size)
-			dataSlice = append(dataSlice, spaces)
-		}
+	regVeh := Label2DisplayRegister(ui.PROGRAMATION_VEH_TEXT)
+	for len(dataSlice) < regVeh.Len {
+		dataSlice = append(dataSlice, strings.Repeat(" ", regVeh.Size))
 	}
 
 	fmt.Printf("dataslice: %v (len: %d)\n", dataSlice, len(dataSlice))
@@ -236,13 +226,9 @@ func (a *App) PrepSliceServices(cs []*CompanySchService) error {
 		dataSlice = append(dataSlice, cs[i].ResumeString)
 		a.companySchServicesShow = append(a.companySchServicesShow, cs[i])
 	}
-	if len(dataSlice) < 9 {
-		for i := 0; i <= 9-len(dataSlice); i++ {
-			size := Label2DisplayRegister(ui.PROGRAMATION_VEH_SCREEN).Size
-			// un string de tamaño size de espacios
-			spaces := strings.Repeat(" ", size)
-			dataSlice = append(dataSlice, spaces)
-		}
+	regVeh := Label2DisplayRegister(ui.PROGRAMATION_VEH_TEXT)
+	for len(dataSlice) < regVeh.Len {
+		dataSlice = append(dataSlice, strings.Repeat(" ", regVeh.Size))
 	}
 
 	fmt.Printf("dataslice: %v\n", dataSlice)
@@ -370,7 +356,7 @@ func (a *App) requestProg(ctx actor.Context, msg *RequestProgVeh) error {
 	switch rs := res.(type) {
 	case *services.CompanyProgSvcMsg:
 		if len(rs.GetError()) > 0 {
-			return fmt.Errorf(rs.GetError())
+			return fmt.Errorf("%s", rs.GetError())
 		} else {
 			a.lastReqProgVeh = time.Now()
 			cs := make(map[string]*services.ScheduleService, 0)
@@ -472,13 +458,9 @@ func (a *App) listDriverProg(msg *ListProgDriver) error {
 		dataSlice = append(dataSlice, cs[len(cs)-i-1].ResumeString)
 		a.vehicleSchServicesShow = append(a.vehicleSchServicesShow, cs[len(cs)-i-1])
 	}
-	if len(dataSlice) < 12 {
-		for i := 0; i <= 12-len(dataSlice); i++ {
-			size := Label2DisplayRegister(ui.PROGRAMATION_DRIVER_TEXT).Size
-			// un string de tamaño size de espacios
-			spaces := strings.Repeat(" ", size)
-			dataSlice = append(dataSlice, spaces)
-		}
+	regDrv := Label2DisplayRegister(ui.PROGRAMATION_DRIVER_TEXT)
+	for len(dataSlice) < regDrv.Len {
+		dataSlice = append(dataSlice, strings.Repeat(" ", regDrv.Size))
 	}
 
 	fmt.Printf("dataslice progDriver: %v\n", dataSlice)
@@ -525,7 +507,7 @@ func (a *App) requestProgShifts(ctx actor.Context, msg *RequestShitfsVeh) error 
 	switch rs := res.(type) {
 	case *services.CompanyProgShiftsMsg:
 		if len(rs.GetError()) > 0 {
-			return fmt.Errorf(rs.GetError())
+			return fmt.Errorf("%s", rs.GetError())
 		} else {
 			a.lastReqProgVeh = time.Now()
 			cs := make(map[string]*services.ShiftService, 0)
