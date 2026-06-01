@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -8,6 +9,7 @@ import (
 	"os"
 	"os/exec"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -15,11 +17,16 @@ import (
 	"github.com/asynkron/protoactor-go/remote"
 
 	"github.com/dumacp/go-driverconsole/internal/buttons"
+	"github.com/dumacp/go-driverconsole/internal/constant"
 	"github.com/dumacp/go-driverconsole/internal/counterpass"
+	"github.com/dumacp/go-driverconsole/internal/gps"
 	"github.com/dumacp/go-driverconsole/internal/ignition"
-	app "github.com/dumacp/go-driverconsole/internal/pasto"
+	"github.com/dumacp/go-driverconsole/internal/parameters"
+	"github.com/dumacp/go-driverconsole/internal/service"
+	app "github.com/dumacp/go-driverconsole/internal/setpasto"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-driverconsole/internal/utils"
+	"github.com/dumacp/go-params/api/params"
 
 	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/display"
@@ -34,8 +41,14 @@ var id string
 var debug bool
 var logStd bool
 var showversion bool
+var url string
 
-const version = "1.1.6_pasto"
+// var hasCashInput bool
+var isShiftProgEnable bool
+var reverseTQ bool
+var enableCameraFrontDoor bool
+
+const version = "1.2.26_trsc"
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")
@@ -44,6 +57,13 @@ func init() {
 	flag.BoolVar(&debug, "debug", false, "debug")
 	flag.BoolVar(&logStd, "logStd", false, "send logs to stdout")
 	flag.BoolVar(&showversion, "version", false, "show version")
+	// flag.BoolVar(&hasCashInput, "cash", false, "cash input")
+	flag.BoolVar(&isShiftProgEnable, "shiftprog", false, "shift prog enable")
+	flag.StringVar(&url, "url", "", fmt.Sprintf("example: %q, rest url", url_))
+	flag.BoolVar(&reverseTQ, "reverseTQ", false, "reverse TQ direction")
+	flag.BoolVar(&enableCameraFrontDoor, "cameraFrontDoor", false, "enable camera front door counter as main counter")
+
+	// flag.BoolVar(&legacySibus, "legacySibus", false, "use legacy sibus terminal (default false)")
 }
 
 func main() {
@@ -54,12 +74,29 @@ func main() {
 		os.Exit(2)
 	}
 
+	// if legacySibus {
+	// 	fmt.Println("legacy sibus terminal enabled")
+	// 	app.Label2DisplayRegister = app.Label2DisplayRegisterLegacy
+	// } else {
+	fmt.Println("legacy sibus terminal disabled")
+	app.Label2DisplayRegister = app.Label2DisplayRegisterDefault
+	// }
+
+	getENV()
+
 	initLogs(debug, logStd)
 
 	if len(id) <= 0 {
 		id = utils.Hostname()
 	} else {
 		utils.SetHostname(id)
+	}
+
+	// verify and create path database
+	if _, err := os.Stat(constant.DATABASE_PATH); os.IsNotExist(err) {
+		if err := os.MkdirAll(constant.DATABASE_PATH, 0755); err != nil {
+			log.Fatalf("error creating database directory: %s", err)
+		}
 	}
 
 	sys := actor.NewActorSystem()
@@ -75,10 +112,14 @@ func main() {
 	pubsub.Init(root)
 
 	type Init struct{}
+	type initActorListen struct{}
+	type initActorSvc struct{}
 	var lastIgnitionEvent *ignition.IgnitionEvent
 	var pidApp *actor.PID
 	isAppActive := false
+	var pidGps *actor.PID
 	var pidCounter *actor.PID
+	var pidSvc *actor.PID
 	var uii ui.UI
 
 	props := actor.PropsFromFunc(func(ctx actor.Context) {
@@ -136,9 +177,66 @@ func main() {
 				}
 			}
 			lastIgnitionEvent = msg
+		case *params.Parameters:
+			if len(msg.TerminaldriverConf) > 0 {
+				logs.LogInfo.Printf("terminaldriver config: %s", msg.TerminaldriverConf)
+				conf := new(parameters.TerminalConfig)
+
+				if err := json.Unmarshal([]byte(msg.TerminaldriverConf), conf); err != nil {
+					logs.LogError.Printf("error marshal terminaldriver config: %s", err)
+				} else {
+					changeDevice := false
+					changeSvc := false
+					if len(conf.TerminalPort) > 0 && port != conf.TerminalPort {
+						port = conf.TerminalPort
+						changeDevice = true
+						logs.LogInfo.Printf("socket changed to: %s", port)
+					}
+					if conf.TerminalBaud > 0 && baud != conf.TerminalBaud {
+						baud = conf.TerminalBaud
+						changeDevice = true
+						logs.LogInfo.Printf("baudrate changed to: %d", baud)
+					}
+					if conf.IsReverseTQ != reverseTQ {
+						reverseTQ = conf.IsReverseTQ
+						changeDevice = true
+						logs.LogInfo.Printf("reverse TQ direction changed to: %t", reverseTQ)
+					}
+					if conf.IsEnableCameraFrontDoor != enableCameraFrontDoor {
+						enableCameraFrontDoor = conf.IsEnableCameraFrontDoor
+						changeDevice = true
+						logs.LogInfo.Printf("enable camera front door counter changed to: %t", enableCameraFrontDoor)
+					}
+					if conf.IsItineraryProgEnabled != !isShiftProgEnable {
+						isShiftProgEnable = !conf.IsItineraryProgEnabled
+						changeDevice = true
+						logs.LogInfo.Printf("itinerary prog enable changed to: %t", !isShiftProgEnable)
+					}
+					if len(conf.Url) > 0 && !strings.EqualFold(url, conf.Url) {
+						url = conf.Url
+						changeSvc = true
+						logs.LogInfo.Printf("rest url changed to: %s", url)
+					}
+					app.Label2DisplayRegister = app.Label2DisplayRegisterDefault
+					if changeSvc {
+						ctx.Send(ctx.Self(), &initActorSvc{})
+					}
+					if changeDevice {
+						ctx.Send(ctx.Self(), &initActorListen{})
+					}
+				}
+			} else {
+				logs.LogWarn.Println("terminal config is empty")
+			}
+			if isAppActive && pidApp != nil {
+				ctx.RequestWithCustomSender(pidApp, msg, ctx.Sender())
+			}
 		case *Init:
 			if pidCounter != nil {
-				ctx.PoisonFuture(pidCounter)
+				ctx.PoisonFuture(pidCounter).Wait()
+			}
+			if pidSvc != nil {
+				ctx.PoisonFuture(pidSvc).Wait()
 			}
 			isAppActive = false
 			if pidApp != nil {
@@ -148,9 +246,44 @@ func main() {
 				uii.Shutdown()
 			}
 			var err error
+			pidGps, err = ctx.SpawnNamed(actor.PropsFromFunc(gps.NewActor().Receive), "gps-actor")
+			if err != nil {
+				log.Fatalf("gps actor error: %s", err)
+			}
 			pidCounter, err = ctx.SpawnNamed(actor.PropsFromFunc(counterpass.NewActor().Receive), "counter-actor")
 			if err != nil {
 				log.Fatalf("counter actor error: %s", err)
+			}
+			pidSvc, err = ctx.SpawnNamed(actor.PropsFromFunc(service.NewActor(id, url).Receive), "service-actor")
+			if err != nil {
+				log.Fatalf("service actor error: %s", err)
+			}
+			if _, err := ctx.SpawnNamed(actor.PropsFromFunc(parameters.NewActor(id,
+				fmt.Sprintf("%s/%s", constant.DATABASE_PATH, constant.DATABASE_PARAMS_NAME), 60*time.Minute).Receive), "params-actor"); err != nil {
+				log.Fatalf("params actor error: %s", err)
+			}
+			ctx.Send(ctx.Self(), &initActorListen{})
+		// if _, err := ctx.SpawnNamed(actor.PropsFromFunc(itinerary.NewActor(id).Receive), "route-actor"); err != nil {
+		// 	log.Fatalf("route actor error: %s", err)
+		// }
+		case *initActorSvc:
+			if pidSvc != nil {
+				ctx.PoisonFuture(pidSvc).Wait()
+			}
+			var err error
+			pidSvc, err = ctx.SpawnNamed(actor.PropsFromFunc(service.NewActor(id, url).Receive), "service-actor")
+			if err != nil {
+				log.Fatalf("service actor error: %s", err)
+			}
+		case *initActorListen:
+			isAppActive = false
+			if pidApp != nil {
+				ctx.PoisonFuture(pidApp).Wait()
+			}
+			if uii != nil {
+				// uii.Shutdown()
+				ctx.PoisonFuture(uii.GetPID()).Wait()
+				time.Sleep(3000 * time.Millisecond)
 			}
 
 			var confDev device.Device
@@ -164,23 +297,18 @@ func main() {
 				app.AddrScreenAlarms, app.AddrScreenMore,
 				app.AddrScreenProgDriver, app.AddrScreenProgVeh, app.AddrScreenSwitch,
 
-				app.AddrEnterSelectProgDriver, app.AddrEnterSelectProgVeh,
+				app.AddrShowSelectProgVeh, app.AddrSelectItinerary,
 
-				app.AddrBitSelectProgDriver_1, app.AddrBitSelectProgDriver_2,
-				app.AddrBitSelectProgDriver_3, app.AddrBitSelectProgDriver_4,
-				app.AddrBitSelectProgDriver_5, app.AddrBitSelectProgDriver_6,
-				app.AddrBitSelectProgDriver_7, app.AddrBitSelectProgDriver_8,
-				app.AddrBitSelectProgDriver_10,
+				app.AddrEnterService,
+				app.AddrExitSwitch,
 
-				app.AddrBitSelectProgVeh_1, app.AddrBitSelectProgVeh_2,
-				app.AddrBitSelectProgVeh_3, app.AddrBitSelectProgVeh_4,
-				app.AddrBitSelectProgVeh_5, app.AddrBitSelectProgVeh_6,
-				app.AddrBitSelectProgVeh_7, app.AddrBitSelectProgVeh_8,
-				app.AddrBitSelectProgVeh_10,
+				app.AddrSendStep,
+				app.AddrSwitchStep,
 			},
 			)
 			confDisplay = display.NewPiDisplay(app.Label2DisplayRegister)
 
+			var err error
 			uii, err = ui.New(ctx,
 				device.NewActor(confDev),
 				display.NewDisplayActor(confDisplay))
@@ -192,6 +320,12 @@ func main() {
 			time.Sleep(3 * time.Second)
 
 			appinstance := app.NewApp(uii)
+			// appinstance.SetCashInput(true)
+			appinstance.SetAppVersion(fmt.Sprintf("app: %s", version))
+			appinstance.SetItineraryProg(!isShiftProgEnable)
+			appinstance.SetReverseTQ(reverseTQ)
+			appinstance.SetEnableCameraFrontDoor(enableCameraFrontDoor)
+			appinstance.RegisterActorService(pidSvc)
 			propsApp := actor.PropsFromFunc(appinstance.Receive)
 			pidApp, err = ctx.SpawnNamed(propsApp, "app")
 			isAppActive = true
@@ -368,17 +502,21 @@ func main() {
 
 			case <-tick3:
 
+				if isAppActive && pidGps != nil && pidApp != nil {
+					root.RequestWithCustomSender(pidGps, &gps.MsgGpsStatusRequest{}, pidApp)
+				}
+
 				// root.Send(pidApp, &messages.MsgAppPaso{
 				// 	Value: 1,
 				// 	Code:  messages.MsgAppPaso_ELECTRONIC,
 				// })
-				root.Send(pidApp, &app.TestTextProgDriver{
-					Text: []string{
-						`2024/10/23 10:23:01 | Ruta: 255_D1 | Iti: Circular sin fin a ninguna parte`,
-						`2024/10/23 10:23:02 | Ruta: 255_D2 | Iti: Circular sin fin a ninguna parte`,
-						`2024/10/23 10:23:03 | Ruta: 255_D3 | Iti: Circular sin fin a ninguna parte`,
-					},
-				})
+				// root.Send(pidApp, &app.TestTextProgDriver{
+				// 	Text: []string{
+				// 		`2024/10/23 10:23:01 | Ruta: 255_D1 | Iti: Circular sin fin a ninguna parte`,
+				// 		`2024/10/23 10:23:02 | Ruta: 255_D2 | Iti: Circular sin fin a ninguna parte`,
+				// 		`2024/10/23 10:23:03 | Ruta: 255_D3 | Iti: Circular sin fin a ninguna parte`,
+				// 	},
+				// })
 			case <-tick4:
 			// root.Send(pidApp, &messages.MsgAppError{
 			// 	Error: "entrada invalida",

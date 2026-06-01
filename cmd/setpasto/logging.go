@@ -21,8 +21,11 @@ func initLogs(debug, logStd bool) {
 		return
 	}
 	newLog(logs.LogInfo, "[ info ] ", 0, 6)
+	logs.LogInfo.EnableStdout()
 	newLog(logs.LogWarn, "[ warn ] ", 0, 4)
+	logs.LogWarn.EnableStdout()
 	newLog(logs.LogError, "[ error ] ", 0, 3)
+	logs.LogError.EnableStdout()
 	newLog(logs.LogBuild, "[ build ] ", 0, 7)
 	if !debug {
 		logs.LogBuild.Disable()
