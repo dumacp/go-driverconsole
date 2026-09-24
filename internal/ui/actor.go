@@ -8,6 +8,7 @@ import (
 	"github.com/dumacp/go-driverconsole/internal/buttons"
 	"github.com/dumacp/go-driverconsole/internal/device"
 	"github.com/dumacp/go-driverconsole/internal/display"
+	"github.com/dumacp/go-driverconsole/internal/maintenance"
 	"github.com/dumacp/go-logs/pkg/logs"
 )
 
@@ -19,8 +20,9 @@ type ActorUI struct {
 	pidInputs    *actor.PID
 	dev          interface{}
 	// evt2Label    map[int]EventType
-	evt2Func func(evt *buttons.InputEvent)
-	screen   int
+	evt2Func   func(evt *buttons.InputEvent)
+	screen     int
+	hmiMonitor *maintenance.Monitor
 }
 
 func NewActor(dev, disp actor.Actor) actor.Actor {
@@ -29,6 +31,7 @@ func NewActor(dev, disp actor.Actor) actor.Actor {
 	a.actorDisplay = disp
 	a.actorDevice = dev
 	a.screen = MAIN_SCREEN
+	a.hmiMonitor = maintenance.NewMonitor(maintenance.DEV_HMI, maintenance.HMIReportInterval)
 	return a
 }
 
@@ -91,6 +94,11 @@ func (a *ActorUI) Receive(ctx actor.Context) {
 		}
 	case *VerifyDisplayMsg:
 		result := AckResponse(ctx.RequestFuture(a.pidDisplay, &display.VerifyMsg{}, time.Second*1))
+		if evt := a.hmiMonitor.Update(result, time.Now()); evt != nil {
+			if err := maintenance.Publish(evt); err != nil {
+				logs.LogWarn.Printf("publish HMI event error: %s", err)
+			}
+		}
 		if ctx.Sender() != nil {
 			ctx.Respond(&AckMsg{Error: result})
 		}
