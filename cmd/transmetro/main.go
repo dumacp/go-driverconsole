@@ -44,7 +44,7 @@ var hasCashInput bool
 var isItineraryProgEnable bool
 var legacySibus bool
 
-const version = "1.2.25"
+const version = "1.2.26"
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")
@@ -265,6 +265,8 @@ func main() {
 				app.AddrEnterDriver, app.AddrEnterRuta,
 				app.AddrScreenAlarms, app.AddrScreenMore,
 				app.AddrScreenProgDriver, app.AddrScreenProgVeh, app.AddrScreenSwitch,
+				app.AddrScreenDailyServices,
+				app.AddrNextMessages,
 
 				app.AddrShowSelectProgVeh, app.AddrSelectItinerary,
 

@@ -543,6 +543,60 @@ func Label2DisplayRegisterDefault(label int) display.Register {
 			Gap:    0,
 			Toogle: 0,
 		}
+	case ui.SERVICE_DAILY_ROW_0:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrTextServiceDaily0,
+			Len:    1,
+			Size:   100,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case ui.SERVICE_DAILY_ROW_1:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrTextServiceDaily1,
+			Len:    1,
+			Size:   100,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case ui.SERVICE_DAILY_ROW_2:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrTextServiceDaily2,
+			Len:    1,
+			Size:   100,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case ui.SERVICE_DAILY_ROW_3:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrTextServiceDaily3,
+			Len:    1,
+			Size:   100,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case ui.SERVICE_DAILY_ROW_4:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrTextServiceDaily4,
+			Len:    1,
+			Size:   100,
+			Gap:    0,
+			Toogle: 0,
+		}
+	case ui.SERVICE_DAILY_ROW_5:
+		return display.Register{
+			Type:   display.INPUT_TEXT,
+			Addr:   AddrTextServiceDaily5,
+			Len:    1,
+			Size:   100,
+			Gap:    0,
+			Toogle: 0,
+		}
 	}
 	return display.Register{}
 }

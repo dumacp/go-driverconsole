@@ -246,19 +246,10 @@ func (a *App) Runstate(ctx actor.Context) {
 					fmt.Printf("recover database data: %+v\n", res)
 					logs.LogInfo.Printf("recover database data: %s", res)
 
-					if time.UnixMilli(res.Time).Day() != time.Now().Day() {
-						a.countInput = 0
-						a.countOutput = 0
-						a.cashInput = 0
-						a.electInput = 0
-						logs.LogInfo.Printf("restart data: %v", &ValidationData{
-							CountInputs: a.countInput, CashInputs: a.cashInput, CountOutputs: a.countOutput, ElectInputs: a.electInput})
-					} else {
-						a.countInput += res.CountInputs
-						a.countOutput += res.CountOutputs
-						a.cashInput += res.CashInputs
-						a.electInput += res.ElectInputs
-					}
+					a.countInput += res.CountInputs
+					a.countOutput += res.CountOutputs
+					a.cashInput += res.CashInputs
+					a.electInput += res.ElectInputs
 					ctx.Send(ctx.Self(), &MsgShowCounters{})
 				}
 			}
@@ -395,6 +386,9 @@ func (a *App) Runstate(ctx actor.Context) {
 		} else {
 			a.electInput += 1
 			if a.uix != nil {
+				if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+					logs.LogWarn.Printf("electInput error: %s", err)
+				}
 				a.uix.Beep(3, 50, 600*time.Millisecond)
 				if a.cancelPop != nil {
 					a.cancelPop()
@@ -452,15 +446,15 @@ func (a *App) Runstate(ctx actor.Context) {
 			fmt.Printf("screen in warn: %v\n", a.uix.GetScreen())
 		}
 	case *tickResetCountersMsg:
-		a.countInput = 0
-		a.countOutput = 0
-		a.cashInput = 0
-		a.electInput = 0
+		logs.LogInfo.Printf("daily counters reset skipped")
 		ctx.Send(ctx.Self(), &MsgShowCounters{})
 	case *MsgShowCounters:
 		if a.uix != nil {
 			if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
 				logs.LogWarn.Printf("cashInput error: %s", err)
+			}
+			if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+				logs.LogWarn.Printf("electInput error: %s", err)
 			}
 			if err := a.uix.Inputs(int32(a.countInput)); err != nil {
 				logs.LogWarn.Printf("inputs error: %s", err)
@@ -477,6 +471,9 @@ func (a *App) Runstate(ctx actor.Context) {
 		if a.uix != nil {
 			if err := a.uix.CashInputs(int32(a.cashInput)); err != nil {
 				logs.LogWarn.Printf("cashInput error: %s", err)
+			}
+			if err := a.uix.ElectronicInputs(int32(a.electInput)); err != nil {
+				logs.LogWarn.Printf("electInput error: %s", err)
 			}
 		}
 	case *MsgDoors:
@@ -550,6 +547,15 @@ func (a *App) Runstate(ctx actor.Context) {
 		if err := a.setDriver(ctx, msg); err != nil {
 			logs.LogWarn.Println("setDriver error: ", err)
 		} else {
+			// Fetch daily services once driver is identified
+			go func() {
+				data, err := a.fetchDriverDailyServices()
+				if err != nil {
+					logs.LogWarn.Printf("fetchDriverDailyServices error: %s", err)
+					return
+				}
+				a.showDailyServices(data)
+			}()
 			if a.pidApp != nil && msg.Driver > 0 {
 				mss := &messages.MsgSetDriver{
 					Code: int32(msg.Driver),
@@ -805,6 +811,15 @@ func (a *App) Runstate(ctx actor.Context) {
 			}()
 			logs.LogWarn.Printf("takeservice error: %s", err)
 		}
+	case *RequestDailyServices:
+		go func() {
+			data, err := a.fetchDriverDailyServices()
+			if err != nil {
+				logs.LogWarn.Printf("fetchDriverDailyServices error: %s", err)
+				return
+			}
+			a.showDailyServices(data)
+		}()
 	case *services.StatusSch:
 		fmt.Printf("******** (%T) %v **********\n", msg, msg)
 		if msg.State == 0 && a.network {
@@ -979,7 +994,9 @@ func (a *App) Runstate(ctx actor.Context) {
 		} else {
 			totalCountInput = int32(msg.Registers[1])
 		}
-		if a.totalCountInput < totalCountInput {
+		if totalCountInput > 0 && totalCountInput-a.totalCountInput > 30 {
+			logs.LogWarn.Printf("sudden increase in input count: %d", totalCountInput-a.totalCountInput)
+		} else if a.totalCountInput < totalCountInput {
 			if a.totalCountInput == 0 {
 				a.totalCountInput = totalCountInput - 1
 			}
@@ -999,7 +1016,9 @@ func (a *App) Runstate(ctx actor.Context) {
 		} else {
 			totalCountOutput = int32(msg.Registers[0])
 		}
-		if a.totalCountOutput < totalCountOutput {
+		if totalCountOutput > 0 && totalCountOutput-a.totalCountOutput > 30 {
+			logs.LogWarn.Printf("sudden increase in output count: %d", totalCountOutput-a.totalCountOutput)
+		} else if a.totalCountOutput < totalCountOutput {
 			if a.totalCountOutput == 0 {
 				a.totalCountOutput = totalCountOutput - 1
 			}

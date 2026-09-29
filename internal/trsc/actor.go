@@ -476,6 +476,15 @@ func (a *App) Runstate(ctx actor.Context) {
 		if err := a.setDriver(ctx, msg); err != nil {
 			logs.LogWarn.Println("setDriver error: ", err)
 		} else {
+			// Fetch daily services once driver is identified
+			go func() {
+				data, err := a.fetchDriverDailyServices()
+				if err != nil {
+					logs.LogWarn.Printf("fetchDriverDailyServices error: %s", err)
+					return
+				}
+				a.showDailyServices(data)
+			}()
 			if a.pidApp != nil && msg.Driver > 0 {
 				mss := &messages.MsgSetDriver{
 					Code: int32(msg.Driver),
@@ -571,6 +580,15 @@ func (a *App) Runstate(ctx actor.Context) {
 			}()
 			logs.LogWarn.Printf("takeservice error: %s", err)
 		}
+	case *RequestDailyServices:
+		go func() {
+			data, err := a.fetchDriverDailyServices()
+			if err != nil {
+				logs.LogWarn.Printf("fetchDriverDailyServices error: %s", err)
+				return
+			}
+			a.showDailyServices(data)
+		}()
 	case *services.StatusSch:
 		fmt.Printf("******** (%T) %v **********\n", msg, msg)
 		if msg.State == 0 && a.network {

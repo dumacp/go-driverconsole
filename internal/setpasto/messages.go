@@ -150,6 +150,7 @@ type RequestTakeService struct {
 type RequestReTakeService struct {
 }
 type RequestSummaryService struct{}
+type RequestDailyServices struct{}
 type TestVehicleMessages struct {
 	Text []string
 }

@@ -130,3 +130,4 @@ type RequestDriver struct {
 }
 type RequestTakeService struct {
 }
+type RequestDailyServices struct{}

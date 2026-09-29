@@ -13,6 +13,7 @@ import (
 	"github.com/dumacp/go-actors/database"
 	"github.com/dumacp/go-driverconsole/internal/constant"
 	"github.com/dumacp/go-driverconsole/internal/counterpass"
+	"github.com/dumacp/go-driverconsole/internal/platform"
 	"github.com/dumacp/go-driverconsole/internal/pubsub"
 	"github.com/dumacp/go-driverconsole/internal/ui"
 	"github.com/dumacp/go-driverconsole/internal/utils"
@@ -90,6 +91,9 @@ type App struct {
 	isDisplayEnable        bool
 	isItineraryProgEnable  bool
 	hasCashInput           bool
+
+	dailyServices     []platform.DriverDailyService
+	dailyServicesPage int
 }
 
 func NewApp(uix ui.UI) *App {
@@ -572,6 +576,15 @@ func (a *App) Runstate(ctx actor.Context) {
 		if err := a.setDriver(ctx, msg); err != nil {
 			logs.LogWarn.Println("setDriver error: ", err)
 		} else {
+			// Fetch daily services once driver is identified
+			go func() {
+				data, err := a.fetchDriverDailyServices()
+				if err != nil {
+					logs.LogWarn.Printf("fetchDriverDailyServices error: %s", err)
+					return
+				}
+				a.showDailyServices(data)
+			}()
 			if a.pidApp != nil && msg.Driver > 0 {
 				mss := &messages.MsgSetDriver{
 					Code: int32(msg.Driver),
@@ -805,6 +818,17 @@ func (a *App) Runstate(ctx actor.Context) {
 			}()
 			logs.LogWarn.Printf("summaryservice error: %s", err)
 		}
+	case *RequestDailyServices:
+		go func() {
+			data, err := a.fetchDriverDailyServices()
+			if err != nil {
+				logs.LogWarn.Printf("fetchDriverDailyServices error: %s", err)
+				return
+			}
+			a.showDailyServices(data)
+		}()
+	case *RequestNextDailyServices:
+		a.nextDailyPage()
 	case *RequestTakeService:
 		if err := a.takeservice(); err != nil {
 			if err := a.uix.TextWarningPopup(fmt.Sprintf("%s\n", err)); err != nil {
@@ -980,7 +1004,9 @@ func (a *App) Runstate(ctx actor.Context) {
 			break
 		}
 		totalCountInput := int32(msg.Registers[0])
-		if a.totalCountInput < totalCountInput {
+		if totalCountInput > 0 && totalCountInput-a.totalCountInput > 30 {
+			logs.LogWarn.Printf("sudden increase in input count: %d", totalCountInput-a.totalCountInput)
+		} else if a.totalCountInput < totalCountInput {
 			if a.totalCountInput == 0 {
 				a.totalCountInput = totalCountInput
 			}

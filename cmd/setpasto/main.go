@@ -48,7 +48,7 @@ var isShiftProgEnable bool
 var reverseTQ bool
 var enableCameraFrontDoor bool
 
-const version = "1.2.26_trsc"
+const version = "1.2.27_setp_test1"
 
 func init() {
 	flag.StringVar(&id, "id", "", "device ID")
@@ -296,6 +296,7 @@ func main() {
 				app.AddrEnterDriver, app.AddrEnterRuta,
 				app.AddrScreenAlarms, app.AddrScreenMore,
 				app.AddrScreenProgDriver, app.AddrScreenProgVeh, app.AddrScreenSwitch,
+				app.AddrScreenDailyServices,
 
 				app.AddrShowSelectProgVeh, app.AddrSelectItinerary,
 

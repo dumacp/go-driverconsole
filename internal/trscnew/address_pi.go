@@ -53,13 +53,15 @@ const (
 	AddrCurrentSelectProgVeh   = 2998
 	AddrTextNotiAlarm          = 3000
 	// AddrAddBright              = 21
-	AddrSwitchLang1 = 21
-	AddrSwitchLang2 = 22
-	AddrLedBeep     = 23
-	AddrSwitchStep  = 25
-	AddrSendStep    = 24
-	AddrAcceptError = 26
-	AddrAcceptOk    = 27
+	AddrSwitchLang1         = 21
+	AddrSwitchLang2         = 22
+	AddrLedBeep             = 23
+	AddrSwitchStep          = 25
+	AddrSendStep            = 24
+	AddrAcceptError         = 26
+	AddrAcceptOk            = 27
+	AddrScreenDailyServices = 28
+	AddrNextMessages        = 29
 
 	AddrPrevVehHeaderText  = 4180 // 4100
 	AddrCurrVehHeaderText  = 4140
@@ -71,4 +73,12 @@ const (
 	AddrCurrCheckpointText = 4420
 
 	AddrTextVehiMessages = 5000
+
+	// Daily services screen (screen 8) — WordAddr 45800-46300
+	AddrTextServiceDaily0 = 5800
+	AddrTextServiceDaily1 = 5900
+	AddrTextServiceDaily2 = 6000
+	AddrTextServiceDaily3 = 6100
+	AddrTextServiceDaily4 = 6200
+	AddrTextServiceDaily5 = 6300
 )

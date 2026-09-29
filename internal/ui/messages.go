@@ -228,3 +228,8 @@ type ArrayPictMsg struct {
 	Label int
 	Num   int
 }
+
+// DailyServicesMsg is a message to display the driver's daily services.
+type DailyServicesMsg struct {
+	Services any // *platform.DriverDailyServicesResponse (avoid circular import)
+}

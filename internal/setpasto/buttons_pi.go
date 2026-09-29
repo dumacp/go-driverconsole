@@ -257,6 +257,18 @@ func ButtonsPi(a *App) func(evt *buttons.InputEvent) {
 				// if err := a.uix.ShowStats(); err != nil {
 				// 	return fmt.Errorf("event ShowStats error: %s", err)
 				// }
+			case AddrScreenDailyServices:
+				// release button
+				if v, ok := evt.Value.(bool); !ok || v {
+					break
+				}
+				if err := a.uix.SetLed(AddrScreenDailyServices, false); err != nil {
+					return fmt.Errorf("error setLed (AddrScreenDailyServices): %s", err)
+				}
+				a.ctx.Send(a.ctx.Self(), &RequestDailyServices{})
+				if err := a.uix.Screen(int(ui.SERVICE_DAILY_SCREEN), switchScreen); err != nil {
+					return fmt.Errorf("event SERVICE_DAILY_SCREEN error: %s", err)
+				}
 			case AddrExitSwitch:
 				// release button
 				if v, ok := evt.Value.(bool); !ok || v {

@@ -52,4 +52,14 @@ const (
 	// AddrLedBeep                = 23
 	// AddrSwitchStep             = 25
 	// AddrSendStep               = 24
+
+	AddrScreenDailyServices = 28
+
+	// Daily services screen (screen 8) — WordAddr 45800-46300
+	AddrTextServiceDaily0 = 5800
+	AddrTextServiceDaily1 = 5900
+	AddrTextServiceDaily2 = 6000
+	AddrTextServiceDaily3 = 6100
+	AddrTextServiceDaily4 = 6200
+	AddrTextServiceDaily5 = 6300
 )

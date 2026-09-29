@@ -1,6 +1,6 @@
 module github.com/dumacp/go-driverconsole
 
-go 1.23.0
+go 1.25.0
 
 //toolchain go1.22.0
 
@@ -17,9 +17,10 @@ require (
 
 require (
 	github.com/asynkron/protoactor-go v0.0.0-20240413045429-76c172a71a16
+	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/dumacp/go-actors v0.0.0-20240613144007-fcb38ee7b9b1
 	github.com/dumacp/go-fareCollection v0.0.0-00010101000000-000000000000
-	github.com/dumacp/go-gwiot v0.0.0-20250219205658-c5ffa6d680c1
+	github.com/dumacp/go-gwiot v0.0.0-20251006151714-ed748cf22dd5
 	github.com/dumacp/go-ignition v0.0.0-20240301165217-62b8949edaf7
 	github.com/dumacp/go-itinerary v0.0.0-20250206143001-1ce6638f2c19
 	github.com/dumacp/go-levis v0.0.0-20241119224207-a91cacdf55e3
@@ -27,6 +28,7 @@ require (
 	github.com/dumacp/go-schservices v0.0.4-0.20250115134655-33531cf6227c
 	github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
+	golang.org/x/oauth2 v0.13.0
 	google.golang.org/protobuf v1.36.8
 )
 
@@ -35,7 +37,6 @@ require (
 	github.com/asynkron/gofun v0.0.0-20220329210725-34fed760f4c2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
-	github.com/coreos/go-oidc v2.2.1+incompatible // indirect
 	github.com/dumacp/keycloak v0.0.0-20191212174805-9e9a5c3da24f // indirect
 	github.com/emirpasic/gods v1.18.1 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
@@ -69,7 +70,6 @@ require (
 	golang.org/x/crypto v0.41.0 // indirect
 	golang.org/x/exp v0.0.0-20231110203233-9a3e6036ecaa // indirect
 	golang.org/x/net v0.42.0 // indirect
-	golang.org/x/oauth2 v0.13.0 // indirect
 	golang.org/x/sync v0.16.0 // indirect
 	golang.org/x/sys v0.35.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
