@@ -16,15 +16,15 @@ require (
 )
 
 require (
-	github.com/asynkron/protoactor-go v0.0.0-20240413045429-76c172a71a16
+	github.com/asynkron/protoactor-go v0.0.0-20230812113646-3987052e6743
 	github.com/coreos/go-oidc v2.2.1+incompatible
 	github.com/dumacp/go-actors v0.0.0-20240613144007-fcb38ee7b9b1
-	github.com/dumacp/go-fareCollection v0.0.0-00010101000000-000000000000
-	github.com/dumacp/go-gwiot v0.0.0-20251006151714-ed748cf22dd5
+	github.com/dumacp/go-fareCollection v1.0.3-0.20261020154710-3bf8bb21a086
+	github.com/dumacp/go-gwiot v1.2.24-0.20261101194921-f2d0862b04ef
 	github.com/dumacp/go-ignition v0.0.0-20240301165217-62b8949edaf7
 	github.com/dumacp/go-itinerary v0.0.0-20250206143001-1ce6638f2c19
 	github.com/dumacp/go-levis v0.0.0-20241119224207-a91cacdf55e3
-	github.com/dumacp/go-params v1.0.3
+	github.com/dumacp/go-params v1.0.4-0.20261101194921-d5b341d7ab94
 	github.com/dumacp/go-schservices v0.0.4-0.20250115134655-33531cf6227c
 	github.com/dumacp/gpsnmea v0.0.0-20201110195359-2994f05cfb52
 	github.com/golang/geo v0.0.0-20210211234256-740aa86cb551
@@ -49,7 +49,7 @@ require (
 	github.com/klauspost/compress v1.18.0 // indirect
 	github.com/lithammer/shortuuid/v4 v4.0.0 // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
-	github.com/nats-io/nats.go v1.36.0 // indirect
+	github.com/nats-io/nats.go v1.44.0 // indirect
 	github.com/nats-io/nkeys v0.4.11 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/orcaman/concurrent-map v1.0.0 // indirect
@@ -79,24 +79,6 @@ require (
 	gopkg.in/square/go-jose.v2 v2.6.0 // indirect
 )
 
-replace github.com/dumacp/go-fareCollection => ../go-fareCollection
+replace github.com/asynkron/protoactor-go => github.com/dumacp/protoactor-go v0.0.0-20261101194920-b85f35a0f362
 
-//replace github.com/dumacp/go-levis => ../go-levis
-
-replace github.com/dumacp/go-params => ../go-params
-
-//replace github.com/dumacp/go-itinerary => ../go-itinerary
-
-replace github.com/dumacp/go-gwiot => ../go-gwiot
-
-replace github.com/dumacp/go-schservices => ../go-schservices
-
-//replace github.com/dumacp/go-actors => ../go-actors
-
-//replace github.com/dumacp/matrixorbital => ../matrixorbital
-
-replace github.com/asynkron/protoactor-go => ../../asynkron/protoactor-go
-
-replace github.com/nats-io/nats.go => ../../nats-io/nats.go
-
-//replace github.com/dumacp/go-logs => ../go-logs
+replace github.com/nats-io/nats.go => github.com/dumacp/nats.go v1.44.1-0.20261101194920-9a28c3fb2b88
